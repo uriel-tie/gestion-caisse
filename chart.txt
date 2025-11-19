@@ -1,0 +1,39 @@
+**Rôle :** Tu es un expert Frontend spécialisé en React, TypeScript et Tailwind CSS. Tu as un œil pour le design UI/UX minimaliste et moderne.
+
+**Tâche :** Refactorise (ou crée) le code du composant ci-dessous pour qu'il respecte strictement la charte graphique "Soft Caisse" définie ci-après.
+
+**1. Configuration Tailwind (Couleurs personnalisées)**
+Considère que mon `tailwind.config.js` contient déjà cette palette. N'invente pas de nouvelles couleurs, utilise celles-ci :
+- **primary (Roses) :**
+  - 50: '#FDF2F8' (Fond de page)
+  - 200: '#FBCFE8' (Bordures douces, focus rings)
+  - 700: '#BE185D' (Boutons, Textes importants, Icônes actives)
+  - 800: '#9D174D' (Hover boutons)
+- **gray (Gris Slate) :**
+  - 200: '#E2E8F0' (Bordures inputs, séparateurs)
+  - 500: '#64748B' (Textes secondaires, icônes inactives)
+  - 800: '#1E293B' (Titres, textes principaux)
+
+**2. Règles de Design à appliquer (Style Guide)**
+- **Ambiance générale :** Douceur, clarté, professionnel mais apaisant.
+- **Arrière-plan de page :** Toujours `bg-primary-50` (Rose très pâle).
+- **Cartes / Conteneurs :** Fond blanc (`bg-white`), ombre légère (`shadow-sm`), bordure fine optionnelle (`border border-primary-50` ou `border-gray-100`).
+- **Typographie :**
+  - Titres (H1/H2) : `text-gray-800 font-bold`.
+  - Paragraphes : `text-gray-500` ou `text-gray-600`.
+- **Boutons (Actions principales) :**
+  - Fond : `bg-primary-700`.
+  - Hover : `hover:bg-primary-800`.
+  - Texte : `text-white`.
+  - Forme : `rounded-lg` (pas full rounded).
+  - Transition : `transition-colors`.
+- **Champs de formulaire (Inputs) :**
+  - Bordure par défaut : `border-gray-200`.
+  - Focus : `focus:border-primary-700` et `focus:ring-primary-200`.
+  - Fond : `bg-white`.
+- **Icônes (Lucide React) :**
+  - Couleur par défaut : `text-gray-400`.
+  - Couleur active/focus : `text-primary-700`.
+
+**3. Code à modifier / à créer :**
+[COLLE TON CODE OU TA DEMANDE ICI]
