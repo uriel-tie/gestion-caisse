@@ -11,6 +11,11 @@ use Symfony\Component\Uid\Uuid;
 #[ORM\Index(name: 'idx_operation_date', columns: ['date'])] // Optimisation requise par le guide (Section 6)
 class Operation
 {
+    public const STATUT_BROUILLON = 'BROUILLON';
+    public const STATUT_VALIDEE = 'VALIDEE';
+    public const STATUT_EN_ATTENTE = 'EN_ATTENTE';
+    public const STATUT_ANNULEE = 'ANNULEE';
+
     #[ORM\Id]
     #[ORM\Column(type: 'uuid', unique: true)]
     #[ORM\GeneratedValue(strategy: 'CUSTOM')]
@@ -52,6 +57,22 @@ class Operation
 
     #[ORM\OneToOne(mappedBy: 'operation', targetEntity: Demande::class, cascade: ['persist', 'remove'])]
     private ?Demande $demande = null;
+
+    #[ORM\Column(length: 255, nullable: true)]
+    private ?string $motif = null;
+
+
+    public function getMotif(): ?string
+    {
+        return $this->motif;
+    }
+
+    public function setMotif(?string $motif): static
+    {
+        $this->motif = $motif;
+
+        return $this;
+    }
 
     public function __construct()
     {
@@ -180,7 +201,7 @@ class Operation
 
         return $this;
     }
-    
+
     public function getDemande(): ?Demande
     {
         return $this->demande;

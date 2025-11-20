@@ -147,4 +147,20 @@ class Demande
         $this->operation = $operation;
         return $this;
     }
+    public const STATUT_ATTENTE_TRAITEMENT_CAISSE = 'ATTENTE_TRAITEMENT_CAISSE';
+
+    #[ORM\ManyToOne(targetEntity: Utilisateur::class)]
+    #[ORM\JoinColumn(nullable: true)]
+    private ?Utilisateur $caissierTraitant = null;
+
+    public function getCaissierTraitant(): ?Utilisateur
+    {
+        return $this->caissierTraitant;
+    }
+
+    public function setCaissierTraitant(?Utilisateur $caissierTraitant): static
+    {
+        $this->caissierTraitant = $caissierTraitant;
+        return $this;
+    }
 }

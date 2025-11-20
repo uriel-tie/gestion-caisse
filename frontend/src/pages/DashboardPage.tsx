@@ -1,11 +1,10 @@
-import React from 'react';
-import { LogOut, Activity } from 'lucide-react'; // J'ai retiré ShieldCheck car on change le design
+import React, { useState } from 'react';
+import { LogOut, Activity } from 'lucide-react'; 
 import type { UserData } from '../types';
-
-// Import de tes nouveaux composants
-// (Ajuste le chemin si nécessaire, ex: './components/SoldeCard')
 import SoldeCard from './SoldeCard';
 import JournalTable from './JournalTable';
+import EncaissementModal from './EncaissementModal';
+import DecaissementModal from './DecaissementModal';
 
 interface DashboardPageProps {
   user: UserData;
@@ -13,22 +12,30 @@ interface DashboardPageProps {
 }
 
 const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout }) => {
+  // Gestion des modales
+  const [showEncaissementModal, setShowEncaissementModal] = useState(false);
+  const [showDecaissementModal, setShowDecaissementModal] = useState(false); // <--- NOUVEAU STATE
+
+  // Rafraîchissement après opération réussie
+  const handleOperationSuccess = () => {
+    window.location.reload(); 
+  };
+
   return (
-    <div className="min-h-screen bg-gray-50"> {/* Fond gris clair pour faire ressortir les cartes blanches */}
+    <div className="min-h-screen bg-gray-50">
       
-      {/* --- NAVBAR (Inchangée) --- */}
+      {/* --- NAVBAR --- */}
       <nav className="bg-white shadow-sm border-b border-gray-200 px-6 py-4 flex justify-between items-center sticky top-0 z-10">
         <div className="flex items-center space-x-3">
-          <div className="bg-pink-100 p-2 rounded-lg"> {/* Changé en Rose selon ta charte */}
+          <div className="bg-pink-100 p-2 rounded-lg">
             <Activity className="h-6 w-6 text-pink-600" />
           </div>
           <span className="text-xl font-bold text-gray-800">CashFlow Manager</span>
         </div>
         <div className="flex items-center space-x-4">
           <div className="text-right hidden sm:block">
-            <p className="text-sm font-medium text-gray-800">{user.name || user.email}</p>
+            <p className="text-sm font-medium text-gray-800">{user.nom || user.email}</p>
             <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-purple-100 text-purple-800">
-              {/* On affiche le rôle pour être sûr */}
               MANAGER
             </span>
           </div>
@@ -45,38 +52,63 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout }) => {
       {/* --- CONTENU PRINCIPAL --- */}
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         
+        {/* MODALE ENCAISSEMENT (Vert) */}
+        <EncaissementModal 
+            isOpen={showEncaissementModal} 
+            onClose={() => setShowEncaissementModal(false)}
+            onSuccess={handleOperationSuccess}
+        />
+
+        {/* MODALE DÉCAISSEMENT (Rouge) - AJOUTÉ ICI */}
+        <DecaissementModal 
+            isOpen={showDecaissementModal} 
+            onClose={() => setShowDecaissementModal(false)}
+            onSuccess={handleOperationSuccess}
+        />
+
         <div className="mb-8">
             <h2 className="text-2xl font-bold text-gray-800">Vue d'ensemble Trésorerie</h2>
             <p className="text-gray-500">Bienvenue, voici l'état actuel de la caisse.</p>
         </div>
 
-        {/* 1. LE SOLDE (Tout en haut pour le Manager) */}
         <div className="mb-8">
             <SoldeCard />
         </div>
 
-        {/* 2. LES ACTIONS RAPIDES */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-            {/* Carte Action 1 */}
-            <div className="p-6 bg-white border border-gray-200 rounded-xl shadow-sm hover:shadow-md hover:border-pink-300 transition-all cursor-pointer group">
-                <h3 className="font-bold text-gray-800 group-hover:text-pink-600 transition-colors">Encaissement Rapide</h3>
-                <p className="text-sm text-gray-500 mt-2">Enregistrer une entrée d'argent immédiate</p>
+        {/* GRILLE D'ACTIONS */}
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
+            
+            {/* 1. ENCAISSEMENT */}
+            <div 
+                onClick={() => setShowEncaissementModal(true)}
+                className="p-6 bg-white border border-gray-200 rounded-xl shadow-sm hover:shadow-md hover:border-green-500 transition-all cursor-pointer group"
+            >
+                <h3 className="font-bold text-gray-800 group-hover:text-green-600 transition-colors">Encaissement</h3>
+                <p className="text-sm text-gray-500 mt-2">Nouvelle entrée d'argent</p>
             </div>
             
-            {/* Carte Action 2 - Grisée pour le manager s'il ne fait pas de caisse, ou active s'il doit tester */}
-            <div className="p-6 bg-white border border-gray-200 rounded-xl shadow-sm hover:shadow-md hover:border-pink-300 transition-all cursor-pointer group">
-                <h3 className="font-bold text-gray-800 group-hover:text-pink-600 transition-colors">Validation Demandes</h3>
-                <p className="text-sm text-gray-500 mt-2">Voir les demandes en attente de validation</p>
+            {/* 2. DÉCAISSEMENT RAPIDE - MAINTENANT ACTIF */}
+            <div 
+                onClick={() => setShowDecaissementModal(true)} // <--- AJOUT DE L'ACTION ICI
+                className="p-6 bg-white border border-gray-200 rounded-xl shadow-sm hover:shadow-md hover:border-red-500 transition-all cursor-pointer group"
+            >
+                <h3 className="font-bold text-gray-800 group-hover:text-red-600 transition-colors">Décaissement</h3>
+                <p className="text-sm text-gray-500 mt-2">Sortie directe (Frais, Achats)</p>
             </div>
 
-            {/* Carte Action 3 */}
-            <div className="p-6 bg-white border border-gray-200 rounded-xl shadow-sm hover:shadow-md hover:border-pink-300 transition-all cursor-pointer group">
-                <h3 className="font-bold text-gray-800 group-hover:text-pink-600 transition-colors">Rapport de Clôture</h3>
-                <p className="text-sm text-gray-500 mt-2">Consulter les écarts de caisse</p>
+            {/* 3. VALIDATION */}
+            <div className="p-6 bg-white border border-gray-200 rounded-xl shadow-sm hover:shadow-md hover:border-blue-500 transition-all cursor-pointer group">
+                <h3 className="font-bold text-gray-800 group-hover:text-blue-600 transition-colors">Validations</h3>
+                <p className="text-sm text-gray-500 mt-2">Demandes en attente</p>
+            </div>
+
+            {/* 4. CLÔTURE */}
+            <div className="p-6 bg-white border border-gray-200 rounded-xl shadow-sm hover:shadow-md hover:border-purple-500 transition-all cursor-pointer group">
+                <h3 className="font-bold text-gray-800 group-hover:text-purple-600 transition-colors">Clôture</h3>
+                <p className="text-sm text-gray-500 mt-2">Fermer la journée</p>
             </div>
         </div>
 
-        {/* 3. LE JOURNAL (L'historique) */}
         <div className="mt-8">
             <h3 className="text-lg font-bold text-gray-800 mb-4">Derniers Mouvements</h3>
             <JournalTable />
