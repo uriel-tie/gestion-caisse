@@ -50,6 +50,9 @@ class Operation
     #[ORM\OneToOne(mappedBy: 'operation', targetEntity: Justificatif::class, cascade: ['persist', 'remove'])]
     private ?Justificatif $justificatif = null;
 
+    #[ORM\OneToOne(mappedBy: 'operation', targetEntity: Demande::class, cascade: ['persist', 'remove'])]
+    private ?Demande $demande = null;
+
     public function __construct()
     {
         $this->date = new \DateTimeImmutable();
@@ -174,6 +177,28 @@ class Operation
         }
 
         $this->justificatif = $justificatif;
+
+        return $this;
+    }
+    
+    public function getDemande(): ?Demande
+    {
+        return $this->demande;
+    }
+
+    public function setDemande(?Demande $demande): static
+    {
+        // unset the owning side of the relation if necessary
+        if ($demande === null && $this->demande !== null) {
+            $this->demande->setOperation(null);
+        }
+
+        // set the owning side of the relation if necessary
+        if ($demande !== null && $demande->getOperation() !== $this) {
+            $demande->setOperation($this);
+        }
+
+        $this->demande = $demande;
 
         return $this;
     }

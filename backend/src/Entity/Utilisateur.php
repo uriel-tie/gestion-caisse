@@ -57,12 +57,22 @@ class Utilisateur implements UserInterface, PasswordAuthenticatedUserInterface
     #[ORM\OneToMany(mappedBy: 'utilisateur', targetEntity: Audit::class)]
     private Collection $audits;
 
+    // AJOUT : L'utilisateur appartient à un service
+    #[ORM\ManyToOne(inversedBy: 'employes', targetEntity: Service::class)]
+    #[ORM\JoinColumn(nullable: true)] 
+    private ?Service $service = null;
+
+    // AJOUT : Liste des demandes faites par cet utilisateur
+    #[ORM\OneToMany(mappedBy: 'demandeur', targetEntity: Demande::class)]
+    private Collection $demandes;
+
     public function __construct()
     {
         $this->operations = new ArrayCollection();
         $this->clotures = new ArrayCollection();
         $this->audits = new ArrayCollection();
         $this->createdAt = new \DateTimeImmutable();
+        $this->demandes = new ArrayCollection();
     }
 
     public function getId(): ?Uuid
@@ -191,5 +201,41 @@ class Utilisateur implements UserInterface, PasswordAuthenticatedUserInterface
         return $this;
     }
 
-    // ... (Ajoute les getters/setters pour clotures et audits si besoin, même logique)
+    public function getService(): ?Service
+    {
+        return $this->service;
+    }
+
+    public function setService(?Service $service): static
+    {
+        $this->service = $service;
+        return $this;
+    }
+
+    /**
+     * @return Collection<int, Demande>
+     */
+    public function getDemandes(): Collection
+    {
+        return $this->demandes;
+    }
+
+    public function addDemande(Demande $demande): static
+    {
+        if (!$this->demandes->contains($demande)) {
+            $this->demandes->add($demande);
+            $demande->setDemandeur($this);
+        }
+        return $this;
+    }
+
+    public function removeDemande(Demande $demande): static
+    {
+        if ($this->demandes->removeElement($demande)) {
+            if ($demande->getDemandeur() === $this) {
+                 // set the owning side to null (unless already changed)
+            }
+        }
+        return $this;
+    }
 }

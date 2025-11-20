@@ -10,7 +10,7 @@ interface LoginPageProps {
 
 const LoginPage: React.FC<LoginPageProps> = ({ onLoginSuccess }) => {
   const navigate = useNavigate();
-  const [email, setEmail] = useState<string>('admin@caisse.com');
+  const [email, setEmail] = useState<string>('admin@cashflow.com');
   const [password, setPassword] = useState<string>('');
   const [error, setError] = useState<string>('');
   const [isLoading, setIsLoading] = useState<boolean>(false);
@@ -28,6 +28,7 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLoginSuccess }) => {
       });
 
       const data: LoginResponse = await response.json();
+      localStorage.setItem('token', data.token);
 
       if (!response.ok) {
         throw new Error(data.message || 'Identifiants invalides');
@@ -48,7 +49,7 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLoginSuccess }) => {
         <div className="bg-white rounded-lg shadow-sm border border-primary-50 overflow-hidden">
           {/* Header */}
           <div className="px-8 py-6 text-center border-b border-gray-200">
-            <h2 className="text-2xl font-bold text-gray-800">Soft Caisse</h2>
+            <h2 className="text-2xl font-bold text-gray-800">Caisse</h2>
             <p className="text-gray-500 mt-1 text-sm">Accès sécurisé</p>
           </div>
 
@@ -100,7 +101,7 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLoginSuccess }) => {
 
         {/* Footer */}
         <p className="text-center text-sm text-gray-500 mt-6">
-          © 2024 Soft Caisse. Tous droits réservés.
+          © 2024 Caisse. Tous droits réservés.
         </p>
       </div>
     </div>
