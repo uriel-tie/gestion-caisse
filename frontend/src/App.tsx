@@ -1,58 +1,57 @@
-import { useState } from 'react';
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import React, { useEffect, useState } from 'react';
+import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import LoginPage from './pages/LoginPage';
 import DashboardPage from './pages/DashboardPage';
 import type { UserData } from './types';
 
 function App() {
-  // 1. ÉTAT GLOBAL : On charge l'utilisateur depuis le localStorage au démarrage
-  const [token, setToken] = useState<string | null>(localStorage.getItem('jwt_token'));
-  
-  const [user, setUser] = useState<UserData | null>(() => {
-    const savedUser = localStorage.getItem('user_data');
-    return savedUser ? JSON.parse(savedUser) : null;
-  });
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [user, setUser] = useState<UserData | null>(null); // L'état de l'utilisateur
 
-  // 2. ACTIONS : Fonctions pour modifier l'état global
-  
-  const handleLoginSuccess = (newToken: string, userData: UserData) => {
-    localStorage.setItem('jwt_token', newToken);
-    localStorage.setItem('user_data', JSON.stringify(userData));
-    setToken(newToken);
+  // Au chargement de l'application (F5)
+  useEffect(() => {
+    const token = localStorage.getItem('token');
+    const storedUser = localStorage.getItem('user'); // On récupère l'user stocké
+
+    if (token && storedUser) {
+      setIsAuthenticated(true);
+      setUser(JSON.parse(storedUser)); // On restaure les infos (dont le rôle)
+    }
+  }, []);
+
+  const handleLoginSuccess = (token: string, userData: UserData) => {
+    setIsAuthenticated(true);
     setUser(userData);
+    // Note: Le localStorage.setItem est déjà fait dans LoginPage
   };
 
   const handleLogout = () => {
-    localStorage.removeItem('jwt_token');
-    localStorage.removeItem('user_data');
-    setToken(null);
+    localStorage.removeItem('token');
+    localStorage.removeItem('user'); // On nettoie tout
+    setIsAuthenticated(false);
     setUser(null);
   };
 
-  // 3. ROUTING : La logique de navigation
   return (
-    <BrowserRouter>
+    <Router>
       <Routes>
-        {/* Si déjà connecté -> Dashboard, sinon -> Login */}
         <Route 
           path="/login" 
-          element={
-            user ? <Navigate to="/dashboard" replace /> : <LoginPage onLoginSuccess={handleLoginSuccess} />
-          } 
+          element={!isAuthenticated ? <LoginPage onLoginSuccess={handleLoginSuccess} /> : <Navigate to="/dashboard" />} 
         />
-
-        {/* Si pas connecté -> Login, sinon -> Dashboard */}
         <Route 
           path="/dashboard" 
           element={
-            user ? <DashboardPage user={user} onLogout={handleLogout} /> : <Navigate to="/login" replace />
+            isAuthenticated && user ? ( // On vérifie qu'on a bien l'user
+              <DashboardPage user={user} onLogout={handleLogout} />
+            ) : (
+              <Navigate to="/login" />
+            )
           } 
         />
-
-        {/* Redirection par défaut */}
-        <Route path="*" element={<Navigate to="/dashboard" replace />} />
+        <Route path="/" element={<Navigate to="/dashboard" />} />
       </Routes>
-    </BrowserRouter>
+    </Router>
   );
 }
 

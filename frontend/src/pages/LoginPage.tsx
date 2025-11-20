@@ -29,6 +29,7 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLoginSuccess }) => {
 
       const data: LoginResponse = await response.json();
       localStorage.setItem('token', data.token);
+      localStorage.setItem('user', JSON.stringify(data.user));
 
       if (!response.ok) {
         throw new Error(data.message || 'Identifiants invalides');
