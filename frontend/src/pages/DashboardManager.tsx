@@ -1,10 +1,10 @@
 import React, { useState } from 'react';
-import { LogOut, Activity, ArrowRight, Search } from 'lucide-react'; 
+import { LogOut, Activity, ArrowRight, Search, Settings } from 'lucide-react'; 
 import type { UserData } from '../types';
-import SoldeCard from './SoldeCard';
-import JournalTable from './JournalTable';
-import EncaissementModal from './EncaissementModal';
-import DecaissementModal from './DecaissementModal';
+import SoldeCard from '../components/SoldeCard';
+import JournalTable from '../components/JournalTable';
+import EncaissementModal from '../components/EncaissementModal';
+import DecaissementModal from '../components/DecaissementModal';
 
 interface DashboardProps {
   user: UserData;
@@ -30,9 +30,19 @@ export default function DashboardManager({ user, onLogout }: DashboardProps) {
         <div className="flex items-center space-x-4">
           <div className="text-right hidden sm:block">
             <p className="text-sm font-medium text-gray-800">{user.nom || user.email}</p>
-            <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-purple-100 text-purple-800">
-              MANAGER
-            </span>
+            <div className="flex items-center justify-end mt-1">
+                {/* BOUTON ADMIN AJOUTÉ ICI */}
+                <button 
+                    onClick={() => window.location.href = '/admin'} 
+                    className="p-1 rounded-lg bg-purple-50 hover:bg-purple-100 text-purple-700 mr-2 transition-colors"
+                    title="Administration"
+                >
+                    <Settings className="h-4 w-4" /> 
+                </button>
+                <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-purple-100 text-purple-800">
+                MANAGER
+                </span>
+            </div>
           </div>
           <button onClick={onLogout} className="p-2 rounded-lg bg-gray-100 hover:bg-pink-600 hover:text-white text-gray-500 transition-colors">
             <LogOut className="h-5 w-5" />
@@ -41,6 +51,7 @@ export default function DashboardManager({ user, onLogout }: DashboardProps) {
       </nav>
 
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        {/* ... (Le reste de ton code principal ne change pas) ... */}
         <EncaissementModal isOpen={showEncaissement} onClose={() => setShowEncaissement(false)} onSuccess={handleSuccess} />
         <DecaissementModal isOpen={showDecaissement} onClose={() => setShowDecaissement(false)} onSuccess={handleSuccess} />
 
@@ -78,7 +89,7 @@ export default function DashboardManager({ user, onLogout }: DashboardProps) {
             </div>
             <JournalTable />
             
-            {/* LIEN VERS JOURNAL COMPLET (AJOUTÉ) */}
+            {/* LIEN VERS JOURNAL COMPLET */}
             <div className="mt-4 text-center">
                 <button 
                     onClick={() => alert("Redirection vers la page Journal Complet (À coder demain !)")}

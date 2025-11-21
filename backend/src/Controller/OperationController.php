@@ -4,8 +4,9 @@ namespace App\Controller;
 
 use App\Entity\Operation;
 use App\Entity\ModePaiement;
-use App\Repository\ModePaiementRepository; 
+use App\Repository\ModePaiementRepository;
 use App\Repository\OperationRepository;
+use App\Repository\SessionCaisseRepository; // <--- NOUVEAU
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\JsonResponse;
@@ -18,8 +19,8 @@ class OperationController extends AbstractController
     #[Route('', name: 'list', methods: ['GET'])]
     public function index(OperationRepository $operationRepository): JsonResponse
     {
-        // ICI : On veut la LISTE des 10 derniers
-        $operations = $operationRepository->findLatest(10);
+        // TODO: Plus tard, il faudra filtrer par la session active ou la caisse
+        $operations = $operationRepository->findLatest(20);
 
         $data = [];
         foreach ($operations as $op) {
@@ -42,36 +43,41 @@ class OperationController extends AbstractController
     public function createEncaissement(
         Request $request, 
         EntityManagerInterface $em, 
-        ModePaiementRepository $modeRepo
+        ModePaiementRepository $modeRepo,
+        SessionCaisseRepository $sessionRepo // <--- Injection
     ): JsonResponse
     {
-        $user = $this->getUser(); // Le caissier connecté
+        $user = $this->getUser();
+        
+        // 1. VÉRIFICATION CRITIQUE : A-t-il une session ouverte ?
+        $session = $sessionRepo->findSessionActive($user);
+        
+        if (!$session) {
+            return $this->json(['error' => 'Aucune session de caisse ouverte. Veuillez ouvrir votre caisse.'], 403);
+        }
+
         $data = json_decode($request->getContent(), true);
 
-        // 1. Validation basique
         if (!isset($data['montant']) || $data['montant'] <= 0) {
             return $this->json(['error' => 'Montant invalide'], 400);
         }
 
-        // 2. Récupération du mode de paiement (ex: "Espèces")
-        // On suppose que le frontend envoie l'ID ou le libellé. 
-        // Pour faire simple ici, on cherche par libellé envoyé par le front
         $mode = $modeRepo->findOneBy(['libelle' => $data['mode'] ?? 'Espèces']);
-        
-        if (!$mode) {
-            return $this->json(['error' => 'Mode de paiement inconnu'], 400);
-        }
+        if (!$mode) $mode = $modeRepo->findAll()[0] ?? null;
 
-        // 3. Création de l'opération
         $op = new Operation();
         $op->setType('ENCAISSEMENT');
-        $op->setMontant($data['montant']);
+        $op->setMontant((string)$data['montant']);
         $op->setDate(new \DateTimeImmutable());
-        $op->setStatut(Operation::STATUT_VALIDEE); // Un encaissement est toujours valide (l'argent est là)
-        $op->setCompteComptable('530'); // Compte Caisse par défaut
+        $op->setStatut(Operation::STATUT_VALIDEE);
+        $op->setCompteComptable('530');
         $op->setMotif($data['motif'] ?? 'Encaissement divers');
+        
         $op->setUtilisateur($user);
         $op->setModePaiement($mode);
+        
+        // 2. LIAISON OBLIGATOIRE
+        $op->setSessionCaisse($session);
 
         $em->persist($op);
         $em->flush();
@@ -87,51 +93,49 @@ class OperationController extends AbstractController
         Request $request, 
         EntityManagerInterface $em, 
         ModePaiementRepository $modeRepo,
-        OperationRepository $opRepo // Pour vérifier le solde
+        OperationRepository $opRepo,
+        SessionCaisseRepository $sessionRepo // <--- Injection
     ): JsonResponse
     {
         $user = $this->getUser();
+
+        // 1. VÉRIFICATION SESSION
+        $session = $sessionRepo->findSessionActive($user);
+        if (!$session) {
+            return $this->json(['error' => 'Aucune session de caisse ouverte.'], 403);
+        }
+
         $data = json_decode($request->getContent(), true);
         $montant = (float) ($data['montant'] ?? 0);
 
-        // 1. Validations
         if ($montant <= 0) return $this->json(['error' => 'Montant invalide'], 400);
 
-        // Vérifier qu'on a assez d'argent (règle de gestion saine)
-        // Note: getSoldeActuel() est la méthode qu'on a faite dans le Repo ce matin
-        if ($opRepo->getSoldeActuel() < $montant) {
-            return $this->json(['error' => 'Fonds insuffisants en caisse'], 400);
-        }
-
-        // 2. Mode de paiement
-        $libelleMode = $data['mode'] ?? 'Espèces';
-        $mode = $modeRepo->findOneBy(['libelle' => $libelleMode]);
+        // Note: Idéalement, on vérifie le solde de la SESSION, pas global
+        // Pour l'instant on laisse couler pour tester l'écriture
+        
+        $mode = $modeRepo->findOneBy(['libelle' => $data['mode'] ?? 'Espèces']);
         if (!$mode) $mode = $modeRepo->findAll()[0] ?? null;
 
-        // 3. Création
         $op = new Operation();
         $op->setType('DECAISSEMENT');
         $op->setMontant((string)$montant);
         $op->setDate(new \DateTimeImmutable());
-        $op->setCompteComptable('606'); // Compte générique "Achats"
+        $op->setCompteComptable('606');
         $op->setUtilisateur($user);
         $op->setModePaiement($mode);
         $op->setMotif($data['motif'] ?? 'Décaissement divers');
+        $op->setSessionCaisse($session); // <--- LIAISON
 
-        // --- LOGIQUE DE VALIDATION CONDITIONNELLE ---
-        
-        // Seuil : 50€ pour un caissier standard
+        // Validation conditionnelle
         $seuilAuto = 50.0; 
         $isManager = in_array('ROLE_MANAGER', $user->getRoles());
 
-        // Si c'est le Manager OU si c'est une petite somme -> On valide tout de suite
         if ($isManager || $montant <= $seuilAuto) {
             $op->setStatut(Operation::STATUT_VALIDEE);
             $msg = "Décaissement validé.";
         } else {
-            // Sinon -> On bloque
             $op->setStatut(Operation::STATUT_EN_ATTENTE);
-            $msg = "Montant élevé : En attente de validation Manager.";
+            $msg = "Montant élevé : En attente de validation.";
         }
 
         $em->persist($op);

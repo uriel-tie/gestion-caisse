@@ -11,6 +11,7 @@ use Symfony\Component\Uid\Uuid;
 #[ORM\Entity(repositoryClass: SessionCaisseRepository::class)]
 class SessionCaisse
 {
+    public const STATUT_EN_ATTENTE = 'EN_ATTENTE';
     public const STATUT_OUVERTE = 'OUVERTE';
     public const STATUT_FERMEE = 'FERMEE';
     public const STATUT_ECART = 'FERMEE_AVEC_ECART';

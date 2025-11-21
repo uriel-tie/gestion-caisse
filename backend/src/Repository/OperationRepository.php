@@ -5,6 +5,7 @@ namespace App\Repository;
 use App\Entity\Operation;
 use Doctrine\Bundle\DoctrineBundle\Repository\ServiceEntityRepository;
 use Doctrine\Persistence\ManagerRegistry;
+use App\Entity\SessionCaisse;
 
 /**
  * @extends ServiceEntityRepository<Operation>
@@ -66,5 +67,30 @@ class OperationRepository extends ServiceEntityRepository
             ->setMaxResults($limit)
             ->getQuery()
             ->getResult();
+    }
+
+    public function getSoldeMouvementsSession(SessionCaisse $session): float
+    {
+        $qb = $this->createQueryBuilder('o')
+            ->select('SUM(o.montant) as total, o.type')
+            ->where('o.sessionCaisse = :session')
+            ->andWhere('o.statut = :statut') // Seules les opérations validées comptent
+            ->setParameter('session', $session)
+            ->setParameter('statut', 'VALIDEE')
+            ->groupBy('o.type');
+
+        $results = $qb->getQuery()->getResult();
+
+        $solde = 0.0;
+        foreach ($results as $row) {
+            $montant = $row['total'] === null ? 0.0 : (float) $row['total'];
+            if ($row['type'] === 'ENCAISSEMENT') {
+                $solde += $montant;
+            } elseif ($row['type'] === 'DECAISSEMENT') {
+                $solde -= $montant;
+            }
+        }
+
+        return $solde;
     }
 }

@@ -1,10 +1,10 @@
 import React, { useState } from 'react';
 import { LogOut, Activity, Search, ArrowRight } from 'lucide-react';
 import type { UserData } from '../types';
-import SoldeCard from './SoldeCard';
-import JournalTable from './JournalTable';
-import EncaissementModal from './EncaissementModal';
-import DecaissementModal from './DecaissementModal';
+import SoldeCard from '../components/SoldeCard';
+import JournalTable from '../components/JournalTable';
+import EncaissementModal from '../components/EncaissementModal';
+import DecaissementModal from '../components/DecaissementModal';
 
 interface DashboardProps {
   user: UserData;

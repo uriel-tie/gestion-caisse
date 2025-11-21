@@ -1,33 +1,31 @@
-import React, { useEffect, useState } from 'react';
+import React, { useState } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import LoginPage from './pages/LoginPage';
 import DashboardPage from './pages/DashboardPage';
+import AdminPage from './pages/AdminPage';
 import type { UserData } from './types';
 
 function App() {
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
-  const [user, setUser] = useState<UserData | null>(null); // L'état de l'utilisateur
+  // INITIALISATION SYNCHRONE (Immédiate)
+  // On lit le localStorage tout de suite, pas dans un useEffect
+  const [isAuthenticated, setIsAuthenticated] = useState<boolean>(() => {
+    return !!localStorage.getItem('token');
+  });
 
-  // Au chargement de l'application (F5)
-  useEffect(() => {
-    const token = localStorage.getItem('token');
-    const storedUser = localStorage.getItem('user'); // On récupère l'user stocké
-
-    if (token && storedUser) {
-      setIsAuthenticated(true);
-      setUser(JSON.parse(storedUser)); // On restaure les infos (dont le rôle)
-    }
-  }, []);
+  const [user, setUser] = useState<UserData | null>(() => {
+    const storedUser = localStorage.getItem('user');
+    return storedUser ? JSON.parse(storedUser) : null;
+  });
 
   const handleLoginSuccess = (token: string, userData: UserData) => {
+    // Note: Le localStorage est déjà mis à jour dans LoginPage
     setIsAuthenticated(true);
     setUser(userData);
-    // Note: Le localStorage.setItem est déjà fait dans LoginPage
   };
 
   const handleLogout = () => {
     localStorage.removeItem('token');
-    localStorage.removeItem('user'); // On nettoie tout
+    localStorage.removeItem('user');
     setIsAuthenticated(false);
     setUser(null);
   };
@@ -35,21 +33,38 @@ function App() {
   return (
     <Router>
       <Routes>
+        {/* Route Login : Si déjà connecté, on va au dashboard */}
         <Route 
           path="/login" 
           element={!isAuthenticated ? <LoginPage onLoginSuccess={handleLoginSuccess} /> : <Navigate to="/dashboard" />} 
         />
+        
+        {/* Route Dashboard protégée */}
         <Route 
           path="/dashboard" 
           element={
-            isAuthenticated && user ? ( // On vérifie qu'on a bien l'user
+            isAuthenticated && user ? (
               <DashboardPage user={user} onLogout={handleLogout} />
             ) : (
               <Navigate to="/login" />
             )
           } 
         />
-        <Route path="/" element={<Navigate to="/dashboard" />} />
+
+        {/* Route Admin protégée */}
+        <Route 
+          path="/admin" 
+          element={
+            isAuthenticated && user ? (
+              <AdminPage user={user} onLogout={handleLogout} />
+            ) : (
+              <Navigate to="/login" />
+            )
+          } 
+        />
+
+        {/* Redirection par défaut */}
+        <Route path="*" element={<Navigate to="/dashboard" />} />
       </Routes>
     </Router>
   );

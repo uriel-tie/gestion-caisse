@@ -66,6 +66,22 @@ class Utilisateur implements UserInterface, PasswordAuthenticatedUserInterface
     #[ORM\OneToMany(mappedBy: 'demandeur', targetEntity: Demande::class)]
     private Collection $demandes;
 
+    // ...
+    #[ORM\Column(type: 'boolean', options: ['default' => true])]
+    private bool $passwordMustBeChanged = true;
+
+    public function isPasswordMustBeChanged(): bool
+    {
+        return $this->passwordMustBeChanged;
+    }
+
+    public function setPasswordMustBeChanged(bool $passwordMustBeChanged): static
+    {
+        $this->passwordMustBeChanged = $passwordMustBeChanged;
+        return $this;
+    }
+    // ...
+
     public function __construct()
     {
         $this->operations = new ArrayCollection();
