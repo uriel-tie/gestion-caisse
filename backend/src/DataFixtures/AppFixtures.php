@@ -2,6 +2,8 @@
 
 namespace App\DataFixtures;
 
+use App\Entity\Caisse;
+use App\Entity\SessionCaisse; // <--- Nouveau
 use App\Entity\ModePaiement;
 use App\Entity\Operation;
 use App\Entity\Service;
@@ -12,7 +14,6 @@ use Symfony\Component\PasswordHasher\Hasher\UserPasswordHasherInterface;
 
 class AppFixtures extends Fixture
 {
-    // On injecte le hasher pour crypter les mots de passe correctement
     private UserPasswordHasherInterface $hasher;
 
     public function __construct(UserPasswordHasherInterface $hasher)
@@ -22,118 +23,79 @@ class AppFixtures extends Fixture
 
     public function load(ObjectManager $manager): void
     {
-        // ======================================================
-        // 1. MODES DE PAIEMENT (Le Socle)
-        // ======================================================
+        // 1. MODES DE PAIEMENT
         $modes = [];
-        $libelles = [
-            ['Espèces', 'LIQUIDE'],
-            ['Carte Bancaire', 'BANQUE'],
-            ['Chèque', 'BANQUE'],
-            ['Virement', 'BANQUE']
-        ];
-
+        $libelles = [['Espèces', 'LIQUIDE'], ['Carte Bancaire', 'BANQUE'], ['Chèque', 'BANQUE'], ['Virement', 'BANQUE']];
         foreach ($libelles as [$libelle, $type]) {
             $mode = new ModePaiement();
             $mode->setLibelle($libelle);
             $mode->setType($type);
             $manager->persist($mode);
-            
-            // On garde une référence pour s'en servir plus bas (clé = nom du mode)
             $modes[$libelle] = $mode;
         }
 
-        // ======================================================
-        // 2. SERVICES (L'Structure)
-        // ======================================================
-        
-        // Service A : La Caisse (Vital pour ton application)
+        // 2. SERVICES
         $serviceCaisse = new Service();
         $serviceCaisse->setNom('Caisse Centrale & Compta');
         $manager->persist($serviceCaisse);
 
-        // Service B : IT / Informatique (Service standard pour tester les demandes)
         $serviceIT = new Service();
         $serviceIT->setNom('Département IT');
         $manager->persist($serviceIT);
 
-        // ======================================================
-        // 3. UTILISATEURS (Le Casting)
-        // ======================================================
-        // Mot de passe unique pour tout le monde pour simplifier les tests
-        $passwordCommun = 'password123';
+        // 3. UTILISATEURS
+        $password = 'password123';
 
-        // --- A. LE MANAGER (Big Boss) ---
-        // Il n'a PAS de service (NULL), il voit tout.
+        // Manager
         $admin = new Utilisateur();
         $admin->setEmail('admin@cashflow.com');
         $admin->setNom('Directeur Général');
         $admin->setRoles(['ROLE_MANAGER']);
-        $admin->setPassword($this->hasher->hashPassword($admin, $passwordCommun));
+        $admin->setPassword($this->hasher->hashPassword($admin, $password));
         $manager->persist($admin);
 
-        // --- B. L'ÉQUIPE CAISSE ---
-        
-        // Le Chef Comptable (Valide les grosses dépenses)
-        $chefCaisse = new Utilisateur();
-        $chefCaisse->setEmail('chef.caisse@cashflow.com');
-        $chefCaisse->setNom('Bernard Compta');
-        $chefCaisse->setRoles(['ROLE_CHEF_SERVICE']);
-        $chefCaisse->setService($serviceCaisse);
-        $chefCaisse->setPassword($this->hasher->hashPassword($chefCaisse, $passwordCommun));
-        $manager->persist($chefCaisse);
-        
-        // On assigne ce chef au service
-        $serviceCaisse->setChef($chefCaisse);
-
-        // Le Caissier (Celui qui encaisse et décaisse)
+        // Caissier
         $caissier = new Utilisateur();
         $caissier->setEmail('caissier@cashflow.com');
         $caissier->setNom('Thomas Guichet');
-        $caissier->setRoles(['ROLE_CAISSIER']); // Le caissier est un employé spécial
+        $caissier->setRoles(['ROLE_CAISSIER']);
         $caissier->setService($serviceCaisse);
-        $caissier->setPassword($this->hasher->hashPassword($caissier, $passwordCommun));
+        $caissier->setPassword($this->hasher->hashPassword($caissier, $password));
         $manager->persist($caissier);
 
-        // --- C. L'ÉQUIPE IT (Pour tester les demandes d'employés lambda) ---
+        // 4. CAISSES (NOUVEAU)
+        // On crée la caisse physique
+        $caissePrincipale = new Caisse();
+        $caissePrincipale->setNom('Caisse Principale 01');
+        $caissePrincipale->setEstOuverte(true); // Elle est utilisée
+        $manager->persist($caissePrincipale);
 
-        // Le Chef IT (Valide les demandes de ses devs)
-        $chefIT = new Utilisateur();
-        $chefIT->setEmail('chef.it@cashflow.com');
-        $chefIT->setNom('Sarah Tech');
-        $chefIT->setRoles(['ROLE_CHEF_SERVICE']);
-        $chefIT->setService($serviceIT);
-        $chefIT->setPassword($this->hasher->hashPassword($chefIT, $passwordCommun));
-        $manager->persist($chefIT);
-        
-        $serviceIT->setChef($chefIT);
+        // 5. SESSION DE CAISSE (NOUVEAU & CRUCIAL)
+        // On simule que Thomas a ouvert sa caisse ce matin
+        $session = new SessionCaisse();
+        $session->setCaisse($caissePrincipale);
+        $session->setCaissier($caissier);
+        $session->setStatut(SessionCaisse::STATUT_OUVERTE);
+        $session->setMontantOuverture('0.00'); // Il a commencé à vide (ou avec un fond)
+        $manager->persist($session);
 
-        // Le Développeur (Fait des demandes de remboursement de frais)
-        $dev = new Utilisateur();
-        $dev->setEmail('dev@cashflow.com');
-        $dev->setNom('John Codeur');
-        $dev->setRoles(['ROLE_EMPLOYE']);
-        $dev->setService($serviceIT);
-        $dev->setPassword($this->hasher->hashPassword($dev, $passwordCommun));
-        $manager->persist($dev);
-
-        // ======================================================
-        // 4. OPÉRATION ZÉRO (Fond de Caisse)
-        // ======================================================
-        // Pour ne pas démarrer avec un solde à 0€
-        
+        // 6. OPÉRATION (Fond de Caisse)
+        // Cette opération appartient à la session créée juste au-dessus
         $fondCaisse = new Operation();
         $fondCaisse->setType('ENCAISSEMENT');
-        $fondCaisse->setMontant('200.00'); // String pour le DECIMAL
+        $fondCaisse->setMontant('200.00');
         $fondCaisse->setDate(new \DateTimeImmutable('now'));
         $fondCaisse->setCompteComptable('530');
-        $fondCaisse->setStatut('VALIDEE'); // Directement validée
-        $fondCaisse->setUtilisateur($admin); // C'est le boss qui a mis l'argent au début
-        $fondCaisse->setModePaiement($modes['Espèces']); // En cash
+        $fondCaisse->setStatut(Operation::STATUT_VALIDEE);
+        $fondCaisse->setMotif('Fond de caisse initial (Fixtures)');
         
+        // Liaisons
+        $fondCaisse->setUtilisateur($caissier); // C'est Thomas qui a fait l'op
+        $fondCaisse->setModePaiement($modes['Espèces']);
+        $fondCaisse->setSessionCaisse($session); // <--- OBLIGATOIRE MAINTENANT
+
         $manager->persist($fondCaisse);
 
-        // On envoie tout en base de données
         $manager->flush();
     }
 }

@@ -1,6 +1,6 @@
 **Rôle :** Tu es un expert Frontend spécialisé en React, TypeScript et Tailwind CSS. Tu as un œil pour le design UI/UX minimaliste et moderne.
 
-**Tâche :** Refactorise (ou crée) le code du composant ci-dessous pour qu'il respecte strictement la charte graphique "Soft Caisse" définie ci-après.
+**Tâche :** Refactorise (ou crée) le code du composant ci-dessous pour qu'il respecte strictement la charte graphique définie ci-après.
 
 **1. Configuration Tailwind (Couleurs personnalisées)**
 Considère que mon `tailwind.config.js` contient déjà cette palette. N'invente pas de nouvelles couleurs, utilise celles-ci :

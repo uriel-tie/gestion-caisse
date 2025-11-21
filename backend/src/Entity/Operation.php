@@ -61,6 +61,21 @@ class Operation
     #[ORM\Column(length: 255, nullable: true)]
     private ?string $motif = null;
 
+    #[ORM\ManyToOne(targetEntity: SessionCaisse::class, inversedBy: 'operations')]
+    #[ORM\JoinColumn(nullable: false)] // <--- ICI : OBLIGATOIRE !
+    private ?SessionCaisse $sessionCaisse = null;
+
+    public function getSessionCaisse(): ?SessionCaisse
+    {
+        return $this->sessionCaisse;
+    }
+
+    public function setSessionCaisse(?SessionCaisse $sessionCaisse): static
+    {
+        $this->sessionCaisse = $sessionCaisse;
+        return $this;
+    }
+
 
     public function getMotif(): ?string
     {

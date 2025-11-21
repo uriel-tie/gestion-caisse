@@ -28,5 +28,5 @@ export default {
       }
     },
   },
-  plugins: [], // Le tableau est vide, donc pas d'erreur "module not found" !
+  plugins: [], 
 }

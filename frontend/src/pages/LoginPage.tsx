@@ -50,7 +50,7 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLoginSuccess }) => {
         <div className="bg-white rounded-lg shadow-sm border border-primary-50 overflow-hidden">
           {/* Header */}
           <div className="px-8 py-6 text-center border-b border-gray-200">
-            <h2 className="text-2xl font-bold text-gray-800">Caisse</h2>
+            <h2 className="text-2xl font-bold text-gray-800">CashFlow</h2>
             <p className="text-gray-500 mt-1 text-sm">Accès sécurisé</p>
           </div>
 

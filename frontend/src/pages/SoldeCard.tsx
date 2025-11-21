@@ -14,7 +14,7 @@ export default function SoldeCard() {
     const [isRefreshing, setIsRefreshing] = useState(false); // Pour l'animation
 
     useEffect(() => {
-        // 1. Fonction de récupération
+        // Fonction de récupération
         const fetchSolde = async (silent = false) => {
             if (!silent) setIsRefreshing(true);
             
@@ -49,15 +49,15 @@ export default function SoldeCard() {
             }
         };
 
-        // 2. Premier appel immédiat
+        //  Premier appel immédiat
         fetchSolde();
 
-        // 3. POLLING : On rafraîchit toutes les 5 secondes
+        //On rafraîchit toutes les 5 secondes
         const interval = setInterval(() => {
             fetchSolde(true); // true = mode silencieux
         }, 5000);
 
-        // 4. Nettoyage
+        //  Nettoyage
         return () => clearInterval(interval);
     }, []); // Le tableau vide [] assure que l'intervalle n'est créé qu'une fois
 

@@ -24,7 +24,7 @@ export default function DashboardCaissier({ user, onLogout }: DashboardProps) {
           <div className="bg-green-100 p-2 rounded-lg">
             <Activity className="h-6 w-6 text-green-600" />
           </div>
-          <span className="text-xl font-bold text-gray-800">Espace Caisse</span>
+          <span className="text-xl font-bold text-gray-800">CashFlow Caisse</span>
         </div>
         <div className="flex items-center space-x-4">
           <div className="text-right hidden sm:block">
