@@ -37,6 +37,7 @@ class JWTSubscriber implements EventSubscriberInterface
             'nom' => $user->getNom(),
             'email' => $user->getEmail(),
             'roles' => $user->getRoles(),
+            'password_must_be_changed' => $user->isPasswordMustBeChanged(),
         ];
 
         // 4. On renvoie les nouvelles données modifiées

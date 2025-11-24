@@ -3,11 +3,11 @@ import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-d
 import LoginPage from './pages/LoginPage';
 import DashboardPage from './pages/DashboardPage';
 import AdminPage from './pages/AdminPage';
+import ForceChangePasswordPage from './pages/ForceChangePasswordPage';
 import type { UserData } from './types';
 
 function App() {
-  // INITIALISATION SYNCHRONE (Immédiate)
-  // On lit le localStorage tout de suite, pas dans un useEffect
+  // 1. INITIALISATION DES ÉTATS
   const [isAuthenticated, setIsAuthenticated] = useState<boolean>(() => {
     return !!localStorage.getItem('token');
   });
@@ -17,8 +17,8 @@ function App() {
     return storedUser ? JSON.parse(storedUser) : null;
   });
 
+  // 2. HANDLERS
   const handleLoginSuccess = (token: string, userData: UserData) => {
-    // Note: Le localStorage est déjà mis à jour dans LoginPage
     setIsAuthenticated(true);
     setUser(userData);
   };
@@ -30,6 +30,12 @@ function App() {
     setUser(null);
   };
 
+  // 3. FONCTION UTILITAIRE (Définie AVANT le return)
+  const isPasswordChangeRequired = () => {
+    return user?.password_must_be_changed === true;
+  };
+
+  // 4. RENDU (Un seul return, un seul Router)
   return (
     <Router>
       <Routes>
@@ -38,25 +44,31 @@ function App() {
           path="/login" 
           element={!isAuthenticated ? <LoginPage onLoginSuccess={handleLoginSuccess} /> : <Navigate to="/dashboard" />} 
         />
+
+        {/* Route Changement de mot de passe (Protégée par Auth seulement) */}
+        <Route 
+            path="/change-password-required" 
+            element={isAuthenticated ? <ForceChangePasswordPage /> : <Navigate to="/login" />} 
+        />
         
-        {/* Route Dashboard protégée */}
+        {/* Route Dashboard (Protégée par Auth ET par le Flag de sécurité) */}
         <Route 
           path="/dashboard" 
           element={
             isAuthenticated && user ? (
-              <DashboardPage user={user} onLogout={handleLogout} />
+              isPasswordChangeRequired() ? <Navigate to="/change-password-required" /> : <DashboardPage user={user} onLogout={handleLogout} />
             ) : (
               <Navigate to="/login" />
             )
           } 
         />
 
-        {/* Route Admin protégée */}
+        {/* Route Admin (Protégée par Auth ET par le Flag de sécurité) */}
         <Route 
           path="/admin" 
           element={
             isAuthenticated && user ? (
-              <AdminPage user={user} onLogout={handleLogout} />
+              isPasswordChangeRequired() ? <Navigate to="/change-password-required" /> : <AdminPage user={user} onLogout={handleLogout} />
             ) : (
               <Navigate to="/login" />
             )

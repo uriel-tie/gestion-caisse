@@ -5,6 +5,7 @@ export interface UserData {
   nom: string;
   email: string;
   roles: string[];
+  password_must_be_changed: boolean;
 }
 
 export interface LoginResponse {

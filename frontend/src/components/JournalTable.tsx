@@ -10,7 +10,8 @@ interface Operation {
     statut: string;
     mode: string;
     utilisateur: string;
-    motif: string; // <--- Ajout du motif
+    motif: string;
+    caisse: string;
 }
 
 export default function JournalTable() {
@@ -80,6 +81,10 @@ export default function JournalTable() {
                     <thead className="bg-gray-50">
                         <tr>
                             <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date</th>
+
+                            {/* AJOUTE CETTE LIGNE POUR VOIR LA CAISSE */}
+                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Caisse</th>
+
                             <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Type</th>
                             <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Motif</th>
                             <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Statut</th>
@@ -97,6 +102,12 @@ export default function JournalTable() {
                                 <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                                     {op.date}
                                 </td>
+
+                                {/* AJOUTE CETTE LIGNE POUR AFFICHER LE NOM */}
+                                <td className="px-6 py-4 whitespace-nowrap text-xs font-bold text-gray-600">
+                                    {op.caisse}
+                                </td>
+
                                 <td className="px-6 py-4 whitespace-nowrap text-sm">
                                     <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full 
                                         ${op.type === 'ENCAISSEMENT' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>

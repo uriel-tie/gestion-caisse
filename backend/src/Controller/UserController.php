@@ -11,6 +11,7 @@ use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\PasswordHasher\Hasher\UserPasswordHasherInterface;
 use Symfony\Component\Routing\Annotation\Route;
+use Symfony\Component\Security\Http\Attribute\CurrentUser;
 
 #[Route('/api/users', name: 'api_users_')]
 class UserController extends AbstractController
@@ -89,5 +90,53 @@ class UserController extends AbstractController
             'temp_password' => $tempPassword, // On le renvoie juste pour info au Manager (à noter)
             'id' => $user->getId()
         ], 201);
+    }
+    // 1. MODIFIER LE PROFIL (Nom, Email)
+    #[Route('/profile', name: 'update_profile', methods: ['PATCH'])]
+    public function updateProfile(
+        Request $request, 
+        EntityManagerInterface $em,
+        #[CurrentUser] ?Utilisateur $user // Récupère l'utilisateur connecté automatiquement
+    ): JsonResponse
+    {
+        if (!$user) return $this->json(['error' => 'Utilisateur non trouvé'], 404);
+
+        $data = json_decode($request->getContent(), true);
+
+        if (isset($data['nom'])) $user->setNom($data['nom']);
+        if (isset($data['email'])) $user->setEmail($data['email']);
+
+        $em->flush();
+
+        return $this->json(['message' => 'Profil mis à jour avec succès.']);
+    }
+
+    // 2. CHANGER LE MOT DE PASSE (Et valider le compte)
+    #[Route('/change-password', name: 'change_password', methods: ['PATCH'])]
+    public function changePassword(
+        Request $request, 
+        UserPasswordHasherInterface $hasher, 
+        EntityManagerInterface $em,
+        #[CurrentUser] ?Utilisateur $user
+    ): JsonResponse
+    {
+        if (!$user) return $this->json(['error' => 'Utilisateur non trouvé'], 404);
+
+        $data = json_decode($request->getContent(), true);
+        $newPassword = $data['new_password'] ?? null;
+
+        if (!$newPassword || strlen($newPassword) < 6) {
+            return $this->json(['error' => 'Le mot de passe doit faire au moins 6 caractères.'], 400);
+        }
+
+        // Hashage du nouveau mot de passe
+        $user->setPassword($hasher->hashPassword($user, $newPassword));
+        
+        // CRUCIAL : On désactive le flag "Doit changer son mot de passe"
+        $user->setPasswordMustBeChanged(false);
+
+        $em->flush();
+
+        return $this->json(['message' => 'Mot de passe modifié. Compte sécurisé.']);
     }
 }

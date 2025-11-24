@@ -10,7 +10,7 @@ use Doctrine\Migrations\AbstractMigration;
 /**
  * Auto-generated Migration: Please modify to your needs!
  */
-final class Version20251121113513 extends AbstractMigration
+final class Version20251124095034 extends AbstractMigration
 {
     public function getDescription(): string
     {
@@ -73,7 +73,7 @@ final class Version20251121113513 extends AbstractMigration
         $this->addSql('COMMENT ON COLUMN session_caisse.caisse_id IS \'(DC2Type:uuid)\'');
         $this->addSql('COMMENT ON COLUMN session_caisse.date_ouverture IS \'(DC2Type:datetime_immutable)\'');
         $this->addSql('COMMENT ON COLUMN session_caisse.date_fermeture IS \'(DC2Type:datetime_immutable)\'');
-        $this->addSql('CREATE TABLE utilisateur (id UUID NOT NULL, service_id UUID DEFAULT NULL, nom VARCHAR(255) NOT NULL, email VARCHAR(180) NOT NULL, roles JSON NOT NULL, password VARCHAR(255) NOT NULL, est_actif BOOLEAN NOT NULL, created_at TIMESTAMP(0) WITHOUT TIME ZONE NOT NULL, PRIMARY KEY(id))');
+        $this->addSql('CREATE TABLE utilisateur (id UUID NOT NULL, service_id UUID DEFAULT NULL, nom VARCHAR(255) NOT NULL, email VARCHAR(180) NOT NULL, roles JSON NOT NULL, password VARCHAR(255) NOT NULL, est_actif BOOLEAN NOT NULL, created_at TIMESTAMP(0) WITHOUT TIME ZONE NOT NULL, password_must_be_changed BOOLEAN DEFAULT true NOT NULL, PRIMARY KEY(id))');
         $this->addSql('CREATE UNIQUE INDEX UNIQ_1D1C63B3E7927C74 ON utilisateur (email)');
         $this->addSql('CREATE INDEX IDX_1D1C63B3ED5CA9E6 ON utilisateur (service_id)');
         $this->addSql('COMMENT ON COLUMN utilisateur.id IS \'(DC2Type:uuid)\'');

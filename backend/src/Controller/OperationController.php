@@ -33,6 +33,7 @@ class OperationController extends AbstractController
                 'mode' => $op->getModePaiement() ? $op->getModePaiement()->getLibelle() : 'N/A',
                 'utilisateur' => $op->getUtilisateur() ? $op->getUtilisateur()->getNom() : 'Inconnu',
                 'motif' => $op->getMotif() ?? 'Non précisé',
+                'caisse' => $nomCaisse,
             ];
         }
 
