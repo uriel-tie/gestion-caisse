@@ -43,7 +43,6 @@ export default function DashboardManager({ user, onLogout }: DashboardProps) {
 
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         
-        {/* 1. ALERTES (Widget Orange) - Priorité absolue */}
         <SessionValidationWidget />
 
         <div className="flex justify-between items-end mb-6">
@@ -52,61 +51,50 @@ export default function DashboardManager({ user, onLogout }: DashboardProps) {
                 <p className="text-gray-500">Supervision des caisses physiques en temps réel</p>
             </div>
         </div>
-
-        {/* 2. VUE LIVE DES CAISSES (C'est ici qu'on verra les soldes individuels) */}
+   
         <CaissesLiveView />
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 mt-8">
-            
-            {/* COLONNE GAUCHE : LE FLUX (Journal Global) */}
-            <div className="lg:col-span-2">
-                <div className="flex justify-between items-center mb-4">
-                    <div>
-                        <h3 className="text-lg font-bold text-gray-800">Flux Financiers Globaux</h3>
-                        <p className="text-xs text-gray-500">Consolidated live feed (Toutes caisses)</p>
-                    </div>
-                    <button className="text-sm text-purple-600 hover:text-purple-800 flex items-center font-medium">
-                        <Search className="h-4 w-4 mr-1"/> Recherche avancée
-                    </button>
-                </div>
-                {/* Le tableau prend toute la largeur de sa colonne */}
-                <JournalTable />
+        {/* ACTIONS DE GESTION */}
+        <div className="mt-8 grid grid-cols-1 lg:grid-cols-2 gap-8">
+            <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200">
+                <h3 className="font-bold text-gray-800 mb-4 flex items-center">
+                    <FileText className="h-5 w-5 mr-2 text-blue-600"/> Gestion RH
+                </h3>
+                <p className="text-sm text-gray-500 mb-4">Valider les demandes d'achats et ordres de mission.</p>
+                <button className="w-full py-2 bg-blue-50 text-blue-700 rounded-lg hover:bg-blue-100 font-medium transition-colors flex justify-center items-center">
+                    Voir les demandes <ArrowRight className="h-4 w-4 ml-2"/>
+                </button>
             </div>
 
-            {/* COLONNE DROITE : ACTIONS DE GESTION */}
-            <div className="space-y-6">
+            <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200 relative overflow-hidden group">
+                <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
+                    <Settings className="h-16 w-16 text-purple-600" />
+                </div>
+                <h3 className="font-bold text-gray-800 mb-4 flex items-center">
+                    <Shield className="h-5 w-5 mr-2 text-purple-600"/> Administration
+                </h3>
+                <p className="text-sm text-gray-500 mb-4">Gérer les utilisateurs, les services et les caisses physiques.</p>
                 
-                {/* CARTE GESTION RH (Validation demandes) */}
-                <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200">
-                    <h3 className="font-bold text-gray-800 mb-4 flex items-center">
-                        <FileText className="h-5 w-5 mr-2 text-blue-600"/> Gestion RH
-                    </h3>
-                    <p className="text-sm text-gray-500 mb-4">Valider les demandes d'achats et ordres de mission.</p>
-                    <button className="w-full py-2 bg-blue-50 text-blue-700 rounded-lg hover:bg-blue-100 font-medium transition-colors flex justify-center items-center">
-                        Voir les demandes <ArrowRight className="h-4 w-4 ml-2"/>
-                    </button>
-                </div>
-
-                {/* CARTE ADMINISTRATION (Remplacement de Rapports) */}
-                <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200 relative overflow-hidden group">
-                    <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
-                        <Settings className="h-16 w-16 text-purple-600" />
-                    </div>
-                    <h3 className="font-bold text-gray-800 mb-4 flex items-center">
-                        <Shield className="h-5 w-5 mr-2 text-purple-600"/> Administration
-                    </h3>
-                    <p className="text-sm text-gray-500 mb-4">Gérer les utilisateurs, les services et les caisses physiques.</p>
-                    
-                    <button 
-                        onClick={() => navigate('/admin')}
-                        className="w-full py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 font-medium transition-colors flex justify-center items-center shadow-md"
-                    >
-                        <Users className="h-4 w-4 mr-2" /> Accéder à l'Admin
-                    </button>
-                </div>
-
+                <button 
+                    onClick={() => navigate('/admin')}
+                    className="w-full py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 font-medium transition-colors flex justify-center items-center shadow-md"
+                >
+                    <Users className="h-4 w-4 mr-2" /> Accéder à l'Admin
+                </button>
             </div>
         </div>
+        <section className="mt-8">
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between mb-4">
+                <div>
+                    <h3 className="text-lg font-bold text-gray-800">Flux Financiers Globaux</h3>
+                    <p className="text-xs text-gray-500">Consolidated live feed (Toutes caisses)</p>
+                </div>
+                <button className="self-start sm:self-auto text-sm text-purple-600 hover:text-purple-800 flex items-center font-medium">
+                    <Search className="h-4 w-4 mr-1"/> Recherche avancée
+                </button>
+            </div>
+            <JournalTable />
+        </section>
       </main>
     </div>
   );

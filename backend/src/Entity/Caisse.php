@@ -2,6 +2,7 @@
 
 namespace App\Entity;
 
+use App\Entity\Utilisateur;
 use App\Repository\CaisseRepository;
 use Doctrine\ORM\Mapping as ORM;
 use Symfony\Component\Uid\Uuid;
@@ -21,6 +22,10 @@ class Caisse
     #[ORM\Column]
     private bool $estOuverte = false; // Pour savoir vite si elle est dispo
 
+    #[ORM\OneToOne(targetEntity: Utilisateur::class)]
+    #[ORM\JoinColumn(nullable: true, unique: true)]
+    private ?Utilisateur $employeAssigne = null;
+
     public function getId(): ?Uuid { return $this->id; }
     
     public function getNom(): ?string { return $this->nom; }
@@ -28,4 +33,15 @@ class Caisse
 
     public function isEstOuverte(): ?bool { return $this->estOuverte; }
     public function setEstOuverte(bool $estOuverte): static { $this->estOuverte = $estOuverte; return $this; }
+
+    public function getEmployeAssigne(): ?Utilisateur
+    {
+        return $this->employeAssigne;
+    }
+
+    public function setEmployeAssigne(?Utilisateur $employeAssigne): static
+    {
+        $this->employeAssigne = $employeAssigne;
+        return $this;
+    }
 }

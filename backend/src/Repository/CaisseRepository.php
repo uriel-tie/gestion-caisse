@@ -3,6 +3,7 @@
 namespace App\Repository;
 
 use App\Entity\Caisse;
+use App\Entity\Utilisateur;
 use Doctrine\Bundle\DoctrineBundle\Repository\ServiceEntityRepository;
 use Doctrine\Persistence\ManagerRegistry;
 
@@ -27,5 +28,15 @@ class CaisseRepository extends ServiceEntityRepository
             ->orderBy('c.nom', 'ASC')
             ->getQuery()
             ->getResult();
+    }
+
+    public function findOneByEmploye(Utilisateur $utilisateur): ?Caisse
+    {
+        return $this->createQueryBuilder('c')
+            ->andWhere('c.employeAssigne = :user')
+            ->setParameter('user', $utilisateur)
+            ->setMaxResults(1)
+            ->getQuery()
+            ->getOneOrNullResult();
     }
 }

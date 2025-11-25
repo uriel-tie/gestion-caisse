@@ -1,13 +1,21 @@
 import React, { useState } from 'react';
-import { Lock, Save, CheckCircle } from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
+import { Lock, Save } from 'lucide-react';
 
 export default function ForceChangePasswordPage() {
     const [password, setPassword] = useState('');
     const [confirm, setConfirm] = useState('');
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
-    const navigate = useNavigate();
+
+    const redirectToDashboard = (roles: string[] = []) => {
+        if (roles.includes('ROLE_ADMIN')) {
+            window.location.href = '/admin';
+            return;
+        }
+
+        // Par défaut, tous les autres rôles passent par /dashboard
+        window.location.href = '/dashboard';
+    };
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -43,11 +51,12 @@ export default function ForceChangePasswordPage() {
                 const user = JSON.parse(userStr);
                 user.password_must_be_changed = false; // On update le flag localement
                 localStorage.setItem('user', JSON.stringify(user));
+                setTimeout(() => redirectToDashboard(user.roles || []), 300);
+            } else {
+                setTimeout(() => redirectToDashboard(), 300);
             }
 
             alert("Mot de passe modifié avec succès !");
-            navigate('/dashboard'); // On libère l'utilisateur
-
         } catch (err) {
             setError("Impossible de changer le mot de passe.");
         } finally {

@@ -24,6 +24,10 @@ class OperationController extends AbstractController
 
         $data = [];
         foreach ($operations as $op) {
+            $sessionCaisse = $op->getSessionCaisse();
+            $caisse = $sessionCaisse ? $sessionCaisse->getCaisse() : null;
+            $nomCaisse = $caisse ? $caisse->getNom() : 'N/A';
+
             $data[] = [
                 'id' => $op->getId(),
                 'type' => $op->getType(),
@@ -111,8 +115,14 @@ class OperationController extends AbstractController
 
         if ($montant <= 0) return $this->json(['error' => 'Montant invalide'], 400);
 
-        // Note: Idéalement, on vérifie le solde de la SESSION, pas global
-        // Pour l'instant on laisse couler pour tester l'écriture
+        $soldeSession = (float) $session->getMontantOuverture() + $opRepo->getSoldeMouvementsSession($session);
+
+        if ($montant > $soldeSession) {
+            return $this->json([
+                'error' => 'Solde insuffisant pour réaliser ce décaissement.',
+                'solde_disponible' => $soldeSession
+            ], 400);
+        }
         
         $mode = $modeRepo->findOneBy(['libelle' => $data['mode'] ?? 'Espèces']);
         if (!$mode) $mode = $modeRepo->findAll()[0] ?? null;

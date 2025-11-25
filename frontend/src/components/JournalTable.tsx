@@ -22,7 +22,7 @@ export default function JournalTable() {
     const fetchOperations = async () => {
         const token = localStorage.getItem('token');
         try {
-            const response = await fetch('http://127.0.0.1:8000/api/operations?t=${Date.now()}', {
+            const response = await fetch(`http://127.0.0.1:8000/api/operations?t=${Date.now()}`, {
                 headers: { 'Authorization': `Bearer ${token}` }
             });
             if (response.ok) {
@@ -77,67 +77,69 @@ export default function JournalTable() {
                         Live (Mise à jour auto)
                     </span>
                 </div>
-                <table className="min-w-full divide-y divide-gray-200">
-                    <thead className="bg-gray-50">
-                        <tr>
-                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date</th>
+                <div className="overflow-x-auto">
+                    <table className="min-w-full divide-y divide-gray-200">
+                        <thead className="bg-gray-50">
+                            <tr>
+                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date</th>
 
-                            {/* AJOUTE CETTE LIGNE POUR VOIR LA CAISSE */}
-                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Caisse</th>
+                                {/* AJOUTE CETTE LIGNE POUR VOIR LA CAISSE */}
+                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Caisse</th>
 
-                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Type</th>
-                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Motif</th>
-                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Statut</th>
-                            <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Montant</th>
-                            <th className="px-6 py-3"></th>
-                        </tr>
-                    </thead>
-                    <tbody className="bg-white divide-y divide-gray-200">
-                        {operations.map((op) => (
-                            <tr 
-                                key={op.id} 
-                                onClick={() => setSelectedOp(op)} // Clic sur la ligne
-                                className="hover:bg-gray-50 cursor-pointer transition-colors group"
-                            >
-                                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                                    {op.date}
-                                </td>
-
-                                {/* AJOUTE CETTE LIGNE POUR AFFICHER LE NOM */}
-                                <td className="px-6 py-4 whitespace-nowrap text-xs font-bold text-gray-600">
-                                    {op.caisse}
-                                </td>
-
-                                <td className="px-6 py-4 whitespace-nowrap text-sm">
-                                    <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full 
-                                        ${op.type === 'ENCAISSEMENT' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>
-                                        {op.type.substring(0, 3).toUpperCase()}
-                                    </span>
-                                </td>
-                                <td className="px-6 py-4 text-sm text-gray-900 font-medium max-w-xs truncate">
-                                    {op.motif}
-                                </td>
-                                <td className="px-6 py-4 whitespace-nowrap text-sm">
-                                    <div className="flex items-center space-x-1">
-                                        {getStatutIcon(op.statut)}
-                                        <span className={`text-xs font-semibold 
-                                            ${op.statut === 'EN_ATTENTE' ? 'text-orange-600' : 
-                                              op.statut === 'VALIDEE' ? 'text-green-600' : 'text-gray-500'}`}>
-                                            {op.statut.replace('_', ' ')}
-                                        </span>
-                                    </div>
-                                </td>
-                                <td className={`px-6 py-4 whitespace-nowrap text-sm text-right font-bold 
-                                    ${op.type === 'ENCAISSEMENT' ? 'text-green-600' : 'text-red-600'}`}>
-                                    {op.type === 'DECAISSEMENT' ? '-' : '+'}{new Intl.NumberFormat('fr-FR', { style: 'currency', currency: 'EUR' }).format(op.montant)}
-                                </td>
-                                <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                                    <Eye className="h-5 w-5 text-gray-300 group-hover:text-pink-600" />
-                                </td>
+                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Type</th>
+                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Motif</th>
+                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Statut</th>
+                                <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Montant</th>
+                                <th className="px-6 py-3"></th>
                             </tr>
-                        ))}
-                    </tbody>
-                </table>
+                        </thead>
+                        <tbody className="bg-white divide-y divide-gray-200">
+                            {operations.map((op) => (
+                                <tr 
+                                    key={op.id} 
+                                    onClick={() => setSelectedOp(op)} // Clic sur la ligne
+                                    className="hover:bg-gray-50 cursor-pointer transition-colors group"
+                                >
+                                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                                        {op.date}
+                                    </td>
+
+                                    {/* AJOUTE CETTE LIGNE POUR AFFICHER LE NOM */}
+                                    <td className="px-6 py-4 whitespace-nowrap text-xs font-bold text-gray-600">
+                                        {op.caisse}
+                                    </td>
+
+                                    <td className="px-6 py-4 whitespace-nowrap text-sm">
+                                        <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full 
+                                            ${op.type === 'ENCAISSEMENT' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>
+                                            {op.type.substring(0, 3).toUpperCase()}
+                                        </span>
+                                    </td>
+                                    <td className="px-6 py-4 text-sm text-gray-900 font-medium max-w-xs truncate">
+                                        {op.motif}
+                                    </td>
+                                    <td className="px-6 py-4 whitespace-nowrap text-sm">
+                                        <div className="flex items-center space-x-1">
+                                            {getStatutIcon(op.statut)}
+                                            <span className={`text-xs font-semibold 
+                                                ${op.statut === 'EN_ATTENTE' ? 'text-orange-600' : 
+                                                  op.statut === 'VALIDEE' ? 'text-green-600' : 'text-gray-500'}`}>
+                                                {op.statut.replace('_', ' ')}
+                                            </span>
+                                        </div>
+                                    </td>
+                                    <td className={`px-6 py-4 whitespace-nowrap text-sm text-right font-bold 
+                                        ${op.type === 'ENCAISSEMENT' ? 'text-green-600' : 'text-red-600'}`}>
+                                        {op.type === 'DECAISSEMENT' ? '-' : '+'}{new Intl.NumberFormat('fr-FR', { style: 'currency', currency: 'EUR' }).format(op.montant)}
+                                    </td>
+                                    <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                                        <Eye className="h-5 w-5 text-gray-300 group-hover:text-pink-600" />
+                                    </td>
+                                </tr>
+                            ))}
+                        </tbody>
+                    </table>
+                </div>
             </div>
         </>
     );

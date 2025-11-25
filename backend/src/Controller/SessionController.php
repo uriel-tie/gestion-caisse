@@ -15,48 +15,60 @@ use Symfony\Component\Routing\Annotation\Route;
 #[Route('/api/sessions', name: 'api_sessions_')]
 class SessionController extends AbstractController
 {
-    // 1. LE CAISSIER DEMANDE L'OUVERTURE
-    #[Route('/request', name: 'request', methods: ['POST'])]
-    public function requestOpening(
-        Request $request, 
-        CaisseRepository $caisseRepo, 
+    // 1. LE CAISSIER OUVRE SA CAISSE ASSIGNÉE
+    #[Route('/open', name: 'open', methods: ['POST'])]
+    public function openSession(
+        Request $request,
+        CaisseRepository $caisseRepo,
         SessionCaisseRepository $sessionRepo,
         EntityManagerInterface $em
-    ): JsonResponse
-    {
+    ): JsonResponse {
         $user = $this->getUser();
         $data = json_decode($request->getContent(), true);
+        $fondCaisse = isset($data['montant_ouverture']) ? (float)$data['montant_ouverture'] : 0.0;
 
-        // A. Vérifier si le caissier a déjà une session en cours ou en attente
         $existingSession = $sessionRepo->createQueryBuilder('s')
             ->where('s.caissier = :user')
-            ->andWhere('s.statut IN (:statuts)')
+            ->andWhere('s.statut = :statut')
             ->setParameter('user', $user)
-            ->setParameter('statuts', [SessionCaisse::STATUT_OUVERTE, SessionCaisse::STATUT_EN_ATTENTE])
+            ->setParameter('statut', SessionCaisse::STATUT_OUVERTE)
+            ->setMaxResults(1)
             ->getQuery()
             ->getOneOrNullResult();
 
         if ($existingSession) {
-            return $this->json(['error' => 'Vous avez déjà une session en cours ou en demande.'], 400);
+            return $this->json(['error' => 'Vous avez déjà une session ouverte.'], 400);
         }
 
-        // B. Vérifier la caisse demandée
-        $caisse = $caisseRepo->find($data['caisse_id']);
-        if (!$caisse || $caisse->isEstOuverte()) {
-            return $this->json(['error' => 'Caisse introuvable ou déjà utilisée par quelqu\'un d\'autre.'], 400);
+        $caisse = $caisseRepo->findOneByEmploye($user);
+        if (!$caisse) {
+            return $this->json(['error' => 'Aucune caisse ne vous est assignée.'], 400);
         }
 
-        // C. Créer la demande
+        if ($caisse->isEstOuverte()) {
+            return $this->json(['error' => 'La caisse assignée est déjà ouverte.'], 400);
+        }
+
         $session = new SessionCaisse();
         $session->setCaissier($user);
         $session->setCaisse($caisse);
-        $session->setStatut(SessionCaisse::STATUT_EN_ATTENTE); // En attente du Manager
-        $session->setMontantOuverture('0.00'); // Sera défini par le Manager
+        $session->setStatut(SessionCaisse::STATUT_OUVERTE);
+        $session->setMontantOuverture(number_format($fondCaisse, 2, '.', ''));
+        $session->setDateOuverture(new \DateTimeImmutable());
+
+        $caisse->setEstOuverte(true);
 
         $em->persist($session);
         $em->flush();
 
-        return $this->json(['message' => 'Demande d\'ouverture envoyée au responsable.'], 201);
+        return $this->json([
+            'message' => 'Session ouverte avec succès.',
+            'session' => [
+                'id' => $session->getId(),
+                'caisse' => $caisse->getNom(),
+                'montant_ouverture' => $session->getMontantOuverture(),
+            ]
+        ], 201);
     }
 
     // 2. LE MANAGER VALIDE L'OUVERTURE (Et donne le fond de caisse)
@@ -160,5 +172,30 @@ class SessionController extends AbstractController
             'montant_ouverture' => $session->getMontantOuverture(),
             'date_ouverture' => $session->getDateOuverture()->format('c')
         ]);
+    }
+
+    #[Route('/pending', name: 'pending', methods: ['GET'])]
+    public function listPending(SessionCaisseRepository $sessionRepo): JsonResponse
+    {
+        $this->denyAccessUnlessGranted('ROLE_MANAGER');
+
+        $sessions = $sessionRepo->findBy(
+            ['statut' => SessionCaisse::STATUT_EN_ATTENTE],
+            ['dateOuverture' => 'ASC']
+        );
+
+        $data = array_map(static function (SessionCaisse $session) {
+            $caissier = $session->getCaissier();
+            $caisse = $session->getCaisse();
+
+            return [
+                'id' => $session->getId(),
+                'caissier_nom' => $caissier ? $caissier->getNom() : null,
+                'caisse_nom' => $caisse ? $caisse->getNom() : null,
+                'date_demande' => $session->getDateOuverture()->format('c'),
+            ];
+        }, $sessions);
+
+        return $this->json($data);
     }
 }

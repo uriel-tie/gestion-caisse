@@ -121,4 +121,15 @@ class SessionCaisse
 
         return $this;
     }
+
+    public function getDateOuverture(): ?\DateTimeImmutable
+    {
+        return $this->dateOuverture;
+    }
+
+    public function setDateOuverture(\DateTimeImmutable $dateOuverture): static
+    {
+        $this->dateOuverture = $dateOuverture;
+        return $this;
+    }
 }

@@ -1,0 +1,153 @@
+TITRE DU PROJET : CASHFLOW MANAGER (ERP DE TRÉSORERIE)
+DATE : 25 NOVEMBRE 2025
+
+================================================================================
+PARTIE 1 : CADRE TECHNIQUE ET BESOINS FONCTIONNELS
+================================================================================
+
+1. STACK TECHNIQUE OBLIGATOIRE
+- Backend : PHP Symfony V6/V7 (API Platform ou Custom Controller)
+- Base de données : PostgreSQL
+- Frontend : React.js (Vite + Tailwind CSS)
+- Sécurité : JWT Authentication (LexikJWT)
+
+2. BESOINS FONCTIONNELS (RÈGLES MÉTIERS)
+
+A. GESTION DE L'ARCHITECTURE CAISSE
+- Le système gère plusieurs caisses physiques distinctes (Caisse Principale, Caisses Secondaires).
+- Chaque caisse peut être assignée spécifiquement à un employé (Caissier).
+- Le travail est organisé par "Session de Caisse" (Période d'activité d'un caissier sur une caisse).
+
+B. CYCLE DE VIE D'UNE SESSION
+- Ouverture : Le caissier assigné à une caisse peut ouvrir sa session de manière autonome en déclarant son fond de caisse initial (comptage physique).
+- Fermeture (Clôture) : Le caissier compte son tiroir (Solde physique). Le système calcule le solde théorique (Fond départ + Encaissements - Décaissements) et enregistre l'écart éventuel.
+- État : Une caisse est "Occupée" tant qu'une session est ouverte.
+
+C. GESTION DES ENCAISSEMENTS
+- L'enregistrement d'un encaissement nécessite obligatoirement une session active.
+- Données requises : Montant, Motif, Mode de paiement.
+
+D. GESTION DES DÉCAISSEMENTS (SORTIES)
+Le système distingue deux types de sorties de fonds :
+1. Décaissements Directs (Frais Généraux & Urgences) :
+   - Saisis directement par le caissier pour les petits montants.
+   - Règle d'automatisme : Si le montant est inférieur à un seuil (ex: 50€), l'opération est VALIDÉE. Sinon, elle est mise en "EN_ATTENTE" et bloque le solde jusqu'à validation Manager.
+2. Décaissements sur Demande (Processus Validé) :
+   - Pour les achats importants, salaires ou ordres de mission.
+   - Nécessite une "Demande" préalable (Fiche de besoin) validée par le Chef de Service puis le Manager.
+   - Si une Demande Validée est liée, le décaissement est autorisé quel que soit le montant.
+
+E. VISIBILITÉ ET TRÉSORERIE
+- Caissier : Ne voit que le solde de sa session active.
+- Manager : Voit l'état du parc (toutes les caisses) et les soldes en temps réel.
+
+F. SÉCURITÉ
+- Création de compte avec génération automatique de mot de passe (Pattern email).
+- Obligation de changement de mot de passe à la première connexion.
+- Inaltérabilité : Une opération VALIDÉE ne peut jamais être modifiée ou supprimée.
+
+================================================================================
+PARTIE 2 : SPÉCIFICATIONS FONCTIONNELLES DÉTAILLÉES (USER STORIES)
+================================================================================
+
+US-001 - GESTION DES CAISSES PHYSIQUES
+En tant que : Administrateur / Manager
+Je veux : Créer et gérer des entités "Caisse"
+Afin de : Identifier les postes de travail
+Critères :
+- Given : Je suis sur l'interface d'administration
+- When : Je crée une nouvelle caisse
+- Then : La caisse est créée avec le statut "Fermée"
+- And : Je peux assigner un caissier spécifique à cette caisse (Liaison Utilisateur-Caisse)
+
+US-002 - OUVERTURE DE SESSION (AUTONOME)
+En tant que : Caissier
+Je veux : Ouvrir ma session de travail
+Afin de : Commencer à enregistrer des opérations
+Critères :
+- Given : Je suis connecté et la caisse m'est assignée
+- When : Je saisis le montant du fond de caisse initial et je clique sur "Ouvrir"
+- Then : La session passe immédiatement au statut "OUVERTE"
+- And : J'accède à mon tableau de bord opérationnel
+
+US-003 - CRÉATION D'UNE DEMANDE (RH)
+En tant que : Employé
+Je veux : Créer une fiche de besoin ou un ordre de mission
+Afin de : Solliciter des fonds pour une dépense future
+Critères :
+- When : Je remplis le formulaire (Titre, Montant, Type)
+- Then : La demande est créée avec le statut "ATTENTE_CHEF" et assignée à mon service
+
+US-004 - VALIDATION HIÉRARCHIQUE DES DEMANDES
+En tant que : Chef de Service ou Manager
+Je veux : Valider ou refuser une demande
+Afin de : Contrôler les dépenses en amont
+Critères :
+- When : Je valide une demande
+- Then : Le statut évolue selon mon rôle (Chef -> Manager -> Validée Caisse)
+- And : Une fois validée par le Manager, la demande devient visible pour les Caissiers comme "Prête à payer"
+
+US-005 - ENREGISTREMENT D'UN ENCAISSEMENT
+En tant que : Caissier
+Je veux : Saisir un encaissement
+Afin de : Mettre à jour le solde de ma session
+Critères :
+- Given : J'ai une session de caisse active (obligatoire)
+- When : Je renseigne le montant, le motif et le mode de paiement
+- Then : L'opération est enregistrée et mon solde de session augmente immédiatement
+
+US-006 - ENREGISTREMENT D'UN DÉCAISSEMENT
+En tant que : Caissier
+Je veux : Saisir un décaissement
+Afin de : Enregistrer une sortie d'argent
+Critères :
+- Given : J'ai une session active
+- When : Je saisis un décaissement
+- Then (Cas 1 - Direct) : Si le montant est inférieur au seuil (ex: 50€) => VALIDÉE immédiatement.
+- Then (Cas 2 - Blocage) : Si le montant est supérieur au seuil et sans demande liée => EN_ATTENTE_VALIDATION (Le solde ne bouge pas).
+- Then (Cas 3 - Sur Demande) : Si je lie l'opération à une Demande Validée => VALIDÉE quel que soit le montant.
+
+US-007 - GESTION DES MODES DE PAIEMENT
+En tant que : Administrateur
+Je veux : Configurer les modes de paiement
+Afin de : Permettre leur utilisation lors des opérations
+Critères :
+- When : J'ajoute un mode (ex: "Virement")
+- Then : Ce mode devient disponible dans les listes déroulantes
+
+US-008 - CONSULTATION DU SOLDE
+En tant que : Utilisateur
+Je veux : Voir le solde correspondant à mon niveau de responsabilité
+Critères :
+- Cas Caissier : Je vois uniquement le solde de MA session en cours.
+- Cas Manager : Je vois le solde global de l'entreprise et le détail par caisse en temps réel.
+
+US-009 - CONSULTATION DU JOURNAL
+En tant que : Responsable de caisse / Caissier
+Je veux : Accéder à l'historique des opérations
+Critères :
+- Then : Je vois la liste chronologique avec motif, auteur, montant, caisse concernée et statut.
+
+US-010 - GESTION DES UTILISATEURS (ADMIN)
+En tant que : Administrateur
+Je veux : Gérer les comptes utilisateurs
+Critères :
+- When : Je crée un utilisateur
+- Then : Son mot de passe est généré automatiquement selon un format prédéfini (ex: Nom@Annee!)
+- And : L'utilisateur est obligé de changer son mot de passe à la première connexion
+
+US-011 - CLÔTURE DE SESSION
+En tant que : Caissier
+Je veux : Fermer ma session de travail
+Afin de : Libérer la caisse et valider ma comptabilité
+Critères :
+- When : Je saisis le montant physique compté dans le tiroir
+- Then : Le système calcule l'écart éventuel avec le théorique
+- And : La session passe au statut "FERMÉE" et la caisse redevient disponible
+
+US-012 - CONTRE-PASSATION
+En tant que : Responsable
+Je veux : Annuler une opération erronée validée
+Afin de : Corriger le solde sans supprimer de données (Inaltérabilité)
+Critères :
+- Then : Une opération inverse est créée pour annuler le montant comptable.
