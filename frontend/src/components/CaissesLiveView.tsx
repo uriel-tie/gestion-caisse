@@ -1,27 +1,39 @@
 import React, { useEffect, useState } from 'react';
-import { Monitor, User, Lock, Unlock, AlertCircle } from 'lucide-react';
+import { Monitor, User, Lock, Unlock, Coins } from 'lucide-react';
 
-interface CaisseState {
+// On met à jour l'interface pour coller à ce que renvoie SoldeController
+interface CaisseDetail {
     id: number;
     nom: string;
+    solde: number;       // Le montant réel
     estOuverte: boolean;
-    solde_theorique?: number; // À récupérer via API plus tard
-    caissier_nom?: string;
+    caissier: string;    // Le nom du caissier assigné (ou "Aucun")
+}
+
+interface SoldeApiResponse {
+    mode: string;
+    caisses: CaisseDetail[];
+    devise: string;
 }
 
 export default function CaissesLiveView() {
-    const [caisses, setCaisses] = useState<CaisseState[]>([]);
+    const [caisses, setCaisses] = useState<CaisseDetail[]>([]);
     const [loading, setLoading] = useState(true);
 
     const fetchCaisses = async () => {
         const token = localStorage.getItem('token');
         try {
-            // Idéalement, il faudrait une API /api/caisses/monitoring qui donne + d'infos (solde, user)
-            // Pour l'instant on utilise la liste standard
-            const res = await fetch('http://127.0.0.1:8000/api/caisses', {
+            // ON CHANGE L'URL : On appelle /api/solde car c'est lui qui a les infos complètes pour le manager
+            const res = await fetch('https://127.0.0.1:8000/api/solde', {
                 headers: { 'Authorization': `Bearer ${token}` }
             });
-            if (res.ok) setCaisses(await res.json());
+            if (res.ok) {
+                const data: SoldeApiResponse = await res.json();
+                // On vérifie que c'est bien le mode multi-caisse avant de set
+                if (data.mode === 'MULTI_CAISSE' && data.caisses) {
+                    setCaisses(data.caisses);
+                }
+            }
         } catch (e) {
             console.error(e);
         } finally {
@@ -29,47 +41,63 @@ export default function CaissesLiveView() {
         }
     };
 
-    // Polling pour voir les ouvertures/fermetures en direct
+    // Polling toutes les 5s
     useEffect(() => {
         fetchCaisses();
         const interval = setInterval(fetchCaisses, 5000);
         return () => clearInterval(interval);
     }, []);
 
-    if (loading) return <div className="h-32 bg-gray-100 rounded-xl animate-pulse"></div>;
+    if (loading) return <div className="h-32 bg-gray-100 rounded-xl animate-pulse flex items-center justify-center text-gray-400">Chargement du parc...</div>;
 
     return (
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
             {caisses.map((c) => (
-                <div key={c.id} className={`p-4 rounded-xl border-l-4 shadow-sm bg-white flex flex-col justify-between transition-all ${c.estOuverte ? 'border-green-500' : 'border-gray-300'}`}>
+                <div key={c.id} className={`p-4 rounded-xl border-l-4 shadow-sm bg-white flex flex-col justify-between transition-all ${c.estOuverte ? 'border-green-500 shadow-md' : 'border-gray-300 opacity-90'}`}>
                     
-                    <div className="flex justify-between items-start mb-2">
+                    {/* En-tête Carte */}
+                    <div className="flex justify-between items-start mb-3">
                         <div className="flex items-center">
                             <Monitor className={`h-5 w-5 mr-2 ${c.estOuverte ? 'text-green-600' : 'text-gray-400'}`} />
-                            <span className="font-bold text-gray-800">{c.nom}</span>
+                            <span className="font-bold text-gray-800 truncate max-w-[120px]" title={c.nom}>{c.nom}</span>
                         </div>
-                        <span className={`text-xs font-bold px-2 py-1 rounded-full ${c.estOuverte ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'}`}>
+                        <span className={`text-[10px] uppercase font-bold px-2 py-1 rounded-full ${c.estOuverte ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'}`}>
                             {c.estOuverte ? 'OUVERTE' : 'FERMÉE'}
                         </span>
                     </div>
 
-                    <div className="mt-2">
+                    {/* Corps Carte */}
+                    <div>
                         {c.estOuverte ? (
                             <>
-                                <div className="flex items-center text-sm text-gray-600 mb-1">
-                                    <User className="h-3 w-3 mr-2" /> 
-                                    <span>Occupée</span> {/* On ajoutera le nom du caissier plus tard via l'API */}
+                                {/* Info Caissier */}
+                                <div className="flex items-center text-sm text-gray-600 mb-2 bg-gray-50 p-2 rounded-lg">
+                                    <User className="h-4 w-4 mr-2 text-blue-500" /> 
+                                    <span className="font-medium truncate">{c.caissier}</span>
                                 </div>
-                                <div className="text-2xl font-bold text-gray-900 mt-2">
-                                    --,-- € {/* Nécessite l'API monitoring pour voir le solde spécifique */}
+                                
+                                {/* Info Solde */}
+                                <div className="flex items-center justify-between">
+                                    <div className="text-xs text-gray-500 flex items-center">
+                                        <Coins className="h-3 w-3 mr-1"/> Solde actuel
+                                    </div>
+                                    <div className="text-xl font-extrabold text-gray-900">
+                                        {new Intl.NumberFormat('fr-FR', { style: 'currency', currency: 'EUR' }).format(c.solde)}
+                                    </div>
                                 </div>
-                                <div className="text-xs text-green-600 flex items-center mt-1">
+
+                                {/* Indicateur Session */}
+                                <div className="mt-3 pt-2 border-t border-gray-100 flex items-center text-xs text-green-600 font-medium">
                                     <Unlock className="h-3 w-3 mr-1" /> Session active
                                 </div>
                             </>
                         ) : (
-                            <div className="text-sm text-gray-400 italic mt-2 flex items-center">
-                                <Lock className="h-3 w-3 mr-1" /> En attente d'attribution
+                            /* État Fermé */
+                            <div className="py-4 flex flex-col items-center justify-center text-gray-400">
+                                <Lock className="h-8 w-8 mb-2 opacity-20" />
+                                <span className="text-xs italic">
+                                    {c.caissier !== 'Aucun' ? `Assignée à : ${c.caissier}` : 'Non assignée'}
+                                </span>
                             </div>
                         )}
                     </div>

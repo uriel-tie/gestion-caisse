@@ -26,7 +26,7 @@ class CaisseController extends AbstractController
                 'id' => $c->getId(),
                 'nom' => $c->getNom(),
                 'estOuverte' => $c->isEstOuverte(),
-                'employe' => $employe ? [
+                'employeAssigne' => $employe ? [
                     'id' => $employe->getId(),
                     'nom' => $employe->getNom(),
                     'email' => $employe->getEmail(),

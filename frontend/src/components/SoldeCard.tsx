@@ -26,7 +26,7 @@ export default function SoldeCard() {
             }
 
             try {
-                const response = await fetch(`http://127.0.0.1:8000/api/solde?t=${Date.now()}`, {
+                const response = await fetch(`https://127.0.0.1:8000/api/solde?t=${Date.now()}`, {
                      headers: {
                         'Authorization': `Bearer ${token}`,
                         'Accept': 'application/json'
@@ -55,7 +55,7 @@ export default function SoldeCard() {
         //On rafraîchit toutes les 5 secondes
         const interval = setInterval(() => {
             fetchSolde(true); // true = mode silencieux
-        }, 5000);
+        }, 15000);
 
         //  Nettoyage
         return () => clearInterval(interval);
@@ -104,7 +104,7 @@ export default function SoldeCard() {
                     </span>
                 </div>
                 <span className="text-xs text-gray-400">
-                    Mise à jour auto (5s)
+                    Mise à jour auto (15s)
                 </span>
             </div>
         </div>

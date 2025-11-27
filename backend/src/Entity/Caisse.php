@@ -22,6 +22,9 @@ class Caisse
     #[ORM\Column]
     private bool $estOuverte = false; // Pour savoir vite si elle est dispo
 
+    #[ORM\Column(type: 'decimal', precision: 12, scale: 2, options: ['default' => '0.00'])]
+    private ?string $solde = '0.00';
+
     #[ORM\OneToOne(targetEntity: Utilisateur::class)]
     #[ORM\JoinColumn(nullable: true, unique: true)]
     private ?Utilisateur $employeAssigne = null;
@@ -42,6 +45,17 @@ class Caisse
     public function setEmployeAssigne(?Utilisateur $employeAssigne): static
     {
         $this->employeAssigne = $employeAssigne;
+        return $this;
+    }
+
+    public function getSolde(): ?string
+    {
+        return $this->solde;
+    }
+
+    public function setSolde(string $solde): static
+    {
+        $this->solde = $solde;
         return $this;
     }
 }

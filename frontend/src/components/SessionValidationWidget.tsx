@@ -8,7 +8,7 @@ export default function SessionValidationWidget() {
 
     const fetchPendingSessions = async () => {
         try {
-            const res = await fetch('http://127.0.0.1:8000/api/sessions/pending', { 
+            const res = await fetch('https://127.0.0.1:8000/api/sessions/pending', { 
                 headers: { 'Authorization': `Bearer ${token}` } 
             });
             if (res.ok) {
@@ -32,7 +32,7 @@ export default function SessionValidationWidget() {
         const fondCaisse = prompt("Montant du fond de caisse (ex: 150.00) :", "0.00");
         if (fondCaisse === null) return;
 
-        const res = await fetch(`http://127.0.0.1:8000/api/sessions/${sessionId}/validate`, {
+        const res = await fetch(`https://127.0.0.1:8000/api/sessions/${sessionId}/validate`, {
             method: 'PATCH',
             headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
             body: JSON.stringify({ montant_ouverture: parseFloat(fondCaisse) })

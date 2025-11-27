@@ -56,15 +56,21 @@ export default function DashboardManager({ user, onLogout }: DashboardProps) {
 
         {/* ACTIONS DE GESTION */}
         <div className="mt-8 grid grid-cols-1 lg:grid-cols-2 gap-8">
-            <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200">
-                <h3 className="font-bold text-gray-800 mb-4 flex items-center">
-                    <FileText className="h-5 w-5 mr-2 text-blue-600"/> Gestion RH
-                </h3>
-                <p className="text-sm text-gray-500 mb-4">Valider les demandes d'achats et ordres de mission.</p>
-                <button className="w-full py-2 bg-blue-50 text-blue-700 rounded-lg hover:bg-blue-100 font-medium transition-colors flex justify-center items-center">
-                    Voir les demandes <ArrowRight className="h-4 w-4 ml-2"/>
-                </button>
-            </div>
+                        <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200 hover:shadow-md transition-shadow">
+                            <h3 className="font-bold text-gray-800 mb-4 flex items-center text-lg">
+                                <FileText className="h-6 w-6 mr-2 text-blue-600 p-1 bg-blue-100 rounded-lg"/> 
+                                Gestion RH
+                            </h3>
+                            <p className="text-sm text-gray-500 mb-6">
+                                Valider les demandes d'achats et ordres de mission en attente de validation finale.
+                            </p>
+                            <button 
+                                onClick={() => navigate('/manager/validations')}
+                                className="w-full py-3 bg-blue-50 text-blue-700 rounded-lg hover:bg-blue-100 font-medium transition-colors flex justify-center items-center"
+                            >
+                                Voir les demandes <ArrowRight className="h-4 w-4 ml-2"/>
+                            </button>
+                        </div>
 
             <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200 relative overflow-hidden group">
                 <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">

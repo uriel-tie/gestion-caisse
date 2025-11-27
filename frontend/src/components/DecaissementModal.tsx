@@ -24,7 +24,7 @@ export default function DecaissementModal({ isOpen, onClose, onSuccess }: Decais
     const token = localStorage.getItem('token');
 
     try {
-      const response = await fetch('http://127.0.0.1:8000/api/operations/decaissement', {
+      const response = await fetch('https://127.0.0.1:8000/api/operations/decaissement', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

@@ -20,7 +20,7 @@ export default function SessionOpeningPage({ user, onLogout, onSessionRequestSuc
         const fetchCaisses = async () => {
             const token = localStorage.getItem('token');
             try {
-                const res = await fetch('http://127.0.0.1:8000/api/caisses', {
+                const res = await fetch('https://127.0.0.1:8000/api/caisses', {
                     headers: { 'Authorization': `Bearer ${token}` }
                 });
                 if (res.ok) {
@@ -42,7 +42,7 @@ export default function SessionOpeningPage({ user, onLogout, onSessionRequestSuc
 
         const token = localStorage.getItem('token');
         try {
-            const res = await fetch('http://127.0.0.1:8000/api/sessions/request', {
+            const res = await fetch('https://127.0.0.1:8000/api/sessions/request', {
                 method: 'POST',
                 headers: { 
                     'Content-Type': 'application/json',

@@ -1,12 +1,13 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { ArrowLeft, Settings, Users } from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
+// Ajout de 'Navigate' dans les imports
+import { useNavigate, Navigate } from 'react-router-dom';
 import type { UserData } from '../types';
 import AdminStructure from '../components/AdminStructure';
 import AdminUsers from '../components/AdminUsers';
 
 interface AdminPageProps {
-    user: UserData; // Pour vérifier si on a le droit d'être là
+    user: UserData;
     onLogout: () => void;
 }
 
@@ -14,23 +15,18 @@ export default function AdminPage({ user }: AdminPageProps) {
     const navigate = useNavigate();
     const [activeTab, setActiveTab] = useState<'structure' | 'users'>('users');
 
-    // DEBUG : Pour vérifier dans la console
-    console.log("👮‍♂️ ADMIN GUARD - Utilisateur :", user.nom);
-    console.log("🔑 Rôles détectés :", user.roles);
+    // 1. CALCUL DES DROITS (Synchrone)
+    const roles = user?.roles || [];
+    const hasAccess = Array.isArray(roles) ? roles.includes('ROLE_MANAGER') : roles === 'ROLE_MANAGER';
 
-    // SÉCURITÉ ROBUSTE : On utilise useEffect pour la redirection
-    useEffect(() => {
-        if (!user.roles.includes('ROLE_MANAGER')) {
-            console.warn("⛔ Accès refusé : Redirection vers Dashboard");
-            navigate('/dashboard');
-        }
-    }, [user, navigate]);
-
-    // Pendant que React vérifie (ou si pas Manager), on n'affiche rien pour éviter le "flash"
-    if (!user.roles.includes('ROLE_MANAGER')) {
-        return null; 
+    // 2. REDIRECTION SÉCURISÉE (Au lieu de useEffect)
+    // On retourne le composant <Navigate> directement. 
+    // "replace" est crucial pour éviter l'avertissement "history.pushState" que vous avez vu.
+    if (!hasAccess) {
+        return <Navigate to="/dashboard" replace />;
     }
 
+    // 3. RENDU DE LA PAGE (Si on a l'accès)
     return (
         <div className="min-h-screen bg-gray-50 p-8">
             <div className="max-w-7xl mx-auto">

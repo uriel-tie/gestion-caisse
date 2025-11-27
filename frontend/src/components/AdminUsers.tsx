@@ -14,19 +14,19 @@ export default function AdminUsers() {
     }, []);
 
     const fetchUsers = async () => {
-        const res = await fetch('http://127.0.0.1:8000/api/users', { headers: { 'Authorization': `Bearer ${token}` } });
+        const res = await fetch('https://127.0.0.1:8000/api/users', { headers: { 'Authorization': `Bearer ${token}` } });
         if (res.ok) setUsers(await res.json());
     };
 
     const fetchServices = async () => {
-        const res = await fetch('http://127.0.0.1:8000/api/services', { headers: { 'Authorization': `Bearer ${token}` } });
+        const res = await fetch('https://127.0.0.1:8000/api/services', { headers: { 'Authorization': `Bearer ${token}` } });
         if (res.ok) setServices(await res.json());
     };
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         setTempPassword(null);
-        const res = await fetch('http://127.0.0.1:8000/api/users', {
+        const res = await fetch('https://127.0.0.1:8000/api/users', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
             body: JSON.stringify(formData)

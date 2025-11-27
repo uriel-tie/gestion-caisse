@@ -18,14 +18,14 @@ export default function AdminStructure() {
     }, []);
 
     const fetchData = async (endpoint: string, setter: Function) => {
-        const res = await fetch(`http://127.0.0.1:8000/api/${endpoint}`, {
+        const res = await fetch(`https://127.0.0.1:8000/api/${endpoint}`, {
             headers: { 'Authorization': `Bearer ${token}` }
         });
         if (res.ok) setter(await res.json());
     };
 
     const handleCreate = async (endpoint: string, payload: object, refreshEndpoint: string, refreshSetter: Function, resetCallback: () => void) => {
-        const res = await fetch(`http://127.0.0.1:8000/api/${endpoint}`, {
+        const res = await fetch(`https://127.0.0.1:8000/api/${endpoint}`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
             body: JSON.stringify(payload)
@@ -37,7 +37,7 @@ export default function AdminStructure() {
     };
 
     const fetchUsers = async () => {
-        const res = await fetch('http://127.0.0.1:8000/api/users', {
+        const res = await fetch('https://127.0.0.1:8000/api/users', {
             headers: { 'Authorization': `Bearer ${token}` }
         });
         if (res.ok) {
@@ -47,7 +47,7 @@ export default function AdminStructure() {
     };
 
     const handleAssignCaisse = async (caisseId: string, employeId: string) => {
-        const res = await fetch(`http://127.0.0.1:8000/api/caisses/${caisseId}/assign`, {
+        const res = await fetch(`https://127.0.0.1:8000/api/caisses/${caisseId}/assign`, {
             method: 'PATCH',
             headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
             body: JSON.stringify({ employe_id: employeId || null })

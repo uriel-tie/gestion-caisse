@@ -4,7 +4,6 @@ namespace App\Controller;
 
 use App\Entity\SessionCaisse;
 use App\Repository\CaisseRepository;
-use App\Repository\OperationRepository;
 use App\Repository\SessionCaisseRepository;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
@@ -15,109 +14,69 @@ use Symfony\Component\Routing\Annotation\Route;
 #[Route('/api/sessions', name: 'api_sessions_')]
 class SessionController extends AbstractController
 {
-    // 1. LE CAISSIER OUVRE SA CAISSE ASSIGNÉE
+    // 1. OUVERTURE AUTOMATIQUE (Simplifiée)
     #[Route('/open', name: 'open', methods: ['POST'])]
     public function openSession(
-        Request $request,
-        CaisseRepository $caisseRepo,
         SessionCaisseRepository $sessionRepo,
+        CaisseRepository $caisseRepo, // Ajout du repo Caisse
         EntityManagerInterface $em
-    ): JsonResponse {
+    ): JsonResponse
+    {
         $user = $this->getUser();
-        $data = json_decode($request->getContent(), true);
-        $fondCaisse = isset($data['montant_ouverture']) ? (float)$data['montant_ouverture'] : 0.0;
 
-        $existingSession = $sessionRepo->createQueryBuilder('s')
-            ->where('s.caissier = :user')
-            ->andWhere('s.statut = :statut')
-            ->setParameter('user', $user)
-            ->setParameter('statut', SessionCaisse::STATUT_OUVERTE)
-            ->setMaxResults(1)
-            ->getQuery()
-            ->getOneOrNullResult();
-
+        // A. Vérifier si session déjà ouverte
+        $existingSession = $sessionRepo->findSessionActive($user);
         if ($existingSession) {
-            return $this->json(['error' => 'Vous avez déjà une session ouverte.'], 400);
+            return $this->json(['error' => 'Session déjà active.'], 400);
         }
 
-        $caisse = $caisseRepo->findOneByEmploye($user);
+        // B. Trouver LA caisse assignée au caissier
+        // On suppose que la relation est Caisse -> employeAssigne
+        $caisse = $caisseRepo->findOneBy(['employeAssigne' => $user]);
+
         if (!$caisse) {
-            return $this->json(['error' => 'Aucune caisse ne vous est assignée.'], 400);
+            return $this->json(['error' => 'Aucune caisse ne vous est assignée.'], 403);
         }
 
         if ($caisse->isEstOuverte()) {
-            return $this->json(['error' => 'La caisse assignée est déjà ouverte.'], 400);
+             // Cas rare : Caisse marquée ouverte mais pas par ce user (bug ou autre)
+             // On peut forcer ou bloquer. Ici on bloque par sécurité.
+             return $this->json(['error' => 'Cette caisse est déjà marquée comme ouverte.'], 400);
         }
 
+        // C. Création Session Directe
         $session = new SessionCaisse();
         $session->setCaissier($user);
         $session->setCaisse($caisse);
-        $session->setStatut(SessionCaisse::STATUT_OUVERTE);
-        $session->setMontantOuverture(number_format($fondCaisse, 2, '.', ''));
-        $session->setDateOuverture(new \DateTimeImmutable());
+        $session->setStatut(SessionCaisse::STATUT_OUVERTE); // Directement ouverte
+        
+        // D. Reprise du solde existant de la caisse (Continuité)
+        $soldeActuel = $caisse->getSolde() ?? '0.00';
+        $session->setMontantOuverture($soldeActuel);
 
+        // E. Mise à jour état Caisse
         $caisse->setEstOuverte(true);
 
         $em->persist($session);
         $em->flush();
 
-        return $this->json([
-            'message' => 'Session ouverte avec succès.',
-            'session' => [
-                'id' => $session->getId(),
-                'caisse' => $caisse->getNom(),
-                'montant_ouverture' => $session->getMontantOuverture(),
-            ]
-        ], 201);
+        return $this->json(['message' => 'Session ouverte avec succès.', 'solde' => $soldeActuel], 201);
     }
 
-    // 2. LE MANAGER VALIDE L'OUVERTURE (Et donne le fond de caisse)
-    #[Route('/{id}/validate', name: 'validate', methods: ['PATCH'])]
-    public function validateOpening(
-        SessionCaisse $session, 
-        Request $request, 
-        EntityManagerInterface $em
-    ): JsonResponse
-    {
-        // Seul un manager/chef peut valider
-        $this->denyAccessUnlessGranted('ROLE_MANAGER');
-
-        if ($session->getStatut() !== SessionCaisse::STATUT_EN_ATTENTE) {
-            return $this->json(['error' => 'Cette session n\'est pas en attente.'], 400);
-        }
-
-        $data = json_decode($request->getContent(), true);
-        $fondCaisse = $data['montant_ouverture'] ?? 0;
-
-        // On active tout
-        $session->setStatut(SessionCaisse::STATUT_OUVERTE);
-        $session->setMontantOuverture((string)$fondCaisse);
-        $session->setDateOuverture(new \DateTimeImmutable()); // L'heure réelle du début
-        
-        // On marque la caisse comme "Occupée"
-        $session->getCaisse()->setEstOuverte(true);
-
-        $em->flush();
-
-        return $this->json(['message' => 'Session ouverte avec succès.']);
-    }
-
-    // 3. LE CAISSIER FERME SA SESSION (Clôture)
+    // 2. FERMETURE (Reste identique, le caissier compte pour vérifier)
     #[Route('/close', name: 'close', methods: ['POST'])]
     public function closeSession(
         Request $request,
         SessionCaisseRepository $sessionRepo,
-        OperationRepository $opRepo,
+        // ... (le reste des arguments comme OperationRepo, EM)
+        \App\Repository\OperationRepository $opRepo, // Injection manquante dans l'exemple précédent
         EntityManagerInterface $em
     ): JsonResponse
     {
         $user = $this->getUser();
-        
-        // Trouver la session active
         $session = $sessionRepo->findSessionActive($user);
-        if (!$session) {
-            return $this->json(['error' => 'Aucune session active à clôturer.'], 400);
-        }
+        
+        if (!$session) return $this->json(['error' => 'Pas de session active.'], 400);
 
         $data = json_decode($request->getContent(), true);
         $montantPhysique = (float) ($data['montant_final'] ?? 0);
@@ -126,7 +85,6 @@ class SessionController extends AbstractController
         $fondDepart = (float) $session->getMontantOuverture();
         $mouvements = $opRepo->getSoldeMouvementsSession($session);
         $montantTheorique = $fondDepart + $mouvements;
-        
         $ecart = $montantPhysique - $montantTheorique;
 
         // Enregistrement
@@ -137,65 +95,51 @@ class SessionController extends AbstractController
         
         // Libérer la caisse
         $session->getCaisse()->setEstOuverte(false);
+        // Optionnel : Mettre à jour le solde réel de la caisse avec le physique compté (pour corriger les erreurs)
+        // $session->getCaisse()->setSolde((string)$montantPhysique); 
 
         $em->flush();
 
-        return $this->json([
-            'message' => 'Session clôturée.',
-            'solde_theorique' => $montantTheorique,
-            'solde_physique' => $montantPhysique,
-            'ecart' => $ecart
-        ]);
+        return $this->json(['message' => 'Session close.', 'ecart' => $ecart]);
     }
-    
-    // 4. RECUPERER MA SESSION ACTUELLE (Pour le Frontend)
+
+    // 3. GET ME (Pour le front)
     #[Route('/me', name: 'me', methods: ['GET'])]
-    public function getMySession(SessionCaisseRepository $sessionRepo): JsonResponse 
+    public function getMySession(SessionCaisseRepository $sessionRepo, CaisseRepository $caisseRepo): JsonResponse 
     {
         $user = $this->getUser();
-        $session = $sessionRepo->findOneBy(
-            ['caissier' => $user], 
-            ['dateOuverture' => 'DESC'] // La dernière
-        );
-
-        if (!$session) return $this->json(null); // Pas de session
-
-        // Si la dernière est fermée, on renvoie null ou l'info qu'elle est fermée
-        if ($session->getStatut() === SessionCaisse::STATUT_FERMEE) {
-             return $this->json(['statut' => 'AUCUNE']); 
+        
+        // 1. Session Active ?
+        $session = $sessionRepo->findSessionActive($user);
+        if ($session) {
+            return $this->json([
+                'hasSession' => true,
+                'session' => [
+                    'id' => $session->getId(),
+                    'statut' => $session->getStatut(),
+                    'montant' => $session->getMontantOuverture()
+                ],
+                'caisse' => [
+                    'id' => $session->getCaisse()->getId(),
+                    'nom' => $session->getCaisse()->getNom()
+                ]
+            ]);
         }
 
-        return $this->json([
-            'id' => $session->getId(),
-            'statut' => $session->getStatut(),
-            'caisse' => $session->getCaisse()->getNom(),
-            'montant_ouverture' => $session->getMontantOuverture(),
-            'date_ouverture' => $session->getDateOuverture()->format('c')
-        ]);
-    }
+        // 2. Sinon, Caisse Assignée ?
+        $caisse = $caisseRepo->findOneBy(['employeAssigne' => $user]);
+        if ($caisse) {
+            return $this->json([
+                'hasSession' => false,
+                'caisse' => [
+                    'id' => $caisse->getId(),
+                    'nom' => $caisse->getNom(),
+                    'estOuverte' => $caisse->isEstOuverte() // Savoir si elle est prise par un autre (bug/admin)
+                ]
+            ]);
+        }
 
-    #[Route('/pending', name: 'pending', methods: ['GET'])]
-    public function listPending(SessionCaisseRepository $sessionRepo): JsonResponse
-    {
-        $this->denyAccessUnlessGranted('ROLE_MANAGER');
-
-        $sessions = $sessionRepo->findBy(
-            ['statut' => SessionCaisse::STATUT_EN_ATTENTE],
-            ['dateOuverture' => 'ASC']
-        );
-
-        $data = array_map(static function (SessionCaisse $session) {
-            $caissier = $session->getCaissier();
-            $caisse = $session->getCaisse();
-
-            return [
-                'id' => $session->getId(),
-                'caissier_nom' => $caissier ? $caissier->getNom() : null,
-                'caisse_nom' => $caisse ? $caisse->getNom() : null,
-                'date_demande' => $session->getDateOuverture()->format('c'),
-            ];
-        }, $sessions);
-
-        return $this->json($data);
+        // 3. Rien du tout
+        return $this->json(['hasSession' => false, 'caisse' => null]);
     }
 }

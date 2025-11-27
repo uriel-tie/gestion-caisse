@@ -1,0 +1,150 @@
+import React, { useState } from 'react';
+import { Search, CheckCircle, AlertCircle, Banknote, ArrowRight } from 'lucide-react';
+
+interface PaymentTerminalProps {
+    onSuccess: () => void; // Pour rafraîchir le solde après paiement
+}
+
+export default function PaymentTerminal({ onSuccess }: PaymentTerminalProps) {
+    const [code, setCode] = useState('');
+    const [demande, setDemande] = useState<any>(null);
+    const [loading, setLoading] = useState(false);
+    const [error, setError] = useState<string | null>(null);
+    const [successMsg, setSuccessMsg] = useState<string | null>(null);
+    const token = localStorage.getItem('token');
+
+    // 1. RECHERCHER LA DEMANDE
+    const handleSearch = async (e: React.FormEvent) => {
+        e.preventDefault();
+        setError(null); setDemande(null); setSuccessMsg(null);
+        setLoading(true);
+
+        try {
+            // Note : On suppose ici que l'ID est l'UUID exact.
+            // Si tu veux une recherche floue, il faudra une API spécifique /api/demandes/search
+            const res = await fetch(`https://127.0.0.1:8000/api/demandes/search/${code}`, {
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
+
+            if (res.status === 404) throw new Error("Aucune demande trouvée avec ce code.");
+            if (!res.ok) throw new Error("Erreur recherche.");
+
+            const data = await res.json();
+            setDemande(data);
+        } catch (err: any) {
+            setError(err.message);
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    // 2. PAYER (DÉCAISSER)
+    const handlePay = async () => {
+        if (!demande) return;
+        setLoading(true);
+        try {
+            const res = await fetch('https://127.0.0.1:8000/api/operations/decaissement', {
+                method: 'POST',
+                headers: { 
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}` 
+                },
+                body: JSON.stringify({
+                    montant: parseFloat(demande.montant),
+                    mode: 'Espèces', // Par défaut (on pourrait mettre un select)
+                    motif: `Paiement Demande #${demande.id.substring(0,8)} - ${demande.titre}`,
+                    demande_id: demande.id
+                })
+            });
+
+            if (res.ok) {
+                setSuccessMsg(`Paiement de ${demande.montant}€ effectué avec succès !`);
+                setDemande(null);
+                setCode('');
+                onSuccess(); // Rafraîchit le solde global
+            } else {
+                const errData = await res.json();
+                setError(errData.error || "Erreur lors du paiement");
+            }
+        } catch (e) {
+            setError("Erreur technique");
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    return (
+        <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200 mt-8">
+            <h3 className="text-lg font-bold text-gray-800 mb-4 flex items-center">
+                <Banknote className="mr-2 h-5 w-5 text-purple-600" />
+                Terminal de Paiement (Demandes Validées)
+            </h3>
+
+            {/* BARRE DE RECHERCHE */}
+            <form onSubmit={handleSearch} className="flex gap-2 mb-6">
+                <input 
+                    type="text" 
+                    value={code}
+                    onChange={(e) => setCode(e.target.value)}
+                    placeholder="Scanner ou saisir le code de la demande..."
+                    className="flex-1 border rounded-lg px-4 py-2 font-mono text-gray-700 focus:ring-2 focus:ring-purple-500 outline-none"
+                />
+                <button 
+                    disabled={loading}
+                    className="bg-purple-600 text-white px-6 py-2 rounded-lg font-bold hover:bg-purple-700 transition disabled:opacity-50"
+                >
+                    {loading ? '...' : <Search className="h-5 w-5" />}
+                </button>
+            </form>
+
+            {/* FEEDBACK ERREUR / SUCCES */}
+            {error && (
+                <div className="p-4 mb-4 bg-red-50 text-red-700 rounded-lg flex items-center">
+                    <AlertCircle className="h-5 w-5 mr-2" /> {error}
+                </div>
+            )}
+            {successMsg && (
+                <div className="p-4 mb-4 bg-green-50 text-green-700 rounded-lg flex items-center">
+                    <CheckCircle className="h-5 w-5 mr-2" /> {successMsg}
+                </div>
+            )}
+
+            {/* RÉSULTAT DE LA DEMANDE */}
+            {demande && (
+                <div className="border border-gray-200 rounded-lg p-4 bg-gray-50 animate-in fade-in">
+                    <div className="flex justify-between items-start mb-4">
+                        <div>
+                            <h4 className="font-bold text-lg text-gray-900">{demande.titre}</h4>
+                            <p className="text-sm text-gray-500">Demandeur : {demande.demandeur_nom || 'Employé'}</p>
+                        </div>
+                        <div className="text-right">
+                            <span className="block font-mono text-xl font-bold text-gray-900">{parseFloat(demande.montant).toFixed(2)} €</span>
+                            <span className={`text-xs font-bold px-2 py-1 rounded ${
+                                demande.statut === 'VALIDEE_A_PAYER'  
+                                ? 'bg-green-100 text-green-800' 
+                                : 'bg-yellow-100 text-yellow-800'
+                            }`}>
+                                {demande.statut}
+                            </span>
+                        </div>
+                    </div>
+
+                    {/* BOUTON D'ACTION */}
+                    {(demande.statut === 'VALIDEE_A_PAYER') ? (
+                        <button 
+                            onClick={handlePay}
+                            disabled={loading}
+                            className="w-full bg-green-600 hover:bg-green-700 text-white font-bold py-3 rounded-lg shadow-md transition-transform active:scale-95 flex justify-center items-center"
+                        >
+                            {loading ? 'Traitement...' : <>CONFIRMER LE DÉCAISSEMENT <ArrowRight className="ml-2 h-5 w-5"/></>}
+                        </button>
+                    ) : (
+                        <div className="bg-orange-100 text-orange-800 p-3 rounded-lg text-center font-medium">
+                            ⛔ Cette demande n'est pas encore validée pour paiement.
+                        </div>
+                    )}
+                </div>
+            )}
+        </div>
+    );
+}

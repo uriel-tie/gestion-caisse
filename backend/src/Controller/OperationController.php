@@ -6,7 +6,7 @@ use App\Entity\Operation;
 use App\Entity\ModePaiement;
 use App\Repository\ModePaiementRepository;
 use App\Repository\OperationRepository;
-use App\Repository\SessionCaisseRepository; // <--- NOUVEAU
+use App\Repository\SessionCaisseRepository;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\JsonResponse;
@@ -17,10 +17,29 @@ use Symfony\Component\Routing\Annotation\Route;
 class OperationController extends AbstractController
 {
     #[Route('', name: 'list', methods: ['GET'])]
-    public function index(OperationRepository $operationRepository): JsonResponse
+    public function index(
+        OperationRepository $operationRepository, 
+        \App\Repository\CaisseRepository $caisseRepo // <--- Ajout de l'injection
+    ): JsonResponse
     {
-        // TODO: Plus tard, il faudra filtrer par la session active ou la caisse
-        $operations = $operationRepository->findLatest(20);
+        $user = $this->getUser();
+
+        // CAS 1 : MANAGER -> Il voit tout (comme avant)
+        if ($this->isGranted('ROLE_MANAGER')) {
+            $operations = $operationRepository->findLatest(20);
+        } 
+        // CAS 2 : CAISSIER -> Il ne voit que SA caisse assignée
+        else {
+            // On trouve la caisse assignée à l'utilisateur
+            $caisse = $caisseRepo->findOneBy(['employeAssigne' => $user]);
+            
+            if (!$caisse) {
+                // Si pas de caisse assignée, il ne voit rien
+                return $this->json([]);
+            }
+            // On filtre sur cette caisse uniquement
+            $operations = $operationRepository->findLatestByCaisse($caisse, 20);
+        }
 
         $data = [];
         foreach ($operations as $op) {
@@ -49,16 +68,14 @@ class OperationController extends AbstractController
         Request $request, 
         EntityManagerInterface $em, 
         ModePaiementRepository $modeRepo,
-        SessionCaisseRepository $sessionRepo // <--- Injection
+        SessionCaisseRepository $sessionRepo
     ): JsonResponse
     {
         $user = $this->getUser();
-        
-        // 1. VÉRIFICATION CRITIQUE : A-t-il une session ouverte ?
         $session = $sessionRepo->findSessionActive($user);
         
         if (!$session) {
-            return $this->json(['error' => 'Aucune session de caisse ouverte. Veuillez ouvrir votre caisse.'], 403);
+            return $this->json(['error' => 'Aucune session de caisse ouverte.'], 403);
         }
 
         $data = json_decode($request->getContent(), true);
@@ -80,16 +97,22 @@ class OperationController extends AbstractController
         
         $op->setUtilisateur($user);
         $op->setModePaiement($mode);
-        
-        // 2. LIAISON OBLIGATOIRE
         $op->setSessionCaisse($session);
 
         $em->persist($op);
+
+        // --- MISE A JOUR DU SOLDE CAISSE (AJOUT) ---
+        $caisse = $session->getCaisse();
+        $nouveauSolde = (float)$caisse->getSolde() + (float)$data['montant'];
+        $caisse->setSolde((string)$nouveauSolde);
+        $em->persist($caisse);
+        // -------------------------------------------
+
         $em->flush();
 
         return $this->json([
             'message' => 'Encaissement enregistré !',
-            'nouveau_solde' => 'Calculé au prochain appel...' 
+            'nouveau_solde' => $nouveauSolde // On renvoie le vrai nouveau solde
         ], 201);
     }
 
@@ -99,13 +122,12 @@ class OperationController extends AbstractController
         EntityManagerInterface $em, 
         ModePaiementRepository $modeRepo,
         OperationRepository $opRepo,
-        SessionCaisseRepository $sessionRepo // <--- Injection
+        SessionCaisseRepository $sessionRepo
     ): JsonResponse
     {
         $user = $this->getUser();
-
-        // 1. VÉRIFICATION SESSION
         $session = $sessionRepo->findSessionActive($user);
+        
         if (!$session) {
             return $this->json(['error' => 'Aucune session de caisse ouverte.'], 403);
         }
@@ -115,8 +137,8 @@ class OperationController extends AbstractController
 
         if ($montant <= 0) return $this->json(['error' => 'Montant invalide'], 400);
 
+        // Vérification du solde de la session avant de continuer
         $soldeSession = (float) $session->getMontantOuverture() + $opRepo->getSoldeMouvementsSession($session);
-
         if ($montant > $soldeSession) {
             return $this->json([
                 'error' => 'Solde insuffisant pour réaliser ce décaissement.',
@@ -135,7 +157,7 @@ class OperationController extends AbstractController
         $op->setUtilisateur($user);
         $op->setModePaiement($mode);
         $op->setMotif($data['motif'] ?? 'Décaissement divers');
-        $op->setSessionCaisse($session); // <--- LIAISON
+        $op->setSessionCaisse($session);
 
         // Validation conditionnelle
         $seuilAuto = 50.0; 
@@ -144,9 +166,19 @@ class OperationController extends AbstractController
         if ($isManager || $montant <= $seuilAuto) {
             $op->setStatut(Operation::STATUT_VALIDEE);
             $msg = "Décaissement validé.";
+            
+            // --- MISE A JOUR DU SOLDE CAISSE (SOUSTRACTION) ---
+            // On ne touche au solde que si c'est validé !
+            $caisse = $session->getCaisse();
+            $nouveauSolde = (float)$caisse->getSolde() - $montant;
+            $caisse->setSolde((string)$nouveauSolde);
+            $em->persist($caisse);
+            // --------------------------------------------------
+
         } else {
             $op->setStatut(Operation::STATUT_EN_ATTENTE);
             $msg = "Montant élevé : En attente de validation.";
+            // On ne touche PAS au solde ici
         }
 
         $em->persist($op);

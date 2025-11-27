@@ -69,6 +69,21 @@ class OperationRepository extends ServiceEntityRepository
             ->getResult();
     }
 
+    /**
+     * Trouve les dernières opérations liées à une Caisse spécifique
+     */
+    public function findLatestByCaisse(\App\Entity\Caisse $caisse, int $limit = 20): array
+    {
+        return $this->createQueryBuilder('o')
+            ->join('o.sessionCaisse', 's') // On passe par la session
+            ->where('s.caisse = :caisse')  // On filtre sur la caisse
+            ->setParameter('caisse', $caisse)
+            ->orderBy('o.date', 'DESC')
+            ->setMaxResults($limit)
+            ->getQuery()
+            ->getResult();
+    }
+    
     public function getSoldeMouvementsSession(SessionCaisse $session): float
     {
         $qb = $this->createQueryBuilder('o')
