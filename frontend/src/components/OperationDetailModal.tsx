@@ -55,7 +55,7 @@ export default function OperationDetailModal({ operation, onClose }: OperationDe
                     {/* Montant et Date */}
                     <div className="text-center">
                         <h2 className={`text-4xl font-extrabold ${operation.type === 'ENCAISSEMENT' ? 'text-green-600' : 'text-red-600'}`}>
-                            {operation.type === 'DECAISSEMENT' ? '-' : '+'}{new Intl.NumberFormat('fr-FR', { style: 'currency', currency: 'EUR' }).format(operation.montant)}
+                            {operation.type === 'DECAISSEMENT' ? '-' : '+'}{new Intl.NumberFormat('fr-FR', { style: 'currency', currency: 'XOF' }).format(operation.montant)}
                         </h2>
                         <p className="text-gray-500 mt-1 text-sm flex items-center justify-center">
                             <Calendar className="h-4 w-4 mr-1" /> {operation.date}

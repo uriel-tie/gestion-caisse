@@ -70,7 +70,6 @@ final class DemandeController extends AbstractController
                 'statut' => $demande->getStatut(),
                 'dateCreation' => $demande->getCreatedAt()?->format('Y-m-d H:i:s'),
                 'motif' => $demande->getDescription(),
-                // CORRECTION ICI : On n'utilise PAS getPrenom() car il n'existe pas
                 'demandeur' => [
                     'nom' => $demande->getDemandeur()->getNom(),
                     'email' => $demande->getDemandeur()->getEmail()

@@ -113,7 +113,7 @@ export const NewDemandeModal: React.FC<NewDemandeModalProps> = ({ onClose, onSuc
               {/* Montant */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Montant (€) <span className="text-red-600">*</span>
+                  Montant (F) <span className="text-red-600">*</span>
                 </label>
                 <input
                   type="number"

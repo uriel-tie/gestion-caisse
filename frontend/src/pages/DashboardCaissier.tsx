@@ -14,7 +14,6 @@ interface DashboardCaissierProps {
 }
 
 export default function DashboardCaissier({ user, onLogout }: DashboardCaissierProps) {
-  // État simplifié : on stocke tout l'objet renvoyé par /api/sessions/me
   const [statusData, setStatusData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   
@@ -29,37 +28,97 @@ export default function DashboardCaissier({ user, onLogout }: DashboardCaissierP
   const token = localStorage.getItem('token');
 
   const refreshStatus = async () => {
+    setLoading(true);
+    const token = localStorage.getItem('token');
+    
+    if (!token) {
+        setLoading(false);
+        return;
+    }
+
     try {
-        const res = await fetch('https://127.0.0.1:8000/api/sessions/me', {
-            headers: { 'Authorization': `Bearer ${token}` }
+        const res = await fetch('https://127.0.0.1:8000/api/caisses/me', {
+            headers: { 
+                'Authorization': `Bearer ${token}`,
+                'Accept': 'application/json'
+            }
         });
-        if (res.ok) setStatusData(await res.json());
-    } catch (e) { console.error(e); } 
-    finally { setLoading(false); }
+
+        if (res.ok) {
+            const data = await res.json();
+            console.log("Données Caisse reçues:", data); // DEBUG
+            setStatusData(data); 
+        } else {
+            console.error("Erreur récupération statut caisse:", res.status);
+        }
+    } catch (e) {
+        console.error("Erreur réseau:", e);
+    } finally {
+        setLoading(false);
+    }
   };
 
   useEffect(() => { refreshStatus(); }, []);
 
-  // Action : Ouvrir (Un simple clic maintenant)
+  // Action : Ouvrir
   const handleOpen = async () => {
-    if (!confirm("Confirmer l'ouverture de caisse avec le solde actuel ?")) return;
+    // On demande le montant d'ouverture (Fond de caisse)
+    const fond = prompt("Montant du fond de caisse à l'ouverture ?", "0");
+    if (fond === null) return; // Annulé
+
     setLoading(true);
-    await fetch('https://127.0.0.1:8000/api/sessions/open', {
-        method: 'POST',
-        headers: { 'Authorization': `Bearer ${token}` } // Plus de body json nécessaire
-    });
-    await refreshStatus();
+    try {
+        const res = await fetch('https://127.0.0.1:8000/api/sessions/open', {
+            method: 'POST',
+            headers: { 
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${token}` 
+            },
+            // CORRECTION IMPORTANTE : On envoie l'ID de la caisse récupéré via statusData
+            body: JSON.stringify({ 
+                caisse_id: statusData.caisse_id, 
+                montant_ouverture: parseFloat(fond) 
+            })
+        });
+
+        if (!res.ok) {
+            const err = await res.json();
+            alert("Erreur ouverture: " + err.message);
+        } else {
+            await refreshStatus();
+        }
+    } catch (e) {
+        alert("Erreur réseau lors de l'ouverture");
+    }
   };
 
   // Action : Fermer
   const handleClose = async (e: React.FormEvent) => {
     e.preventDefault();
-    await fetch('https://127.0.0.1:8000/api/sessions/close', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
-        body: JSON.stringify({ montant_final: parseFloat(montantFermeture) })
-    });
-    window.location.reload();
+    if (!statusData?.session_id) return;
+
+    if(!confirm("Confirmer la fermeture de caisse ? Cette action est irréversible.")) return;
+
+    try {
+        // CORRECTION URL : On utilise l'ID de session dynamique
+        const res = await fetch(`https://127.0.0.1:8000/api/sessions/${statusData.session_id}/close`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+            body: JSON.stringify({ montant_physique: parseFloat(montantFermeture) })
+        });
+
+        const result = await res.json();
+
+        if (res.ok) {
+            // Affichage du bilan
+            alert(`Caisse fermée.\nÉcart constaté : ${result.ecart} FCFA`);
+            window.location.reload();
+        } else {
+            alert("Erreur fermeture: " + result.message);
+        }
+    } catch (e) {
+        console.error(e);
+    }
   };
 
   // --- RENDU DU WIDGET "STATION DE TRAVAIL" ---
@@ -67,7 +126,8 @@ export default function DashboardCaissier({ user, onLogout }: DashboardCaissierP
     if (loading) return <div className="h-40 bg-gray-100 rounded-xl animate-pulse mb-8"></div>;
 
     // CAS A : PAS DE CAISSE ASSIGNÉE
-    if (!statusData?.caisse) {
+    // Correction : on vérifie 'has_caisse' (booléen) renvoyé par le backend
+    if (!statusData?.has_caisse) {
         return (
             <div className="bg-red-50 border border-red-200 rounded-xl p-6 mb-8 flex items-center justify-between">
                 <div className="flex items-center text-red-800">
@@ -82,12 +142,18 @@ export default function DashboardCaissier({ user, onLogout }: DashboardCaissierP
     }
 
     // CAS B : CAISSE FERMÉE (Mais assignée) -> BOUTON OUVRIR
-    if (!statusData.hasSession) {
+    // Correction : on vérifie le string 'session_status'
+    if (statusData.session_status !== 'OUVERTE') {
         return (
             <div className="bg-white border-l-4 border-blue-500 rounded-xl p-6 mb-8 shadow-sm flex items-center justify-between">
                 <div>
-                    <h2 className="text-xl font-bold text-gray-800 flex items-center"><Monitor className="mr-2 h-5 w-5 text-blue-600"/> {statusData.caisse.nom}</h2>
-                    <p className="text-gray-500 text-sm mt-1">État : <span className="font-bold text-gray-700">FERMÉE</span>. Prête à l'ouverture.</p>
+                    <h2 className="text-xl font-bold text-gray-800 flex items-center">
+                        <Monitor className="mr-2 h-5 w-5 text-blue-600"/> 
+                        {statusData.caisse_nom} {/* Correction nom */}
+                    </h2>
+                    <p className="text-gray-500 text-sm mt-1">
+                        État : <span className="font-bold text-gray-700">FERMÉE</span>. Prête à l'ouverture.
+                    </p>
                 </div>
                 <button 
                     onClick={handleOpen}
@@ -108,25 +174,26 @@ export default function DashboardCaissier({ user, onLogout }: DashboardCaissierP
                     <span className="bg-green-100 text-green-800 px-3 py-1 rounded-full text-xs font-bold flex items-center border border-green-200">
                         <Unlock className="h-3 w-3 mr-1" /> SESSION ACTIVE
                     </span>
-                    <span className="ml-3 text-gray-500 text-sm font-medium">Poste : {statusData.caisse.nom}</span>
+                    <span className="ml-3 text-gray-500 text-sm font-medium">Poste : {statusData.caisse_nom}</span>
                 </div>
                 {!showClotureInput ? (
                     <button onClick={() => setShowClotureInput(true)} className="text-red-600 hover:text-red-800 text-sm font-medium flex items-center underline">
                         <Lock className="h-4 w-4 mr-1"/> Fermer la caisse
                     </button>
                 ) : (
-                    <form onSubmit={handleClose} className="flex items-center gap-2 bg-white p-1 rounded border border-gray-300 shadow-sm">
+                    <form onSubmit={handleClose} className="flex items-center gap-2 bg-white p-1 rounded border border-red-300 shadow-sm animate-pulse">
                         <input 
                             autoFocus
                             type="number" 
                             step="0.01" 
-                            placeholder="Solde compté" 
-                            className="w-24 p-1 text-sm outline-none"
+                            placeholder="Solde compté ?" 
+                            className="w-32 p-1 text-sm outline-none font-bold text-red-600"
                             value={montantFermeture}
                             onChange={e => setMontantFermeture(e.target.value)}
                             required
                         />
-                        <button className="bg-red-600 text-white px-2 py-1 rounded text-xs font-bold">OK</button>
+                        <button className="bg-red-600 text-white px-3 py-1 rounded text-xs font-bold hover:bg-red-700">VALIDER</button>
+                        <button type="button" onClick={() => setShowClotureInput(false)} className="text-gray-400 hover:text-gray-600 px-1">&times;</button>
                     </form>
                 )}
             </div>
@@ -146,15 +213,13 @@ export default function DashboardCaissier({ user, onLogout }: DashboardCaissierP
                         <span className="font-bold text-gray-700">DÉCAISSER</span>
                     </button>
                 </div>
-                
             </div>
-               {/* AJOUT DU TERMINAL ICI */}
-        <PaymentTerminal onSuccess={refreshStatus} />
 
-        <h3 className="text-lg font-bold text-gray-800 mb-4 mt-8">Journal de Session</h3>
-        <JournalTable />
+            <PaymentTerminal onSuccess={refreshStatus} />
+
+            <h3 className="text-lg font-bold text-gray-800 mb-4 mt-8">Journal de Session</h3>
+            <JournalTable />
         </div>
-        
     );
   };
 
@@ -176,10 +241,8 @@ export default function DashboardCaissier({ user, onLogout }: DashboardCaissierP
             <EncaissementModal isOpen={showEncaissement} onClose={() => setShowEncaissement(false)} onSuccess={refreshStatus} />
             <DecaissementModal isOpen={showDecaissement} onClose={() => setShowDecaissement(false)} onSuccess={refreshStatus} />
 
-            {/* WIDGET CAISSE (Change selon l'état mais ne bloque pas la page) */}
             {renderCaisseWidget()}
 
-            {/* WIDGET RH (Toujours visible) */}
             <hr className="border-gray-200 mb-8" />
             <MyRequestsWidget />
         </main>

@@ -118,7 +118,7 @@ export default function PaymentTerminal({ onSuccess }: PaymentTerminalProps) {
                             <p className="text-sm text-gray-500">Demandeur : {demande.demandeur_nom || 'Employé'}</p>
                         </div>
                         <div className="text-right">
-                            <span className="block font-mono text-xl font-bold text-gray-900">{parseFloat(demande.montant).toFixed(2)} €</span>
+                            <span className="block font-mono text-xl font-bold text-gray-900">{parseFloat(demande.montant).toFixed(2)} F CFA</span>
                             <span className={`text-xs font-bold px-2 py-1 rounded ${
                                 demande.statut === 'VALIDEE_A_PAYER'  
                                 ? 'bg-green-100 text-green-800' 

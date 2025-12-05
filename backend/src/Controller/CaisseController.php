@@ -4,13 +4,16 @@ namespace App\Controller;
 
 use App\Entity\Caisse;
 use App\Entity\Utilisateur;
+use App\Entity\SessionCaisse;
 use App\Repository\CaisseRepository;
+use App\Repository\SessionCaisseRepository;
 use App\Repository\UtilisateurRepository;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\Routing\Annotation\Route;
+use App\Repository\CompteComptableRepository;
 
 #[Route('/api/caisses', name: 'api_caisses_')]
 class CaisseController extends AbstractController
@@ -22,6 +25,7 @@ class CaisseController extends AbstractController
         $data = [];
         foreach ($caisses as $c) {
             $employe = $c->getEmployeAssigne();
+            $compte = $c->getCompteComptable();
             $data[] = [
                 'id' => $c->getId(),
                 'nom' => $c->getNom(),
@@ -30,17 +34,62 @@ class CaisseController extends AbstractController
                     'id' => $employe->getId(),
                     'nom' => $employe->getNom(),
                     'email' => $employe->getEmail(),
+                ] : null,
+                'compte' => $compte ? [
+                    'id' => $compte->getId(),
+                    'numero' => $compte->getNumero(),
+                    'libelle' => $compte->getLibelle()
                 ] : null
             ];
         }
         return $this->json($data);
+    }
+    #[Route('/me', name: 'api_caisse_me', methods: ['GET'])]
+    public function myCaisseStatus(
+        CaisseRepository $caisseRepo, 
+        SessionCaisseRepository $sessionRepo
+    ): JsonResponse
+    {
+        $user = $this->getUser();
+        if (!$user) return $this->json(['message' => 'Non authentifié'], 401);
+
+        // 1. Chercher si l'utilisateur est assigné à une caisse
+        // (Supposons que ton entité Caisse a un champ 'employeAssigne')
+        $maCaisse = $caisseRepo->findOneBy(['employeAssigne' => $user]);
+
+        if (!$maCaisse) {
+            return $this->json([
+                'has_caisse' => false,
+                'message' => 'Aucune caisse ne vous est assignée.'
+            ]);
+        }
+
+        // 2. Si oui, vérifier s'il a une session OUVERTE sur cette caisse
+        $sessionActive = $sessionRepo->findOneBy([
+            'caissier' => $user,
+            'caisse' => $maCaisse,
+            'statut' => SessionCaisse::STATUT_OUVERTE
+        ]);
+
+        return $this->json([
+            'has_caisse' => true,
+            'caisse_id' => $maCaisse->getId(),
+            'caisse_nom' => $maCaisse->getNom(),
+            'solde_actuel' => $maCaisse->getSolde(), // Utile pour l'affichage
+            
+            // Infos sur la session
+            'session_status' => $sessionActive ? 'OUVERTE' : 'FERMEE',
+            'session_id' => $sessionActive ? $sessionActive->getId() : null,
+            'date_ouverture' => $sessionActive ? $sessionActive->getDateOuverture()->format('c') : null
+        ]);
     }
 
     #[Route('', name: 'create', methods: ['POST'])]
     public function create(
         Request $request,
         EntityManagerInterface $em,
-        UtilisateurRepository $userRepo
+        UtilisateurRepository $userRepo,
+        CompteComptableRepository $compteRepo
     ): JsonResponse
     {
         $this->denyAccessUnlessGranted('ROLE_MANAGER');
@@ -62,6 +111,11 @@ class CaisseController extends AbstractController
             }
             $this->detachExistingAssignment($employe, $em);
             $caisse->setEmployeAssigne($employe);
+        }
+
+        if (!empty($data['compte_id'])) {
+            $compte = $compteRepo->find($data['compte_id']);
+            if ($compte) $caisse->setCompteComptable($compte);
         }
 
         $em->persist($caisse);

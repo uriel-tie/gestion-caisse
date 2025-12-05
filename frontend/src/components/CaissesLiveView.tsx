@@ -44,7 +44,7 @@ export default function CaissesLiveView() {
     // Polling toutes les 5s
     useEffect(() => {
         fetchCaisses();
-        const interval = setInterval(fetchCaisses, 5000);
+        const interval = setInterval(fetchCaisses, 15000);
         return () => clearInterval(interval);
     }, []);
 
@@ -82,7 +82,7 @@ export default function CaissesLiveView() {
                                         <Coins className="h-3 w-3 mr-1"/> Solde actuel
                                     </div>
                                     <div className="text-xl font-extrabold text-gray-900">
-                                        {new Intl.NumberFormat('fr-FR', { style: 'currency', currency: 'EUR' }).format(c.solde)}
+                                        {new Intl.NumberFormat('fr-FR', { style: 'currency', currency: 'XOF' }).format(c.solde)}
                                     </div>
                                 </div>
 

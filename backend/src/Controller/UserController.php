@@ -16,6 +16,55 @@ use Symfony\Component\Security\Http\Attribute\CurrentUser;
 #[Route('/api/users', name: 'api_users_')]
 class UserController extends AbstractController
 {
+   #[Route('/{id}', name: 'api_users_show', methods: ['GET'])]
+    public function show(string $id, UtilisateurRepository $utilisateurRepository): JsonResponse
+    {
+        // 1. On cherche l'utilisateur demandé par l'URL
+        $user = $utilisateurRepository->find($id);
+
+        if (!$user) {
+            return new JsonResponse(['message' => 'Utilisateur introuvable'], 404);
+        }
+
+        // 2. On récupère l'utilisateur connecté (via le Token)
+        $currentUser = $this->getUser();
+        if (!$currentUser) {
+             return new JsonResponse(['message' => 'Non authentifié'], 401);
+        }
+
+        // 3. SÉCURITÉ : Comparaison des IDs (plus fiable que l'identifier)
+        // On force la conversion en string pour éviter les problèmes UUID Object vs String
+        $currentUserId = (string) $currentUser->getId();
+        $requestedUserId = (string) $user->getId();
+        
+        $isAdmin = in_array('ROLE_ADMIN', $currentUser->getRoles());
+
+        // Si ce n'est pas moi ET que je ne suis pas admin => DEHORS
+        if ($currentUserId !== $requestedUserId && !$isAdmin) {
+            
+            // --- MODE DEBUG (Pour t'aider à comprendre) ---
+            // Affiche qui est connecté vs qui est demandé
+            return new JsonResponse([
+                'message' => 'Accès interdit',
+                'debug_info' => [
+                    'token_user_id' => $currentUserId,
+                    'token_email' => $currentUser->getUserIdentifier(),
+                    'requested_url_id' => $requestedUserId,
+                    'requested_email' => $user->getUserIdentifier()
+                ]
+            ], 403);
+        }
+
+        // 4. RÉPONSE
+        return new JsonResponse([
+            'id' => $user->getId(),
+            'email' => $user->getEmail(),
+            'nom' => method_exists($user, 'getNom') ? $user->getNom() : '',
+            'roles' => $user->getRoles(),
+            'password_must_be_changed' => $user->isPasswordMustBeChanged(),
+        ]);
+    }
+
     #[Route('', name: 'list', methods: ['GET'])]
     public function list(UtilisateurRepository $repo): JsonResponse
     {

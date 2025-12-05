@@ -177,7 +177,7 @@ export const MyRequestsWidget: React.FC = () => {
                   </td>
                   <td className="px-4 py-3 font-medium text-gray-800">{demande.titre}</td>
                   <td className="px-4 py-3 text-gray-800">
-                    {parseFloat(demande.montant).toFixed(2)} €
+                    {parseFloat(demande.montant).toFixed(2)} F CFA
                   </td>
                   <td className="px-4 py-3">
                     <span className={`px-3 py-1 rounded-full text-xs font-semibold ${getStatusBadgeColor(demande.statut)}`}>

@@ -76,7 +76,7 @@ export default function EncaissementModal({ isOpen, onClose, onSuccess }: Encais
 
           {/* Champ Montant */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Montant (€)</label>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Montant (F)</label>
             <div className="relative rounded-md shadow-sm">
               <input
                 type="number"
@@ -89,7 +89,7 @@ export default function EncaissementModal({ isOpen, onClose, onSuccess }: Encais
                 placeholder="0.00"
               />
               <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
-                <span className="text-gray-500 sm:text-sm">EUR</span>
+                <span className="text-gray-500 sm:text-sm">FCFA</span>
               </div>
             </div>
           </div>

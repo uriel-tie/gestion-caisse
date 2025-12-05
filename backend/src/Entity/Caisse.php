@@ -17,7 +17,7 @@ class Caisse
     private ?Uuid $id = null;
 
     #[ORM\Column(length: 100)]
-    private ?string $nom = null; // Ex: "Caisse Principale", "Caisse Boutique 1"
+    private ?string $nom = null; 
 
     #[ORM\Column]
     private bool $estOuverte = false; // Pour savoir vite si elle est dispo
@@ -29,6 +29,10 @@ class Caisse
     #[ORM\JoinColumn(nullable: true, unique: true)]
     private ?Utilisateur $employeAssigne = null;
 
+    #[ORM\ManyToOne(targetEntity: CompteComptable::class)]
+    #[ORM\JoinColumn(nullable: true)] // Nullable au début pour ne pas casser l'existant
+    private ?CompteComptable $compteComptable = null;
+
     public function getId(): ?Uuid { return $this->id; }
     
     public function getNom(): ?string { return $this->nom; }
@@ -36,6 +40,17 @@ class Caisse
 
     public function isEstOuverte(): ?bool { return $this->estOuverte; }
     public function setEstOuverte(bool $estOuverte): static { $this->estOuverte = $estOuverte; return $this; }
+
+    public function getCompteComptable(): ?CompteComptable
+    {
+        return $this->compteComptable;
+    }
+
+    public function setCompteComptable(?CompteComptable $compteComptable): static
+    {
+        $this->compteComptable = $compteComptable;
+        return $this;
+    }
 
     public function getEmployeAssigne(): ?Utilisateur
     {

@@ -108,4 +108,28 @@ class OperationRepository extends ServiceEntityRepository
 
         return $solde;
     }
+
+    public function getSumEntreesBySession(\App\Entity\SessionCaisse $session): float
+{
+    return (float) $this->createQueryBuilder('o')
+        ->select('SUM(o.montant)')
+        ->where('o.sessionCaisse = :session')
+        ->andWhere('o.type = :type') // Adapte selon tes types ('ENCAISSEMENT', 'ENTREE'...)
+        ->setParameter('session', $session)
+        ->setParameter('type', 'ENCAISSEMENT') 
+        ->getQuery()
+        ->getSingleScalarResult();
+}
+
+public function getSumSortiesBySession(\App\Entity\SessionCaisse $session): float
+{
+    return (float) $this->createQueryBuilder('o')
+        ->select('SUM(o.montant)')
+        ->where('o.sessionCaisse = :session')
+        ->andWhere('o.type = :type') // Adapte selon tes types ('DECAISSEMENT', 'SORTIE'...)
+        ->setParameter('session', $session)
+        ->setParameter('type', 'DECAISSEMENT')
+        ->getQuery()
+        ->getSingleScalarResult();
+}
 }

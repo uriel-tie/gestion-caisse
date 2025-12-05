@@ -3,10 +3,11 @@
 namespace App\DataFixtures;
 
 use App\Entity\Caisse;
-use App\Entity\SessionCaisse; // <--- Nouveau
+use App\Entity\CompteComptable;
 use App\Entity\ModePaiement;
 use App\Entity\Operation;
 use App\Entity\Service;
+use App\Entity\SessionCaisse;
 use App\Entity\Utilisateur;
 use Doctrine\Bundle\FixturesBundle\Fixture;
 use Doctrine\Persistence\ObjectManager;
@@ -23,78 +24,118 @@ class AppFixtures extends Fixture
 
     public function load(ObjectManager $manager): void
     {
-        // 1. MODES DE PAIEMENT
-        $modes = [];
-        $libelles = [['Espèces', 'LIQUIDE'], ['Carte Bancaire', 'BANQUE'], ['Chèque', 'BANQUE'], ['Virement', 'BANQUE']];
-        foreach ($libelles as [$libelle, $type]) {
-            $mode = new ModePaiement();
-            $mode->setLibelle($libelle);
-            $mode->setType($type);
-            $manager->persist($mode);
-            $modes[$libelle] = $mode;
-        }
+        // 1. SERVICES
+        $serviceCompta = new Service();
+        $serviceCompta->setNom('Comptabilité');
+        $manager->persist($serviceCompta);
 
-        // 2. SERVICES
-        $serviceCaisse = new Service();
-        $serviceCaisse->setNom('Caisse Centrale & Compta');
-        $manager->persist($serviceCaisse);
+        $serviceRH = new Service();
+        $serviceRH->setNom('Ressources Humaines');
+        $manager->persist($serviceRH);
 
-        $serviceIT = new Service();
-        $serviceIT->setNom('Département IT');
-        $manager->persist($serviceIT);
-
-        // 3. UTILISATEURS
-        $password = 'password123';
-
-        // Manager
+        // 2. UTILISATEURS
         $admin = new Utilisateur();
         $admin->setEmail('admin@cashflow.com');
-        $admin->setNom('Directeur Général');
-        $admin->setRoles(['ROLE_MANAGER']);
-        $admin->setPassword($this->hasher->hashPassword($admin, $password));
+        $admin->setNom('Super Admin');
+        $admin->setRoles(['ROLE_ADMIN', 'ROLE_MANAGER']);
+        $admin->setPassword($this->hasher->hashPassword($admin, 'password123'));
+        $admin->setEstActif(true);
+        $admin->setPasswordMustBeChanged(false);
         $manager->persist($admin);
 
-        // Caissier
+        $managerUser = new Utilisateur();
+        $managerUser->setEmail('manager@cashflow.com');
+        $managerUser->setNom('Directeur Financier');
+        $managerUser->setRoles(['ROLE_MANAGER']);
+        $managerUser->setPassword($this->hasher->hashPassword($managerUser, 'password123'));
+        $managerUser->setEstActif(true);
+        $managerUser->setPasswordMustBeChanged(false);
+        $manager->persist($managerUser);
+
+        $chefService = new Utilisateur();
+        $chefService->setEmail('chef@cashflow.com');
+        $chefService->setNom('Chef Compta');
+        $chefService->setRoles(['ROLE_CHEF_SERVICE']);
+        $chefService->setService($serviceCompta);
+        $chefService->setPassword($this->hasher->hashPassword($chefService, 'password123'));
+        $chefService->setEstActif(true);
+        $chefService->setPasswordMustBeChanged(false);
+        $manager->persist($chefService);
+
         $caissier = new Utilisateur();
         $caissier->setEmail('caissier@cashflow.com');
         $caissier->setNom('Thomas Guichet');
         $caissier->setRoles(['ROLE_CAISSIER']);
-        $caissier->setService($serviceCaisse);
-        $caissier->setPassword($this->hasher->hashPassword($caissier, $password));
+        $caissier->setPassword($this->hasher->hashPassword($caissier, 'password123'));
+        $caissier->setEstActif(true);
+        $caissier->setPasswordMustBeChanged(false); // Pour éviter la redirection au login
         $manager->persist($caissier);
 
-        // 4. CAISSES (NOUVEAU)
-        // On crée la caisse physique
+        // 3. COMPTES COMPTABLES
+        $compteCaisse = new CompteComptable();
+        $compteCaisse->setNumero('530');
+        $compteCaisse->setLibelle('Caisse Principale');
+        $compteCaisse->setType('TRESORERIE');
+        $manager->persist($compteCaisse);
+
+        $compteAchat = new CompteComptable();
+        $compteAchat->setNumero('606');
+        $compteAchat->setLibelle('Achats Fournitures');
+        $compteAchat->setType('DEPENSE');
+        $manager->persist($compteAchat);
+
+        $compteVente = new CompteComptable();
+        $compteVente->setNumero('707');
+        $compteVente->setLibelle('Ventes Marchandises');
+        $compteVente->setType('RECETTE');
+        $manager->persist($compteVente);
+
+        // 4. MODES DE PAIEMENT
+        $especes = new ModePaiement();
+        $especes->setLibelle('Espèces');
+        $especes->setType('ESPECE');
+        $manager->persist($especes);
+
+        $cb = new ModePaiement();
+        $cb->setLibelle('Carte Bancaire');
+        $cb->setType('ELECTRONIQUE');
+        $manager->persist($cb);
+
+        // 5. CAISSES PHYSIQUES
         $caissePrincipale = new Caisse();
-        $caissePrincipale->setNom('Caisse Principale 01');
-        $caissePrincipale->setEstOuverte(true); // Elle est utilisée
+        $caissePrincipale->setNom('Caisse Principale (Accueil)');
+        $caissePrincipale->setEstOuverte(true); // On simule qu'elle est déjà ouverte
+        $caissePrincipale->setSolde('1500.00'); // Fond de départ
+        $caissePrincipale->setEmployeAssigne($caissier);
+        $caissePrincipale->setCompteComptable($compteCaisse);
         $manager->persist($caissePrincipale);
 
-        // 5. SESSION DE CAISSE (NOUVEAU & CRUCIAL)
-        // On simule que Thomas a ouvert sa caisse ce matin
+        $caisseSecondaire = new Caisse();
+        $caisseSecondaire->setNom('Caisse Boutique');
+        $caisseSecondaire->setEstOuverte(false);
+        $caisseSecondaire->setSolde('0.00');
+        $manager->persist($caisseSecondaire);
+
+        // 6. SESSION ACTIVE (Pour le caissier)
         $session = new SessionCaisse();
-        $session->setCaisse($caissePrincipale);
         $session->setCaissier($caissier);
+        $session->setCaisse($caissePrincipale);
+        $session->setDateOuverture(new \DateTimeImmutable());
+        $session->setMontantOuverture('500.00'); // Il a ouvert avec 500
         $session->setStatut(SessionCaisse::STATUT_OUVERTE);
-        $session->setMontantOuverture('0.00'); // Il a commencé à vide (ou avec un fond)
         $manager->persist($session);
 
-        // 6. OPÉRATION (Fond de Caisse)
-        // Cette opération appartient à la session créée juste au-dessus
-        $fondCaisse = new Operation();
-        $fondCaisse->setType('ENCAISSEMENT');
-        $fondCaisse->setMontant('200.00');
-        $fondCaisse->setDate(new \DateTimeImmutable('now'));
-        $fondCaisse->setCompteComptable('530');
-        $fondCaisse->setStatut(Operation::STATUT_VALIDEE);
-        $fondCaisse->setMotif('Fond de caisse initial (Fixtures)');
-        
-        // Liaisons
-        $fondCaisse->setUtilisateur($caissier); // C'est Thomas qui a fait l'op
-        $fondCaisse->setModePaiement($modes['Espèces']);
-        $fondCaisse->setSessionCaisse($session); // <--- OBLIGATOIRE MAINTENANT
-
-        $manager->persist($fondCaisse);
+        // 7. OPÉRATIONS (Historique)
+        $op1 = new Operation();
+        $op1->setType('ENCAISSEMENT');
+        $op1->setMontant('1000.00');
+        $op1->setDate(new \DateTimeImmutable('-1 hour'));
+        $op1->setStatut(Operation::STATUT_VALIDEE);
+        $op1->setModePaiement($especes);
+        $op1->setUtilisateur($caissier);
+        $op1->setSessionCaisse($session);
+        $op1->setMotif('Vente initale importante');
+        $manager->persist($op1);
 
         $manager->flush();
     }

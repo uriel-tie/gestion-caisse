@@ -3,6 +3,7 @@
 namespace App\Controller;
 
 use App\Entity\Operation;
+use App\Entity\Justificatif; // <--- Import Ajouté
 use App\Entity\ModePaiement;
 use App\Repository\ModePaiementRepository;
 use App\Repository\OperationRepository;
@@ -19,25 +20,16 @@ class OperationController extends AbstractController
     #[Route('', name: 'list', methods: ['GET'])]
     public function index(
         OperationRepository $operationRepository, 
-        \App\Repository\CaisseRepository $caisseRepo // <--- Ajout de l'injection
+        \App\Repository\CaisseRepository $caisseRepo
     ): JsonResponse
     {
         $user = $this->getUser();
 
-        // CAS 1 : MANAGER -> Il voit tout (comme avant)
         if ($this->isGranted('ROLE_MANAGER')) {
             $operations = $operationRepository->findLatest(20);
-        } 
-        // CAS 2 : CAISSIER -> Il ne voit que SA caisse assignée
-        else {
-            // On trouve la caisse assignée à l'utilisateur
+        } else {
             $caisse = $caisseRepo->findOneBy(['employeAssigne' => $user]);
-            
-            if (!$caisse) {
-                // Si pas de caisse assignée, il ne voit rien
-                return $this->json([]);
-            }
-            // On filtre sur cette caisse uniquement
+            if (!$caisse) return $this->json([]);
             $operations = $operationRepository->findLatestByCaisse($caisse, 20);
         }
 
@@ -101,18 +93,22 @@ class OperationController extends AbstractController
 
         $em->persist($op);
 
-        // --- MISE A JOUR DU SOLDE CAISSE (AJOUT) ---
+        // --- GESTION DU JUSTIFICATIF (AJOUT) ---
+        $this->processJustificatif($op, $data, $em);
+        // ---------------------------------------
+
+        // --- MISE A JOUR SOLDE ---
         $caisse = $session->getCaisse();
         $nouveauSolde = (float)$caisse->getSolde() + (float)$data['montant'];
         $caisse->setSolde((string)$nouveauSolde);
         $em->persist($caisse);
-        // -------------------------------------------
+        // -------------------------
 
         $em->flush();
 
         return $this->json([
             'message' => 'Encaissement enregistré !',
-            'nouveau_solde' => $nouveauSolde // On renvoie le vrai nouveau solde
+            'nouveau_solde' => $nouveauSolde
         ], 201);
     }
 
@@ -137,7 +133,7 @@ class OperationController extends AbstractController
 
         if ($montant <= 0) return $this->json(['error' => 'Montant invalide'], 400);
 
-        // Vérification du solde de la session avant de continuer
+        // Vérif solde session
         $soldeSession = (float) $session->getMontantOuverture() + $opRepo->getSoldeMouvementsSession($session);
         if ($montant > $soldeSession) {
             return $this->json([
@@ -160,28 +156,31 @@ class OperationController extends AbstractController
         $op->setSessionCaisse($session);
 
         // Validation conditionnelle
-        $seuilAuto = 50.0; 
+        $seuilAuto = 50000.0; // J'ai remis 50000 par défaut (valeur réaliste CFA), adapte si besoin
         $isManager = in_array('ROLE_MANAGER', $user->getRoles());
 
         if ($isManager || $montant <= $seuilAuto) {
             $op->setStatut(Operation::STATUT_VALIDEE);
             $msg = "Décaissement validé.";
             
-            // --- MISE A JOUR DU SOLDE CAISSE (SOUSTRACTION) ---
-            // On ne touche au solde que si c'est validé !
+            // MAJ Solde Caisse
             $caisse = $session->getCaisse();
             $nouveauSolde = (float)$caisse->getSolde() - $montant;
             $caisse->setSolde((string)$nouveauSolde);
             $em->persist($caisse);
-            // --------------------------------------------------
 
         } else {
             $op->setStatut(Operation::STATUT_EN_ATTENTE);
             $msg = "Montant élevé : En attente de validation.";
-            // On ne touche PAS au solde ici
         }
 
         $em->persist($op);
+
+        // --- GESTION DU JUSTIFICATIF (AJOUT) ---
+        // On enregistre le justif même si l'opération est en attente (la preuve est fournie)
+        $this->processJustificatif($op, $data, $em);
+        // ---------------------------------------
+
         $em->flush();
 
         return $this->json([
@@ -189,5 +188,42 @@ class OperationController extends AbstractController
             'statut' => $op->getStatut(),
             'id' => $op->getId()
         ], 201);
+    }
+
+    /**
+     * Méthode privée pour gérer la création du justificatif (Bon Interne)
+     */
+    private function processJustificatif(Operation $op, array $data, EntityManagerInterface $em): void
+    {
+        // On vérifie si le frontend a envoyé le flag 'is_bon_interne'
+        if (isset($data['is_bon_interne']) && $data['is_bon_interne'] === true) {
+            
+            $justificatif = new Justificatif();
+            
+            // IMPORTANT : C'est le Justificatif qui porte la relation vers l'Opération
+            $justificatif->setOperation($op);
+            
+            // On définit le type (Assure-toi que la constante ou le string correspond à ton entité)
+            $justificatif->setType('BON_INTERNE'); 
+
+            // 1. Les détails du bon (Tableau JSON : Article, Qté, Prix...)
+            if (!empty($data['details'])) {
+                $justificatif->setContenuJson($data['details']);
+            }
+
+            // 2. La signature (Base64)
+            if (!empty($data['signature'])) {
+                $justificatif->setSignatureData($data['signature']);
+            }
+            
+            // 3. Le bénéficiaire (On l'ajoute dans le JSON pour regrouper les infos)
+            if (!empty($data['beneficiaire'])) {
+                $content = $justificatif->getContenuJson() ?? [];
+                $content['beneficiaire_nom'] = $data['beneficiaire'];
+                $justificatif->setContenuJson($content);
+            }
+
+            $em->persist($justificatif);
+        }
     }
 }

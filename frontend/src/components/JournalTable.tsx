@@ -128,7 +128,7 @@ export default function JournalTable() {
                                 </td>
                                 <td className={`px-6 py-4 whitespace-nowrap text-sm text-right font-bold 
                                     ${op.type === 'ENCAISSEMENT' ? 'text-green-600' : 'text-red-600'}`}>
-                                    {op.type === 'DECAISSEMENT' ? '-' : '+'}{new Intl.NumberFormat('fr-FR', { style: 'currency', currency: 'EUR' }).format(op.montant)}
+                                    {op.type === 'DECAISSEMENT' ? '-' : '+'}{new Intl.NumberFormat('fr-FR', { style: 'currency', currency: 'XOF' }).format(op.montant)}
                                 </td>
                                 <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                                     <Eye className="h-5 w-5 text-gray-300 group-hover:text-pink-600" />

@@ -146,7 +146,7 @@ export default function AdminStructure() {
                             <div>
                                 <label className="block text-xs text-gray-500 mb-1">Employé assigné</label>
                                 <select
-                                    value={c.employe?.id || ''}
+                                    value={c.employeAssigne?.id || ''}
                                     onChange={(e) => handleAssignCaisse(c.id, e.target.value)}
                                     className="w-full border rounded-lg px-3 py-2"
                                 >

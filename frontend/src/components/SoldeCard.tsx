@@ -63,8 +63,8 @@ export default function SoldeCard() {
 
     // Formatage
     const formattedSolde = solde !== null 
-        ? new Intl.NumberFormat('fr-FR', { style: 'currency', currency: 'EUR' }).format(solde)
-        : '--- €';
+        ? new Intl.NumberFormat('fr-FR', { style: 'currency', currency: 'XOF' }).format(solde)
+        : '--- F';
 
     return (
         <div className="bg-white overflow-hidden shadow-md rounded-xl border border-gray-100 transition-all hover:shadow-lg">
