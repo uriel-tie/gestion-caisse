@@ -1,10 +1,11 @@
 import React, { useState, useEffect } from 'react';
-import { ArrowLeft, Settings, Users, BookOpen } from 'lucide-react'; // Ajout BookOpen
+import { ArrowLeft, Settings, Users, BookOpen, CreditCard } from 'lucide-react'; // Ajout BookOpen
 import { useNavigate } from 'react-router-dom';
 import type { UserData } from '../types';
 import AdminStructure from '../components/AdminStructure';
 import AdminUsers from '../components/AdminUsers';
-import AdminCompta from '../components/AdminCompta'; // <--- Import Nouveau
+import AdminCompta from '../components/AdminCompta'; 
+import AdminModes from '../components/AdminModes';
 
 interface AdminPageProps {
     user: UserData;
@@ -13,10 +14,7 @@ interface AdminPageProps {
 
 export default function AdminPage({ user }: AdminPageProps) {
     const navigate = useNavigate();
-    // On ajoute 'compta' dans les types d'onglets
-    const [activeTab, setActiveTab] = useState<'structure' | 'users' | 'compta'>('users');
-
-    // ... (Sécurité inchangée) ...
+    const [activeTab, setActiveTab] = useState<'structure' | 'users' | 'compta' | 'modes'>('users');
 
     // Fonction utilitaire pour le style des onglets
     const getTabClass = (tabName: string, colorClass: string) => {
@@ -61,12 +59,17 @@ export default function AdminPage({ user }: AdminPageProps) {
                         <Settings className="mr-2 h-5 w-5" /> Services & Caisses
                     </button>
 
-                    {/* NOUVEL ONGLET */}
                     <button
                         onClick={() => setActiveTab('compta')}
                         className={getTabClass('compta', 'text-orange-600')}
                     >
                         <BookOpen className="mr-2 h-5 w-5" /> Plan Comptable
+                    </button>
+
+                    <button 
+                    onClick={() => setActiveTab('modes')} className={getTabClass('modes', 'text-indigo-600')}
+                    >
+                         <CreditCard className="mr-2 h-5 w-5" /> Modes Paiement
                     </button>
                 </div>
 
@@ -75,6 +78,7 @@ export default function AdminPage({ user }: AdminPageProps) {
                     {activeTab === 'users' && <AdminUsers />}
                     {activeTab === 'structure' && <AdminStructure />}
                     {activeTab === 'compta' && <AdminCompta />}
+                    {activeTab === 'modes' && <AdminModes />}
                 </div>
             </div>
         </div>

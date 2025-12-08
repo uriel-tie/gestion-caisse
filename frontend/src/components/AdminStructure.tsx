@@ -9,11 +9,14 @@ export default function AdminStructure() {
     const [newCaisse, setNewCaisse] = useState('');
     const [newCaisseEmploye, setNewCaisseEmploye] = useState('');
     const token = localStorage.getItem('token');
+    const [comptes, setComptes] = useState<any[]>([]);
+    const [newCaisseCompte, setNewCaisseCompte] = useState('');
 
     // Chargement initial
     useEffect(() => {
         fetchData('services', setServices);
         fetchData('caisses', setCaisses);
+        fetchData('comptes', setComptes);
         fetchUsers();
     }, []);
 
@@ -56,6 +59,15 @@ export default function AdminStructure() {
             fetchData('caisses', setCaisses);
         }
     };
+
+    const handleUpdateCaisse = async (caisseId: string, payload: object) => {
+    const res = await fetch(`https://127.0.0.1:8000/api/caisses/${caisseId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+        body: JSON.stringify(payload)
+    });
+    if (res.ok) fetchData('caisses', setCaisses);
+};
 
     return (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
@@ -114,16 +126,32 @@ export default function AdminStructure() {
                             <option key={c.id} value={c.id}>{c.nom}</option>
                         ))}
                     </select>
+
+                    <select
+                        value={newCaisseCompte}
+                        onChange={(e) => setNewCaisseCompte(e.target.value)}
+                        className="border rounded-lg px-3 py-2"
+                    >
+                        <option value="">-- Compte Comptable --</option>
+                        {comptes.map((c: any) => (
+                            <option key={c.id} value={c.id}>{c.numero} - {c.libelle}</option>
+                        ))}
+                    </select>
                 </div>
                 <button 
                     onClick={() => handleCreate(
                         'caisses',
-                        { nom: newCaisse, employe_id: newCaisseEmploye || null },
+                        { 
+                            nom: newCaisse, 
+                            employe_id: newCaisseEmploye || null,
+                            compte_id: newCaisseCompte || null // Ajout ici
+                        },
                         'caisses',
                         setCaisses,
                         () => {
                             setNewCaisse('');
                             setNewCaisseEmploye('');
+                            setNewCaisseCompte('');
                         }
                     )}
                     className="w-full bg-green-600 text-white py-2 rounded-lg hover:bg-green-700 mb-6 disabled:opacity-50"
@@ -158,6 +186,20 @@ export default function AdminStructure() {
                                     ))}
                                 </select>
                             </div>
+
+                            <div className="mt-2">
+    <label className="block text-xs text-gray-500 mb-1">Compte Comptable</label>
+    <select
+        value={c.compte?.id || ''}
+        onChange={(e) => handleUpdateCaisse(c.id, { compte_id: e.target.value || null })}
+        className="w-full border rounded-lg px-3 py-2 text-sm"
+    >
+        <option value="">-- Non défini --</option>
+        {comptes.map((cc: any) => (
+            <option key={cc.id} value={cc.id}>{cc.numero} - {cc.libelle}</option>
+        ))}
+    </select>
+</div>
                         </li>
                     ))}
                 </ul>

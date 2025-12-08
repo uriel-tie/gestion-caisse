@@ -12,6 +12,12 @@ interface Operation {
     utilisateur: string;
     motif: string;
     caisse: string;
+    justificatif?: {
+        type: string;
+        url?: string;
+        contenu?: any;
+        signature?: string;
+    } | null;
 }
 
 export default function JournalTable() {
@@ -63,6 +69,7 @@ export default function JournalTable() {
             <OperationDetailModal 
                 operation={selectedOp} 
                 onClose={() => setSelectedOp(null)} 
+                onUpdate={fetchOperations} // <--- AJOUT : On passe la fonction de refresh
             />
 
             <div className="bg-white shadow overflow-hidden border-b border-gray-200 sm:rounded-lg mt-6">

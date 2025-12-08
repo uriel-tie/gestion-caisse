@@ -20,7 +20,8 @@ class OperationController extends AbstractController
     #[Route('', name: 'list', methods: ['GET'])]
     public function index(
         OperationRepository $operationRepository, 
-        \App\Repository\CaisseRepository $caisseRepo
+        \App\Repository\CaisseRepository $caisseRepo,
+        Request $request 
     ): JsonResponse
     {
         $user = $this->getUser();
@@ -39,6 +40,19 @@ class OperationController extends AbstractController
             $caisse = $sessionCaisse ? $sessionCaisse->getCaisse() : null;
             $nomCaisse = $caisse ? $caisse->getNom() : 'N/A';
 
+            // Préparation des données du justificatif
+            $justifData = null;
+            $justif = $op->getJustificatif();
+            
+            if ($justif) {
+                $justifData = [
+                    'type' => $justif->getType(),
+                    'contenu' => $justif->getContenuJson(),
+                    'signature' => $justif->getSignatureData(),
+                    'url' => $justif->getChemin() ? $request->getSchemeAndHttpHost() . '/' . $justif->getChemin() : null, 
+                ];
+            }
+
             $data[] = [
                 'id' => $op->getId(),
                 'type' => $op->getType(),
@@ -49,10 +63,44 @@ class OperationController extends AbstractController
                 'utilisateur' => $op->getUtilisateur() ? $op->getUtilisateur()->getNom() : 'Inconnu',
                 'motif' => $op->getMotif() ?? 'Non précisé',
                 'caisse' => $nomCaisse,
+                'justificatif' => $justifData, 
             ];
         }
 
         return $this->json($data);
+    }
+
+    // AJOUT : Route pour attacher un justificatif après coup
+    #[Route('/{id}/attach-justificatif', name: 'attach_justificatif', methods: ['POST'])]
+    public function attachJustificatif(
+        Operation $operation,
+        Request $request,
+        EntityManagerInterface $em
+    ): JsonResponse
+    {
+        // 1. Vérifier si un justificatif existe déjà
+        if ($operation->getJustificatif()) {
+            return $this->json(['error' => 'Cette opération possède déjà un justificatif.'], 400);
+        }
+
+        // 2. Récupérer les données (Base64)
+        $data = json_decode($request->getContent(), true);
+
+        if (empty($data['fichier_data']) || empty($data['fichier_nom'])) {
+            return $this->json(['error' => 'Fichier manquant ou invalide.'], 400);
+        }
+
+        try {
+            // 3. Réutiliser la logique de création (ou la refaire ici pour isoler)
+            $this->processJustificatif($operation, $data, $em);
+            
+            $em->flush(); // Important : On sauvegarde en base
+
+            return $this->json(['message' => 'Justificatif ajouté avec succès !']);
+
+        } catch (\Exception $e) {
+            return $this->json(['error' => $e->getMessage()], 500);
+        }
     }
 
     #[Route('/encaissement', name: 'encaissement', methods: ['POST'])]
