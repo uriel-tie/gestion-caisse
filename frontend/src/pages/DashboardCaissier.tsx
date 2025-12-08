@@ -1,5 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { Search, DollarSign, LogOut, Lock, Unlock, Monitor, Power, AlertCircle, Activity } from 'lucide-react';
+import { DollarSign, LogOut, Lock, Unlock, Monitor, Power, AlertCircle, Activity, ArrowRight } from 'lucide-react';
+import Swal from 'sweetalert2';
+import withReactContent from 'sweetalert2-react-content';
+
 import type { UserData } from '../types';
 import SoldeCard from '../components/SoldeCard';
 import EncaissementModal from '../components/EncaissementModal';
@@ -7,6 +10,9 @@ import DecaissementModal from '../components/DecaissementModal';
 import { MyRequestsWidget } from '../components/MyRequestsWidget';
 import PaymentTerminal from '../components/PaymentTerminal';
 import JournalTable from '../components/JournalTable';
+
+// Initialisation de SweetAlert pour React
+const MySwal = withReactContent(Swal);
 
 interface DashboardCaissierProps {
   user: UserData;
@@ -21,16 +27,19 @@ export default function DashboardCaissier({ user, onLogout }: DashboardCaissierP
   const [showEncaissement, setShowEncaissement] = useState(false);
   const [showDecaissement, setShowDecaissement] = useState(false);
   
-  // État Clôture
+  // État Clôture (On garde l'input visible pour la saisie rapide)
   const [showClotureInput, setShowClotureInput] = useState(false);
   const [montantFermeture, setMontantFermeture] = useState('');
 
   const token = localStorage.getItem('token');
 
+  // Helper pour formater les montants
+  const formatMoney = (amount: number) => {
+    return new Intl.NumberFormat('fr-FR', { style: 'currency', currency: 'XOF' }).format(amount);
+  };
+
   const refreshStatus = async () => {
     setLoading(true);
-    const token = localStorage.getItem('token');
-    
     if (!token) {
         setLoading(false);
         return;
@@ -46,10 +55,7 @@ export default function DashboardCaissier({ user, onLogout }: DashboardCaissierP
 
         if (res.ok) {
             const data = await res.json();
-            console.log("Données Caisse reçues:", data); // DEBUG
             setStatusData(data); 
-        } else {
-            console.error("Erreur récupération statut caisse:", res.status);
         }
     } catch (e) {
         console.error("Erreur réseau:", e);
@@ -60,11 +66,26 @@ export default function DashboardCaissier({ user, onLogout }: DashboardCaissierP
 
   useEffect(() => { refreshStatus(); }, []);
 
-  // Action : Ouvrir
+  // --- ACTION : OUVRIR SESSION (Avec SweetAlert) ---
   const handleOpen = async () => {
-    // On demande le montant d'ouverture (Fond de caisse)
-    const fond = prompt("Montant du fond de caisse à l'ouverture ?", "0");
-    if (fond === null) return; // Annulé
+    const { value: fond } = await MySwal.fire({
+        title: 'Ouverture de Caisse',
+        input: 'number',
+        inputLabel: 'Montant du fond de caisse initial',
+        inputPlaceholder: 'Ex: 0 ou 5000',
+        inputValue: 0,
+        showCancelButton: true,
+        confirmButtonText: 'Ouvrir la session',
+        cancelButtonText: 'Annuler',
+        confirmButtonColor: '#2563eb', // Bleu
+        inputValidator: (value) => {
+            if (!value || parseFloat(value) < 0) {
+                return 'Le montant doit être positif ou nul !';
+            }
+        }
+    });
+
+    if (fond === undefined) return; // Annulé
 
     setLoading(true);
     try {
@@ -74,7 +95,6 @@ export default function DashboardCaissier({ user, onLogout }: DashboardCaissierP
                 'Content-Type': 'application/json',
                 'Authorization': `Bearer ${token}` 
             },
-            // CORRECTION IMPORTANTE : On envoie l'ID de la caisse récupéré via statusData
             body: JSON.stringify({ 
                 caisse_id: statusData.caisse_id, 
                 montant_ouverture: parseFloat(fond) 
@@ -83,41 +103,125 @@ export default function DashboardCaissier({ user, onLogout }: DashboardCaissierP
 
         if (!res.ok) {
             const err = await res.json();
-            alert("Erreur ouverture: " + err.message);
+            MySwal.fire('Erreur', err.message || "Impossible d'ouvrir la caisse", 'error');
         } else {
             await refreshStatus();
+            MySwal.fire({
+                icon: 'success',
+                title: 'Session Ouverte',
+                text: 'Bonne journée de travail !',
+                timer: 2000,
+                showConfirmButton: false
+            });
         }
     } catch (e) {
-        alert("Erreur réseau lors de l'ouverture");
+        MySwal.fire('Erreur', "Erreur réseau lors de l'ouverture", 'error');
+    } finally {
+        setLoading(false);
     }
   };
 
-  // Action : Fermer
+  // --- ACTION : FERMER SESSION (Avec Logique Écart + SweetAlert) ---
   const handleClose = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!statusData?.session_id) return;
 
-    if(!confirm("Confirmer la fermeture de caisse ? Cette action est irréversible.")) return;
+    // 1. Calculs Préliminaires
+    const physique = parseFloat(montantFermeture || '0');
+    const theorique = parseFloat(statusData.solde_actuel || '0');
+    const ecart = physique - theorique;
+    const hasEcart = Math.abs(ecart) > 0.01;
 
-    try {
-        // CORRECTION URL : On utilise l'ID de session dynamique
-        const res = await fetch(`https://127.0.0.1:8000/api/sessions/${statusData.session_id}/close`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
-            body: JSON.stringify({ montant_physique: parseFloat(montantFermeture) })
-        });
+    // 2. Configuration de la Modale selon l'écart
+    let swalConfig: any = {
+        showCancelButton: true,
+        cancelButtonText: 'Annuler, je recompte',
+        focusCancel: hasEcart, // Si écart, on focus sur Annuler par sécurité
+    };
 
-        const result = await res.json();
+    if (hasEcart) {
+        // CAS ÉCART : ALERTE ROUGE
+        swalConfig = {
+            ...swalConfig,
+            title: '⚠️ ÉCART DE CAISSE DÉTECTÉ',
+            icon: 'warning',
+            html: `
+                <div class="text-left bg-red-50 p-4 rounded-lg border border-red-200">
+                    <p class="mb-2 text-gray-700">Attention, le montant compté ne correspond pas au solde théorique du logiciel.</p>
+                    <ul class="text-sm space-y-1">
+                        <li>Solde Théorique : <strong>${formatMoney(theorique)}</strong></li>
+                        <li>Solde Physique : <strong>${formatMoney(physique)}</strong></li>
+                        <li class="text-red-600 font-bold text-lg mt-2 pt-2 border-t border-red-200">
+                            Écart : ${ecart > 0 ? '+' : ''}${formatMoney(ecart)}
+                        </li>
+                    </ul>
+                    <p class="mt-4 text-xs text-red-500 font-semibold uppercase">Confirmer la fermeture enregistrera cet écart comptable.</p>
+                </div>
+            `,
+            confirmButtonText: 'Oui, fermer avec écart',
+            confirmButtonColor: '#dc2626', // Rouge
+        };
+    } else {
+        // CAS OK : VALIDATION VERTE
+        swalConfig = {
+            ...swalConfig,
+            title: 'Confirmation de clôture',
+            icon: 'question',
+            html: `
+                <div class="text-center">
+                    <p class="text-green-600 font-bold text-xl mb-2">Aucun écart constaté ! ✅</p>
+                    <p class="text-gray-600">
+                        Solde de clôture : <strong>${formatMoney(physique)}</strong>
+                    </p>
+                    <p class="text-sm text-gray-500 mt-4">Voulez-vous terminer votre session ?</p>
+                </div>
+            `,
+            confirmButtonText: 'Oui, clôturer la caisse',
+            confirmButtonColor: '#10b981', // Vert
+        };
+    }
 
-        if (res.ok) {
-            // Affichage du bilan
-            alert(`Caisse fermée.\nÉcart constaté : ${result.ecart} FCFA`);
-            window.location.reload();
-        } else {
-            alert("Erreur fermeture: " + result.message);
+    // 3. Affichage de la modale
+    const result = await MySwal.fire(swalConfig);
+
+    // 4. Traitement si confirmé
+    if (result.isConfirmed) {
+        try {
+            const res = await fetch(`https://127.0.0.1:8000/api/sessions/${statusData.session_id}/close`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+                body: JSON.stringify({ montant_physique: physique })
+            });
+
+            const apiData = await res.json();
+
+            if (res.ok) {
+                await MySwal.fire({
+                    icon: 'success',
+                    title: 'Session Clôturée',
+                    text: `La caisse est fermée.${hasEcart ? ` Un écart de ${formatMoney(ecart)} a été enregistré.` : ''}`,
+                });
+                window.location.reload();
+            } else {
+                // Gestion erreur spécifique (ex: justificatifs manquants)
+                if (apiData.code_erreur === 'MISSING_PROOFS') {
+                     MySwal.fire({
+                         icon: 'error',
+                         title: 'Clôture Bloquée',
+                         html: `
+                            <p>Vous ne pouvez pas fermer la caisse.</p>
+                            <p class="font-bold text-red-600 mt-2">${apiData.message}</p>
+                            <p class="text-sm mt-2">Veuillez justifier les opérations en attente.</p>
+                         `
+                     });
+                } else {
+                     MySwal.fire('Erreur', apiData.message || "Erreur inconnue lors de la fermeture", 'error');
+                }
+            }
+        } catch (e) {
+            console.error(e);
+            MySwal.fire('Erreur', "Problème de connexion au serveur", 'error');
         }
-    } catch (e) {
-        console.error(e);
     }
   };
 
@@ -125,8 +229,6 @@ export default function DashboardCaissier({ user, onLogout }: DashboardCaissierP
   const renderCaisseWidget = () => {
     if (loading) return <div className="h-40 bg-gray-100 rounded-xl animate-pulse mb-8"></div>;
 
-    // CAS A : PAS DE CAISSE ASSIGNÉE
-    // Correction : on vérifie 'has_caisse' (booléen) renvoyé par le backend
     if (!statusData?.has_caisse) {
         return (
             <div className="bg-red-50 border border-red-200 rounded-xl p-6 mb-8 flex items-center justify-between">
@@ -141,15 +243,13 @@ export default function DashboardCaissier({ user, onLogout }: DashboardCaissierP
         );
     }
 
-    // CAS B : CAISSE FERMÉE (Mais assignée) -> BOUTON OUVRIR
-    // Correction : on vérifie le string 'session_status'
     if (statusData.session_status !== 'OUVERTE') {
         return (
             <div className="bg-white border-l-4 border-blue-500 rounded-xl p-6 mb-8 shadow-sm flex items-center justify-between">
                 <div>
                     <h2 className="text-xl font-bold text-gray-800 flex items-center">
                         <Monitor className="mr-2 h-5 w-5 text-blue-600"/> 
-                        {statusData.caisse_nom} {/* Correction nom */}
+                        {statusData.caisse_nom}
                     </h2>
                     <p className="text-gray-500 text-sm mt-1">
                         État : <span className="font-bold text-gray-700">FERMÉE</span>. Prête à l'ouverture.
@@ -165,7 +265,6 @@ export default function DashboardCaissier({ user, onLogout }: DashboardCaissierP
         );
     }
 
-    // CAS C : SESSION OUVERTE -> TPV COMPLET
     return (
         <div className="animate-in fade-in slide-in-from-top-4">
             {/* Barre d'info session */}
@@ -177,22 +276,22 @@ export default function DashboardCaissier({ user, onLogout }: DashboardCaissierP
                     <span className="ml-3 text-gray-500 text-sm font-medium">Poste : {statusData.caisse_nom}</span>
                 </div>
                 {!showClotureInput ? (
-                    <button onClick={() => setShowClotureInput(true)} className="text-red-600 hover:text-red-800 text-sm font-medium flex items-center underline">
+                    <button onClick={() => setShowClotureInput(true)} className="text-red-600 hover:text-red-800 text-sm font-medium flex items-center underline transition-colors">
                         <Lock className="h-4 w-4 mr-1"/> Fermer la caisse
                     </button>
                 ) : (
-                    <form onSubmit={handleClose} className="flex items-center gap-2 bg-white p-1 rounded border border-red-300 shadow-sm animate-pulse">
+                    <form onSubmit={handleClose} className="flex items-center gap-2 bg-white p-1 rounded border border-red-300 shadow-sm animate-in slide-in-from-right-5">
                         <input 
                             autoFocus
                             type="number" 
                             step="0.01" 
                             placeholder="Solde compté ?" 
-                            className="w-32 p-1 text-sm outline-none font-bold text-red-600"
+                            className="w-32 p-1 text-sm outline-none font-bold text-red-600 placeholder-red-200"
                             value={montantFermeture}
                             onChange={e => setMontantFermeture(e.target.value)}
                             required
                         />
-                        <button className="bg-red-600 text-white px-3 py-1 rounded text-xs font-bold hover:bg-red-700">VALIDER</button>
+                        <button className="bg-red-600 text-white px-3 py-1 rounded text-xs font-bold hover:bg-red-700 transition-colors">VÉRIFIER</button>
                         <button type="button" onClick={() => setShowClotureInput(false)} className="text-gray-400 hover:text-gray-600 px-1">&times;</button>
                     </form>
                 )}
@@ -225,7 +324,6 @@ export default function DashboardCaissier({ user, onLogout }: DashboardCaissierP
 
   return (
     <div className="min-h-screen bg-gray-50 pb-12">
-        {/* Navbar */}
         <nav className="bg-white shadow-sm border-b border-gray-200 px-6 py-4 flex justify-between items-center sticky top-0 z-10">
             <div className="flex items-center space-x-3">
                 <div className="bg-green-100 p-2 rounded-lg"><Activity className="h-6 w-6 text-green-600" /></div>

@@ -191,38 +191,69 @@ class OperationController extends AbstractController
     }
 
     /**
-     * Méthode privée pour gérer la création du justificatif (Bon Interne)
+     * Méthode privée pour gérer la création du justificatif (Bon Interne OU Fichier Externe)
      */
     private function processJustificatif(Operation $op, array $data, EntityManagerInterface $em): void
     {
-        // On vérifie si le frontend a envoyé le flag 'is_bon_interne'
-        if (isset($data['is_bon_interne']) && $data['is_bon_interne'] === true) {
-            
-            $justificatif = new Justificatif();
-            
-            // IMPORTANT : C'est le Justificatif qui porte la relation vers l'Opération
-            $justificatif->setOperation($op);
-            
-            // On définit le type (Assure-toi que la constante ou le string correspond à ton entité)
-            $justificatif->setType('BON_INTERNE'); 
+        $justificatif = new Justificatif();
+        $hasJustif = false;
 
-            // 1. Les détails du bon (Tableau JSON : Article, Qté, Prix...)
+        // CAS 1 : BON INTERNE (Signature + Détails)
+        if (isset($data['is_bon_interne']) && $data['is_bon_interne'] === true) {
+            $justificatif->setType('BON_INTERNE');
+            
             if (!empty($data['details'])) {
                 $justificatif->setContenuJson($data['details']);
             }
-
-            // 2. La signature (Base64)
             if (!empty($data['signature'])) {
                 $justificatif->setSignatureData($data['signature']);
             }
-            
-            // 3. Le bénéficiaire (On l'ajoute dans le JSON pour regrouper les infos)
+            // Ajout du bénéficiaire dans le JSON
             if (!empty($data['beneficiaire'])) {
                 $content = $justificatif->getContenuJson() ?? [];
                 $content['beneficiaire_nom'] = $data['beneficiaire'];
                 $justificatif->setContenuJson($content);
             }
+            $hasJustif = true;
+        }
+        
+        // CAS 2 : FICHIER EXTERNE (Upload Base64)
+        elseif (!empty($data['fichier_data']) && !empty($data['fichier_nom'])) {
+            $justificatif->setType('FICHIER');
 
+            // 1. Décoder le Base64
+            // Le format est souvent "data:image/png;base64,VBORw0KGgo..."
+            $parts = explode(',', $data['fichier_data']);
+            $base64Content = count($parts) > 1 ? $parts[1] : $parts[0];
+            $fileData = base64_decode($base64Content);
+
+            if ($fileData === false) {
+                throw new \Exception("Impossible de décoder le fichier.");
+            }
+
+            // 2. Générer un nom unique sécurisé
+            $extension = pathinfo($data['fichier_nom'], PATHINFO_EXTENSION);
+            $newFilename = uniqid('justif_') . '.' . $extension;
+
+            // 3. Sauvegarder le fichier (Dossier public/uploads/justificatifs)
+            // Assure-toi que ce dossier existe et est accessible en écriture !
+            $targetDir = $this->getParameter('kernel.project_dir') . '/public/uploads/justificatifs';
+            if (!is_dir($targetDir)) {
+                mkdir($targetDir, 0777, true);
+            }
+            
+            file_put_contents($targetDir . '/' . $newFilename, $fileData);
+
+            // 4. Mettre à jour l'entité
+            $justificatif->setFichier($data['fichier_nom']); // Nom original
+            $justificatif->setChemin('uploads/justificatifs/' . $newFilename); // Chemin relatif pour l'accès web
+            
+            $hasJustif = true;
+        }
+
+        // Si on a créé un justificatif, on le lie et on persiste
+        if ($hasJustif) {
+            $justificatif->setOperation($op);
             $em->persist($justificatif);
         }
     }
