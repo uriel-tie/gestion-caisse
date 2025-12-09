@@ -140,20 +140,44 @@ class UserController extends AbstractController
             'id' => $user->getId()
         ], 201);
     }
-    // 1. MODIFIER LE PROFIL (Nom, Email)
     #[Route('/profile', name: 'update_profile', methods: ['PATCH'])]
     public function updateProfile(
         Request $request, 
         EntityManagerInterface $em,
-        #[CurrentUser] ?Utilisateur $user // Récupère l'utilisateur connecté automatiquement
+        UserPasswordHasherInterface $hasher, // Pour le mot de passe éventuel
+        #[CurrentUser] ?Utilisateur $user
     ): JsonResponse
     {
-        if (!$user) return $this->json(['error' => 'Utilisateur non trouvé'], 404);
+        if (!$user) return $this->json(['error' => 'Non connecté'], 401);
 
         $data = json_decode($request->getContent(), true);
 
-        if (isset($data['nom'])) $user->setNom($data['nom']);
-        if (isset($data['email'])) $user->setEmail($data['email']);
+        // --- GESTION DU CHANGEMENT DE NOM (Avec contrainte 30 jours) ---
+        if (isset($data['nom']) && $data['nom'] !== $user->getNom()) {
+            
+            $lastUpdate = $user->getDerniereModificationNom();
+            $now = new \DateTimeImmutable();
+
+            // Si modifié il y a moins de 30 jours (exemple)
+            if ($lastUpdate && $lastUpdate->diff($now)->days < 30) {
+                return $this->json([
+                    'error' => 'Vous ne pouvez modifier votre nom qu\'une fois tous les 30 jours par mesure de sécurité.'
+                ], 403);
+            }
+
+            $user->setNom($data['nom']);
+            $user->setDerniereModificationNom($now);
+        }
+
+        // --- GESTION DE L'EMAIL ---
+        if (isset($data['email'])) {
+            $user->setEmail($data['email']);
+        }
+
+        // --- GESTION DU MOT DE PASSE (Optionnel ici, mais pratique) ---
+        if (!empty($data['password'])) {
+             $user->setPassword($hasher->hashPassword($user, $data['password']));
+        }
 
         $em->flush();
 

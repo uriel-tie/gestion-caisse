@@ -70,6 +70,9 @@ class Utilisateur implements UserInterface, PasswordAuthenticatedUserInterface
     #[ORM\Column(type: 'boolean', options: ['default' => true])]
     private bool $passwordMustBeChanged = true;
 
+    #[ORM\Column(nullable: true)]
+    private ?\DateTimeImmutable $derniereModificationNom = null;
+
     public function isPasswordMustBeChanged(): bool
     {
         return $this->passwordMustBeChanged;
@@ -252,6 +255,18 @@ class Utilisateur implements UserInterface, PasswordAuthenticatedUserInterface
                  // set the owning side to null (unless already changed)
             }
         }
+        return $this;
+    }
+
+    public function getDerniereModificationNom(): ?\DateTimeImmutable
+    {
+        return $this->derniereModificationNom;
+    }
+
+    public function setDerniereModificationNom(?\DateTimeImmutable $derniereModificationNom): static
+    {
+        $this->derniereModificationNom = $derniereModificationNom;
+
         return $this;
     }
 }

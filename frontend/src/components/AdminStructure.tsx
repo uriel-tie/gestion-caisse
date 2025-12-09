@@ -188,18 +188,18 @@ export default function AdminStructure() {
                             </div>
 
                             <div className="mt-2">
-    <label className="block text-xs text-gray-500 mb-1">Compte Comptable</label>
-    <select
-        value={c.compte?.id || ''}
-        onChange={(e) => handleUpdateCaisse(c.id, { compte_id: e.target.value || null })}
-        className="w-full border rounded-lg px-3 py-2 text-sm"
-    >
-        <option value="">-- Non défini --</option>
-        {comptes.map((cc: any) => (
-            <option key={cc.id} value={cc.id}>{cc.numero} - {cc.libelle}</option>
-        ))}
-    </select>
-</div>
+                            <label className="block text-xs text-gray-500 mb-1">Compte Comptable</label>
+                            <select
+                                value={c.compte?.id || ''}
+                                onChange={(e) => handleUpdateCaisse(c.id, { compte_id: e.target.value || null })}
+                                className="w-full border rounded-lg px-3 py-2 text-sm"
+                            >
+                                <option value="">-- Non défini --</option>
+                                {comptes.map((cc: any) => (
+                                    <option key={cc.id} value={cc.id}>{cc.numero} - {cc.libelle}</option>
+                                ))}
+                            </select>
+                        </div>
                         </li>
                     ))}
                 </ul>

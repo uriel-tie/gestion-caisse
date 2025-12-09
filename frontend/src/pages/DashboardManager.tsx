@@ -28,7 +28,11 @@ export default function DashboardManager({ user, onLogout }: DashboardProps) {
             <p className="text-sm font-medium text-gray-800">{user.nom}</p>
             <div className="flex items-center justify-end mt-1">
                 {/* Petit raccourci profil */}
-                <button className="p-1 rounded-lg bg-gray-50 hover:bg-gray-100 text-gray-600 mr-2 transition-colors" title="Mon Profil">
+                <button 
+                    onClick={() => navigate('/profile')} 
+                    className="p-1 rounded-lg bg-gray-50 hover:bg-gray-100 text-gray-600 mr-2 transition-colors" 
+                    title="Mon Profil"
+                >
                     <Settings className="h-4 w-4" /> 
                 </button>
                 <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-purple-100 text-purple-800">MANAGER</span>

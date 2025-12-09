@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { X, AlertTriangle, Loader, ArrowRight, FileText, PenTool, UploadCloud, Trash2 } from 'lucide-react';
 import ItemsTable, { type ItemDetail } from '../components/ItemsTable';
 import SignatureArea from '../components/SignatureArea';
@@ -16,6 +16,8 @@ export default function DecaissementModal({ isOpen, onClose, onSuccess }: Decais
   const [motif, setMotif] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [comptes, setComptes] = useState<any[]>([]);
+  const [selectedCompte, setSelectedCompte] = useState('');
 
   // --- NOUVEAUX STATES (Bon Interne) ---
   const [isBonInterne, setIsBonInterne] = useState(false);
@@ -27,7 +29,17 @@ export default function DecaissementModal({ isOpen, onClose, onSuccess }: Decais
   const [fichier, setFichier] = useState<File | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  if (!isOpen) return null;
+  useEffect(() => {
+    if (isOpen) {
+        const token = localStorage.getItem('token');
+        fetch('https://127.0.0.1:8000/api/comptes', {
+            headers: { 'Authorization': `Bearer ${token}` }
+        })
+        .then(r => r.json())
+        .then(data => setComptes(data))
+        .catch(console.error);
+    }
+}, [isOpen]);
 
   // Calcul dynamique du montant total
   const montantFinal = isBonInterne 
@@ -81,6 +93,7 @@ export default function DecaissementModal({ isOpen, onClose, onSuccess }: Decais
         montant: montantFinal,
         mode: mode,
         motif: motif,
+        compte_id: selectedCompte || null,
         
         // Switch
         is_bon_interne: isBonInterne,
@@ -129,6 +142,8 @@ export default function DecaissementModal({ isOpen, onClose, onSuccess }: Decais
       setLoading(false);
     }
   };
+
+    if (!isOpen) return null;
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50 backdrop-blur-sm p-4">
@@ -271,6 +286,21 @@ export default function DecaissementModal({ isOpen, onClose, onSuccess }: Decais
                     placeholder="Ex: Achat fournitures..."
                   />
                </div>
+               <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Imputation Comptable</label>
+                  <select
+                      value={selectedCompte}
+                      onChange={(e) => setSelectedCompte(e.target.value)}
+                      className="block w-full rounded-md border-gray-300 py-2 px-3 border focus:ring-red-500"
+                  >
+                      <option value="">-- Compte par défaut (606) --</option>
+                      {comptes.filter(c => c.type === 'DEPENSE' || c.type === 'CHARGE').map((c: any) => (
+                          <option key={c.id} value={c.id}>
+                              {c.numero} - {c.libelle}
+                          </option>
+                      ))}
+                  </select>
+              </div>
                <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Mode de Paiement</label>
                   <select

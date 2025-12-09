@@ -111,6 +111,9 @@ class OperationController extends AbstractController
         SessionCaisseRepository $sessionRepo
     ): JsonResponse
     {
+        $caisse = $session->getCaisse();
+        $compteCaisse = $caisse->getCompteComptable();
+        $numeroCompte = $compteCaisse ? $compteCaisse->getNumero() : '530';
         $user = $this->getUser();
         $session = $sessionRepo->findSessionActive($user);
         
@@ -132,7 +135,7 @@ class OperationController extends AbstractController
         $op->setMontant((string)$data['montant']);
         $op->setDate(new \DateTimeImmutable());
         $op->setStatut(Operation::STATUT_VALIDEE);
-        $op->setCompteComptable('530');
+        $op->setCompteComptable($numeroCompte);
         $op->setMotif($data['motif'] ?? 'Encaissement divers');
         
         $op->setUtilisateur($user);
@@ -171,6 +174,16 @@ class OperationController extends AbstractController
     {
         $user = $this->getUser();
         $session = $sessionRepo->findSessionActive($user);
+
+        $compteId = $data['compte_id'] ?? null;
+        $numeroCompte = '606';
+
+        if ($compteId) {
+            $compteChoisi = $compteRepo->find($compteId);
+            if ($compteChoisi) {
+                $numeroCompte = $compteChoisi->getNumero();
+            }
+        }
         
         if (!$session) {
             return $this->json(['error' => 'Aucune session de caisse ouverte.'], 403);
@@ -197,7 +210,7 @@ class OperationController extends AbstractController
         $op->setType('DECAISSEMENT');
         $op->setMontant((string)$montant);
         $op->setDate(new \DateTimeImmutable());
-        $op->setCompteComptable('606');
+        $op->setCompteComptable($numeroCompte);
         $op->setUtilisateur($user);
         $op->setModePaiement($mode);
         $op->setMotif($data['motif'] ?? 'Décaissement divers');

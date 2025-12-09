@@ -7,6 +7,7 @@ import DashboardPage from './pages/DashboardPage';
 import AdminPage from './pages/AdminPage';
 import ForceChangePasswordPage from './pages/ForceChangePasswordPage';
 import ManagerValidationPage from './pages/ManagerValidationPage';
+import ProfilePage from './pages/ProfilePage';
 import type { UserData } from './types';
 
 // --- AUTH GUARD CORRIGÉ ---
@@ -167,6 +168,17 @@ function App() {
                                     ? <Navigate to="/change-password-required" replace /> 
                                     : <ManagerValidationPage user={user} onLogout={handleLogout} />
                                 }
+                            </AuthGuard>
+                        ) : <Navigate to="/login" replace />
+                    } 
+                />
+                {/* Profil */}
+                <Route 
+                    path="/profile" 
+                    element={
+                        isAuthenticated ? (
+                            <AuthGuard setUser={setUser} onLogout={handleLogout}>
+                                <ProfilePage />
                             </AuthGuard>
                         ) : <Navigate to="/login" replace />
                     } 

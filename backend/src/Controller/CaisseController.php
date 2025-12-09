@@ -123,6 +123,37 @@ class CaisseController extends AbstractController
 
         return $this->json(['message' => 'Caisse créée', 'id' => $caisse->getId()], 201);
     }
+    #[Route('/{id}', name: 'update', methods: ['PATCH'])]
+    public function update(
+        Caisse $caisse,
+        Request $request,
+        EntityManagerInterface $em,
+        \App\Repository\CompteComptableRepository $compteRepo
+    ): JsonResponse
+    {
+        $this->denyAccessUnlessGranted('ROLE_MANAGER');
+        $data = json_decode($request->getContent(), true);
+
+        // Modification du Nom
+        if (isset($data['nom'])) {
+            $caisse->setNom($data['nom']);
+        }
+
+        // Modification du Compte Comptable
+        if (array_key_exists('compte_id', $data)) {
+            $compteId = $data['compte_id'];
+            if ($compteId) {
+                $compte = $compteRepo->find($compteId);
+                $caisse->setCompteComptable($compte);
+            } else {
+                $caisse->setCompteComptable(null);
+            }
+        }
+
+        $em->flush();
+
+        return $this->json(['message' => 'Caisse mise à jour avec succès']);
+    }
 
     #[Route('/{id}/assign', name: 'assign', methods: ['PATCH'])]
     public function assign(
