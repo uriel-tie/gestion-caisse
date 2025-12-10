@@ -30,6 +30,7 @@ class CaisseController extends AbstractController
                 'id' => $c->getId(),
                 'nom' => $c->getNom(),
                 'estOuverte' => $c->isEstOuverte(),
+                'seuilDecaissement' => $c->getSeuilDecaissement(),
                 'employeAssigne' => $employe ? [
                     'id' => $employe->getId(),
                     'nom' => $employe->getNom(),
@@ -102,6 +103,8 @@ class CaisseController extends AbstractController
 
         $caisse = new Caisse();
         $caisse->setNom($data['nom']);
+        $seuil = !empty($data['seuil']) ? (string)$data['seuil'] : '50000';
+        $caisse->setSeuilDecaissement($seuil);
         $caisse->setEstOuverte(false); // Fermée par défaut à la création
 
         if (!empty($data['employe_id'])) {
@@ -137,6 +140,11 @@ class CaisseController extends AbstractController
         // Modification du Nom
         if (isset($data['nom'])) {
             $caisse->setNom($data['nom']);
+        }
+
+        // Modification du Seuil de Décaissement
+        if (isset($data['seuil'])) {
+            $caisse->setSeuilDecaissement((string)$data['seuil']);
         }
 
         // Modification du Compte Comptable

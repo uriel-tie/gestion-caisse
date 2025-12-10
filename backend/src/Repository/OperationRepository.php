@@ -70,9 +70,71 @@ class OperationRepository extends ServiceEntityRepository
     }
 
     /**
+     * Recherche avancée avec filtres et pagination
+     */
+    public function findWithFilters(array $filters, int $page = 1, int $limit = 15, ?\App\Entity\Caisse $caisseRestrict = null)
+    {
+        $qb = $this->createQueryBuilder('o')
+            ->orderBy('o.date', 'DESC');
+
+        // 1. Restriction Sécurité (Si c'est un caissier, il ne voit que sa caisse)
+        if ($caisseRestrict) {
+            $qb->join('o.sessionCaisse', 's')
+               ->andWhere('s.caisse = :caisse')
+               ->setParameter('caisse', $caisseRestrict);
+        }
+
+        // 2. Filtres Dynamiques
+        if (!empty($filters['type'])) {
+            $qb->andWhere('o.type = :type')
+               ->setParameter('type', $filters['type']);
+        }
+
+        if (!empty($filters['date_debut'])) {
+            $qb->andWhere('o.date >= :debut')
+               ->setParameter('debut', new \DateTime($filters['date_debut'] . ' 00:00:00'));
+        }
+
+        if (!empty($filters['date_fin'])) {
+            $qb->andWhere('o.date <= :fin')
+               ->setParameter('fin', new \DateTime($filters['date_fin'] . ' 23:59:59'));
+        }
+
+        if (!empty($filters['mode'])) {
+             // Suppose que tu passes l'ID ou le libellé du mode
+             $qb->join('o.modePaiement', 'm')
+                ->andWhere('m.libelle = :mode')
+                ->setParameter('mode', $filters['mode']);
+        }
+        
+        if (!empty($filters['statut'])) {
+            $qb->andWhere('o.statut = :statut')
+               ->setParameter('statut', $filters['statut']);
+        }
+
+        if (!empty($filters['compte'])) {
+            // On suppose que l'entité Operation stocke le numéro (ex: '606') dans la colonne compteComptable
+            $qb->andWhere('o.compteComptable LIKE :compte')
+               ->setParameter('compte', '%' . $filters['compte'] . '%');
+        }
+
+        // 3. Pagination
+        $query = $qb->getQuery();
+        
+        // On utilise Doctrine Paginator pour gérer correctement le LIMIT/OFFSET
+        $paginator = new \Doctrine\ORM\Tools\Pagination\Paginator($query);
+        
+        $paginator->getQuery()
+            ->setFirstResult(($page - 1) * $limit)
+            ->setMaxResults($limit);
+
+        return $paginator;
+    }
+
+    /**
      * Trouve les dernières opérations liées à une Caisse spécifique
      */
-    public function findLatestByCaisse(\App\Entity\Caisse $caisse, int $limit = 20): array
+    public function findLatestByCaisse(\App\Entity\Caisse $caisse, int $limit = 10): array
     {
         return $this->createQueryBuilder('o')
             ->join('o.sessionCaisse', 's') // On passe par la session

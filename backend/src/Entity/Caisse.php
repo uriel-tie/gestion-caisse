@@ -33,6 +33,24 @@ class Caisse
     #[ORM\JoinColumn(nullable: true)] // Nullable au début pour ne pas casser l'existant
     private ?CompteComptable $compteComptable = null;
 
+    // ... propriétés existantes
+
+    #[ORM\Column(type: 'decimal', precision: 12, scale: 2, options: ['default' => '50000.00'])]
+    private ?string $seuilDecaissement = '50000.00'; // Valeur par défaut si non précisée
+
+    // ... getters et setters
+
+    public function getSeuilDecaissement(): ?string
+    {
+        return $this->seuilDecaissement;
+    }
+
+    public function setSeuilDecaissement(string $seuilDecaissement): static
+    {
+        $this->seuilDecaissement = $seuilDecaissement;
+        return $this;
+    }
+
     public function getId(): ?Uuid { return $this->id; }
     
     public function getNom(): ?string { return $this->nom; }

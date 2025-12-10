@@ -9,44 +9,61 @@ interface DecaissementModalProps {
   onSuccess: () => void;
 }
 
+interface ModePaiement {
+    id: string;
+    libelle: string;
+}
+
 export default function DecaissementModal({ isOpen, onClose, onSuccess }: DecaissementModalProps) {
-  // --- STATES EXISTANTS ---
   const [montant, setMontant] = useState('');
-  const [mode, setMode] = useState('Espèces');
+  const [mode, setMode] = useState(''); // Dynamique
   const [motif, setMotif] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  
+  // Données dynamiques
   const [comptes, setComptes] = useState<any[]>([]);
+  const [modes, setModes] = useState<ModePaiement[]>([]); // Ajouté
   const [selectedCompte, setSelectedCompte] = useState('');
 
-  // --- NOUVEAUX STATES (Bon Interne) ---
+  // States existants (Bon/Fichier)...
   const [isBonInterne, setIsBonInterne] = useState(false);
   const [items, setItems] = useState<ItemDetail[]>([]);
   const [signature, setSignature] = useState<string | null>(null);
   const [beneficiaire, setBeneficiaire] = useState('');
-
-  // --- NOUVEAUX STATES (Fichier Externe) ---
   const [fichier, setFichier] = useState<File | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  // Chargement des données (Comptes + Modes)
   useEffect(() => {
     if (isOpen) {
         const token = localStorage.getItem('token');
-        fetch('https://127.0.0.1:8000/api/comptes', {
-            headers: { 'Authorization': `Bearer ${token}` }
-        })
-        .then(r => r.json())
-        .then(data => setComptes(data))
-        .catch(console.error);
-    }
-}, [isOpen]);
+        const headers = { 'Authorization': `Bearer ${token}` };
 
-  // Calcul dynamique du montant total
+        // 1. Fetch Comptes
+        fetch('https://127.0.0.1:8000/api/comptes', { headers })
+            .then(r => r.json())
+            .then(data => setComptes(data))
+            .catch(console.error);
+
+        // 2. Fetch Modes
+        fetch('https://127.0.0.1:8000/api/modes', { headers })
+            .then(r => r.json())
+            .then((data: ModePaiement[]) => {
+                setModes(data);
+                // Sélection par défaut intelligente
+                const especes = data.find(m => m.libelle === 'Espèces');
+                if (especes) setMode(especes.libelle);
+                else if (data.length > 0) setMode(data[0].libelle);
+            })
+            .catch(console.error);
+    }
+  }, [isOpen]);
+
   const montantFinal = isBonInterne 
     ? items.reduce((acc, curr) => acc + curr.total, 0) 
     : parseFloat(montant) || 0;
 
-  // Helper pour convertir un fichier en Base64
   const convertFileToBase64 = (file: File): Promise<string> => {
     return new Promise((resolve, reject) => {
       const reader = new FileReader();
@@ -70,42 +87,31 @@ export default function DecaissementModal({ isOpen, onClose, onSuccess }: Decais
     try {
       let fichierBase64 = null;
 
-      // 1. Validations
       if (isBonInterne) {
         if (items.length === 0) throw new Error("Veuillez ajouter au moins un article au bon.");
         if (!beneficiaire.trim()) throw new Error("Le nom du bénéficiaire est obligatoire.");
         if (!signature) throw new Error("La signature du bénéficiaire est requise.");
       } else {
         if (montantFinal <= 0) throw new Error("Le montant doit être supérieur à 0.");
-        // Optionnel : Rendre le fichier obligatoire
-        // if (!fichier) throw new Error("Veuillez joindre un justificatif (photo/pdf).");
       }
 
-      // 2. Conversion Fichier -> Base64 si présent
       if (!isBonInterne && fichier) {
          fichierBase64 = await convertFileToBase64(fichier);
       }
 
       const token = localStorage.getItem('token');
 
-      // 3. Construction du Payload
       const payload = {
         montant: montantFinal,
-        mode: mode,
+        mode: mode, // Envoi du libellé choisi
         motif: motif,
         compte_id: selectedCompte || null,
-        
-        // Switch
         is_bon_interne: isBonInterne,
-        
-        // Données Bon Interne
         details: isBonInterne ? items : [],
         signature: isBonInterne ? signature : null,
         beneficiaire: isBonInterne ? beneficiaire : null,
-
-        // Données Fichier Externe
-        fichier_data: fichierBase64, // Le contenu du fichier
-        fichier_nom: fichier ? fichier.name : null // Le nom d'origine
+        fichier_data: fichierBase64,
+        fichier_nom: fichier ? fichier.name : null
       };
 
       const response = await fetch('https://127.0.0.1:8000/api/operations/decaissement', {
@@ -127,8 +133,8 @@ export default function DecaissementModal({ isOpen, onClose, onSuccess }: Decais
         alert("⚠️ Montant élevé : Opération en attente de validation Manager.");
       }
 
-      // Reset total
       setMontant('');
+      setMotif('');
       setItems([]);
       setSignature(null);
       setBeneficiaire('');
@@ -143,13 +149,12 @@ export default function DecaissementModal({ isOpen, onClose, onSuccess }: Decais
     }
   };
 
-    if (!isOpen) return null;
+  if (!isOpen) return null;
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50 backdrop-blur-sm p-4">
       <div className="bg-white rounded-xl shadow-2xl w-full max-w-2xl overflow-hidden flex flex-col max-h-[90vh]">
         
-        {/* En-tête ROUGE */}
         <div className="bg-red-600 px-6 py-4 flex justify-between items-center shrink-0">
           <h3 className="text-white font-bold text-lg flex items-center gap-2">
             {isBonInterne ? <PenTool className="h-5 w-5"/> : <FileText className="h-5 w-5"/>}
@@ -169,12 +174,11 @@ export default function DecaissementModal({ isOpen, onClose, onSuccess }: Decais
             </div>
           )}
 
-          {/* --- SWITCH TYPE DE JUSTIFICATIF --- */}
           <div className="bg-gray-100 p-4 rounded-lg flex items-center justify-between">
             <div>
               <span className="font-bold text-gray-700 block">Type de Justificatif</span>
               <span className="text-xs text-gray-500">
-                  {isBonInterne ? "Création d'un bon numérique (Pas de papier)" : "Upload d'un document existant (Reçu/Facture)"}
+                  {isBonInterne ? "Création d'un bon numérique" : "Upload d'un document existant"}
               </span>
             </div>
             <label className="relative inline-flex items-center cursor-pointer">
@@ -190,20 +194,12 @@ export default function DecaissementModal({ isOpen, onClose, onSuccess }: Decais
 
           <form onSubmit={handleSubmit} className="space-y-6">
             
-            {/* --- CONTENU DYNAMIQUE --- */}
+            {/* Contenu spécifique Bon Interne ou Fichier (Identique à avant, omis pour brièveté, garder votre code ici) */}
             {isBonInterne ? (
-               /* --- MODE BON INTERNE --- */
-               <div className="space-y-4 animate-in fade-in slide-in-from-bottom-2 duration-300">
+               <div className="space-y-4">
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">Bénéficiaire (Reçu par)</label>
-                    <input 
-                      type="text" 
-                      required
-                      value={beneficiaire}
-                      onChange={(e) => setBeneficiaire(e.target.value)}
-                      className="block w-full rounded-md border-gray-300 py-2 px-3 focus:border-red-500 focus:ring-red-500 sm:text-sm border"
-                      placeholder="Ex: Taxi Yango..."
-                    />
+                    <input type="text" required value={beneficiaire} onChange={(e) => setBeneficiaire(e.target.value)} className="block w-full rounded-md border-gray-300 py-2 px-3 focus:border-red-500 focus:ring-red-500 sm:text-sm border" placeholder="Ex: Taxi Yango..." />
                   </div>
                   <ItemsTable items={items} setItems={setItems} onTotalChange={() => {}} />
                   <SignatureArea onEnd={setSignature} />
@@ -213,91 +209,44 @@ export default function DecaissementModal({ isOpen, onClose, onSuccess }: Decais
                   </div>
                </div>
             ) : (
-              /* --- MODE CLASSIQUE + UPLOAD --- */
-              <div className="space-y-4 animate-in fade-in slide-in-from-bottom-2 duration-300">
+              <div className="space-y-4">
                  <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">Montant à sortir (F)</label>
                     <div className="relative rounded-md shadow-sm">
-                      <input
-                        type="number"
-                        step="1"
-                        required={!isBonInterne}
-                        min="1"
-                        value={montant}
-                        onChange={(e) => setMontant(e.target.value)}
-                        className="block w-full rounded-md border-gray-300 pl-4 pr-12 py-3 text-2xl font-bold text-red-600 focus:border-red-500 focus:ring-red-500 border"
-                        placeholder="0"
-                      />
-                      <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
-                        <span className="text-gray-500 sm:text-sm">FCFA</span>
-                      </div>
+                      <input type="number" step="1" required={!isBonInterne} min="1" value={montant} onChange={(e) => setMontant(e.target.value)} className="block w-full rounded-md border-gray-300 pl-4 pr-12 py-3 text-2xl font-bold text-red-600 focus:border-red-500 focus:ring-red-500 border" placeholder="0" />
+                      <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none"><span className="text-gray-500 sm:text-sm">FCFA</span></div>
                     </div>
                   </div>
-
-                  {/* ZONE D'UPLOAD */}
                   <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">Justificatif (Photo, PDF...)</label>
-                      
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Justificatif</label>
                       {!fichier ? (
-                          <div 
-                            onClick={() => fileInputRef.current?.click()}
-                            className="border-2 border-dashed border-gray-300 rounded-lg p-6 flex flex-col items-center justify-center cursor-pointer hover:bg-gray-50 transition-colors text-center"
-                          >
+                          <div onClick={() => fileInputRef.current?.click()} className="border-2 border-dashed border-gray-300 rounded-lg p-6 flex flex-col items-center justify-center cursor-pointer hover:bg-gray-50 text-center">
                               <UploadCloud className="h-10 w-10 text-gray-400 mb-2" />
-                              <p className="text-sm text-gray-600 font-medium">Cliquez pour ajouter un fichier</p>
-                              <p className="text-xs text-gray-400">PNG, JPG, PDF (Max 5Mo)</p>
-                              <input 
-                                type="file" 
-                                ref={fileInputRef}
-                                className="hidden"
-                                accept="image/*,.pdf"
-                                onChange={handleFileChange}
-                              />
+                              <p className="text-sm text-gray-600">Ajouter un fichier</p>
+                              <input type="file" ref={fileInputRef} className="hidden" accept="image/*,.pdf" onChange={handleFileChange} />
                           </div>
                       ) : (
-                          <div className="flex items-center justify-between bg-gray-100 p-3 rounded-lg border border-gray-200">
-                              <div className="flex items-center">
-                                  <FileText className="h-5 w-5 text-blue-500 mr-3" />
-                                  <span className="text-sm font-medium text-gray-700 truncate max-w-[200px]">{fichier.name}</span>
-                              </div>
-                              <button 
-                                type="button"
-                                onClick={() => setFichier(null)}
-                                className="text-red-500 hover:text-red-700 p-1 hover:bg-red-50 rounded"
-                              >
-                                  <Trash2 className="h-5 w-5" />
-                              </button>
+                          <div className="flex items-center justify-between bg-gray-100 p-3 rounded-lg border">
+                              <span className="text-sm font-medium text-gray-700 truncate">{fichier.name}</span>
+                              <button type="button" onClick={() => setFichier(null)} className="text-red-500 hover:text-red-700 p-1"><Trash2 className="h-5 w-5" /></button>
                           </div>
                       )}
                   </div>
               </div>
             )}
 
-            {/* --- CHAMPS COMMUNS --- */}
+            {/* CHAMPS COMMUNS AVEC SELECTEUR DYNAMIQUE */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Motif global</label>
-                  <input 
-                    type="text" 
-                    required
-                    value={motif}
-                    onChange={(e) => setMotif(e.target.value)}
-                    className="block w-full rounded-md border-gray-300 py-2 px-3 focus:border-red-500 focus:ring-red-500 sm:text-sm border"
-                    placeholder="Ex: Achat fournitures..."
-                  />
+                  <input type="text" required value={motif} onChange={(e) => setMotif(e.target.value)} className="block w-full rounded-md border-gray-300 py-2 px-3 focus:border-red-500 focus:ring-red-500 sm:text-sm border" placeholder="Ex: Achat fournitures..." />
                </div>
                <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Imputation Comptable</label>
-                  <select
-                      value={selectedCompte}
-                      onChange={(e) => setSelectedCompte(e.target.value)}
-                      className="block w-full rounded-md border-gray-300 py-2 px-3 border focus:ring-red-500"
-                  >
+                  <select value={selectedCompte} onChange={(e) => setSelectedCompte(e.target.value)} className="block w-full rounded-md border-gray-300 py-2 px-3 border focus:ring-red-500">
                       <option value="">-- Compte par défaut (606) --</option>
                       {comptes.filter(c => c.type === 'DEPENSE' || c.type === 'CHARGE').map((c: any) => (
-                          <option key={c.id} value={c.id}>
-                              {c.numero} - {c.libelle}
-                          </option>
+                          <option key={c.id} value={c.id}>{c.numero} - {c.libelle}</option>
                       ))}
                   </select>
               </div>
@@ -308,28 +257,19 @@ export default function DecaissementModal({ isOpen, onClose, onSuccess }: Decais
                     onChange={(e) => setMode(e.target.value)}
                     className="block w-full rounded-md border-gray-300 py-2 pl-3 pr-10 sm:text-sm focus:border-red-500 focus:ring-red-500 border bg-white"
                   >
-                    <option value="Espèces">Espèces</option>
-                    <option value="Carte Bancaire">Carte Bancaire</option>
-                    <option value="Virement">Virement</option>
-                    <option value="Chèque">Chèque</option>
+                    {modes.length === 0 && <option>Chargement...</option>}
+                    {modes.map((m) => (
+                      <option key={m.id} value={m.libelle}>
+                        {m.libelle}
+                      </option>
+                    ))}
                   </select>
                </div>
             </div>
 
-            {/* --- BOUTONS --- */}
             <div className="flex items-center justify-end space-x-3 pt-4 border-t mt-4">
-              <button
-                type="button"
-                onClick={onClose}
-                className="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors"
-              >
-                Annuler
-              </button>
-              <button
-                type="submit"
-                disabled={loading}
-                className="px-6 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 font-medium shadow-md flex items-center transition-colors disabled:opacity-50"
-              >
+              <button type="button" onClick={onClose} className="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200">Annuler</button>
+              <button type="submit" disabled={loading} className="px-6 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 shadow-md flex items-center disabled:opacity-50">
                 {loading ? <Loader className="animate-spin h-5 w-5" /> : <>Valider <ArrowRight className="ml-2 h-4 w-4" /></>}
               </button>
             </div>

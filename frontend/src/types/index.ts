@@ -13,3 +13,15 @@ export interface LoginResponse {
   user: UserData;
   message?: string;
 }
+
+export interface AuditLog {
+  id: number;
+  action: string;   
+  details: string;  
+  date: string;     
+  utilisateur: {
+    nom: string;
+    email: string;
+    service: string;
+  };
+}

@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>Journal de Caisse</title>
+    <style>
+        body { font-family: sans-serif; font-size: 12px; color: #333; }
+        .header { text-align: center; margin-bottom: 30px; border-bottom: 2px solid #6b21a8; padding-bottom: 10px; }
+        .header h1 { color: #6b21a8; margin: 0; text-transform: uppercase; }
+        .meta { display: flex; justify-content: space-between; margin-bottom: 20px; font-size: 11px; color: #555; }
+        
+        table { width: 100%; border-collapse: collapse; margin-bottom: 20px; }
+        th { background-color: #f3f4f6; color: #111; padding: 8px; text-align: left; border-bottom: 1px solid #ddd; font-weight: bold; }
+        td { padding: 8px; border-bottom: 1px solid #eee; }
+        
+        .amount { text-align: right; font-family: monospace; font-size: 13px; }
+        .inc { color: #059669; } /* Vert */
+        .dec { color: #dc2626; } /* Rouge */
+        
+        .summary { float: right; width: 40%; border: 1px solid #ddd; padding: 10px; background: #fafafa; }
+        .summary-row { display: flex; justify-content: space-between; margin-bottom: 5px; }
+        .summary-total { font-weight: bold; border-top: 1px solid #ccc; padding-top: 5px; margin-top: 5px; font-size: 14px; }
+        
+        .footer { position: fixed; bottom: 0; left: 0; right: 0; text-align: center; font-size: 10px; color: #999; border-top: 1px solid #eee; padding-top: 10px; }
+    </style>
+</head>
+<body>
+
+    <div class="header">
+        <h1>Journal de Caisse</h1>
+        <p>Généré le {{ date_generation|date('d/m/Y à H:i') }} par {{ user ? user.nom : 'Système' }}</p>
+    </div>
+
+    <table>
+        <thead>
+            <tr>
+                <th width="15%">Date</th>
+                <th width="10%">Type</th>
+                <th width="15%">Mode</th>
+                <th width="40%">Motif / Libellé</th>
+                <th width="20%" style="text-align:right">Montant (FCFA)</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for op in operations %}
+                <tr>
+                    <td>{{ op.date|date('d/m/Y H:i') }}</td>
+                    <td>
+                        {% if op.type == 'ENCAISSEMENT' %}
+                            <span style="color:#059669; font-weight:bold;">ENC</span>
+                        {% else %}
+                            <span style="color:#dc2626; font-weight:bold;">DEC</span>
+                        {% endif %}
+                    </td>
+                    <td>{{ op.modePaiement ? op.modePaiement.libelle : '-' }}</td>
+                    <td>
+                        {{ op.motif }}
+                        {% if op.statut == 'ANNULEE' %}
+                            <br><small style="color:red;">(ANNULÉE)</small>
+                        {% endif %}
+                    </td>
+                    <td class="amount {{ op.type == 'ENCAISSEMENT' ? 'inc' : 'dec' }}">
+                        {{ op.type == 'ENCAISSEMENT' ? '+' : '-' }}{{ op.montant|number_format(0, ',', ' ') }}
+                    </td>
+                </tr>
+            {% else %}
+                <tr>
+                    <td colspan="5" style="text-align:center;">Aucune opération sur la période.</td>
+                </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+
+    <div class="summary">
+        <div class="summary-row">
+            <span>Total Encaissements :</span>
+            <span class="inc">+ {{ total_enc|number_format(0, ',', ' ') }} FCFA</span>
+        </div>
+        <div class="summary-row">
+            <span>Total Décaissements :</span>
+            <span class="dec">- {{ total_dec|number_format(0, ',', ' ') }} FCFA</span>
+        </div>
+        <div class="summary-row summary-total">
+            <span>Solde Période :</span>
+            <span>{{ solde|number_format(0, ',', ' ') }} FCFA</span>
+        </div>
+    </div>
+
+    <div class="footer">
+        Document généré automatiquement par la plateforme CashFlow. Document à usage interne.
+    </div>
+
+</body>
+</html>

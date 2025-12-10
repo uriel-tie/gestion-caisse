@@ -4,6 +4,7 @@ import { LogOut, Activity, Settings, Search, ArrowRight, FileText, Shield, Users
 import type { UserData } from '../types';
 import JournalTable from '../components/JournalTable';
 import CaissesLiveView from '../components/CaissesLiveView';
+import AuditTable from '../components/AuditTable'; // <-- AJOUTER
 
 interface DashboardProps {
   user: UserData;
@@ -103,12 +104,25 @@ export default function DashboardManager({ user, onLogout }: DashboardProps) {
                     <h3 className="text-lg font-bold text-gray-800">Flux Financiers Globaux</h3>
                     <p className="text-xs text-gray-500">Consolidated live feed (Toutes caisses)</p>
                 </div>
-                <button className="self-start sm:self-auto text-sm text-purple-600 hover:text-purple-800 flex items-center font-medium">
+                <button
+                    onClick={() => navigate('/historique')}
+                 className="self-start sm:self-auto text-sm text-purple-600 hover:text-purple-800 flex items-center font-medium">
                     <Search className="h-4 w-4 mr-1"/> Recherche avancée
                 </button>
             </div>
             {/* Le tableau gère ses propres données via l'API */}
             <JournalTable />
+        </section>
+        {/* SECTION AUDIT LOG */}
+        <section className="mt-12 mb-12">
+            <div className="mb-4">
+                <h3 className="text-lg font-bold text-gray-800 flex items-center">
+                    <Shield className="h-5 w-5 mr-2 text-indigo-600" />
+                    Traçabilité & Sécurité
+                </h3>
+                <p className="text-xs text-gray-500">Historique des actions sensibles sur la plateforme.</p>
+            </div>
+            <AuditTable />
         </section>
       </main>
     </div>

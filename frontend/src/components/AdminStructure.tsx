@@ -5,12 +5,16 @@ export default function AdminStructure() {
     const [services, setServices] = useState<any[]>([]);
     const [caisses, setCaisses] = useState<any[]>([]);
     const [caissiers, setCaissiers] = useState<any[]>([]);
+    const [comptes, setComptes] = useState<any[]>([]);
+    
+    // Champs de création
     const [newService, setNewService] = useState('');
     const [newCaisse, setNewCaisse] = useState('');
     const [newCaisseEmploye, setNewCaisseEmploye] = useState('');
-    const token = localStorage.getItem('token');
-    const [comptes, setComptes] = useState<any[]>([]);
     const [newCaisseCompte, setNewCaisseCompte] = useState('');
+    const [newCaisseSeuil, setNewCaisseSeuil] = useState('50000'); // Valeur par défaut
+
+    const token = localStorage.getItem('token');
 
     // Chargement initial
     useEffect(() => {
@@ -61,19 +65,19 @@ export default function AdminStructure() {
     };
 
     const handleUpdateCaisse = async (caisseId: string, payload: object) => {
-    const res = await fetch(`https://127.0.0.1:8000/api/caisses/${caisseId}`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
-        body: JSON.stringify(payload)
-    });
-    if (res.ok) fetchData('caisses', setCaisses);
-};
+        const res = await fetch(`https://127.0.0.1:8000/api/caisses/${caisseId}`, {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+            body: JSON.stringify(payload)
+        });
+        if (res.ok) fetchData('caisses', setCaisses);
+    };
 
     return (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
             
             {/* GESTION DES SERVICES */}
-            <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200">
+            <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200 h-fit">
                 <div className="flex items-center mb-4 text-blue-600">
                     <Layers className="mr-2" />
                     <h3 className="text-lg font-bold">Services / Départements</h3>
@@ -108,20 +112,35 @@ export default function AdminStructure() {
                     <Monitor className="mr-2" />
                     <h3 className="text-lg font-bold">Caisses Physiques</h3>
                 </div>
+                
+                {/* Formulaire Création Caisse */}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mb-4">
                     <input 
                         type="text" 
                         value={newCaisse}
                         onChange={(e) => setNewCaisse(e.target.value)}
-                        placeholder="Nom de la caisse (ex: Caisse 01)"
+                        placeholder="Nom de la caisse"
                         className="border rounded-lg px-3 py-2"
                     />
+                    
+                    {/* CHAMP SEUIL */}
+                    <div className="relative">
+                        <input 
+                            type="number" 
+                            value={newCaisseSeuil}
+                            onChange={(e) => setNewCaisseSeuil(e.target.value)}
+                            placeholder="Plafond auto"
+                            className="w-full border rounded-lg px-3 py-2 text-right pr-12"
+                        />
+                        <span className="absolute right-3 top-2 text-gray-400 text-sm">FCFA</span>
+                    </div>
+
                     <select
                         value={newCaisseEmploye}
                         onChange={(e) => setNewCaisseEmploye(e.target.value)}
                         className="border rounded-lg px-3 py-2"
                     >
-                        <option value="">-- Affecter un caissier (optionnel) --</option>
+                        <option value="">-- Caissier (Optionnel) --</option>
                         {caissiers.map((c: any) => (
                             <option key={c.id} value={c.id}>{c.nom}</option>
                         ))}
@@ -138,68 +157,99 @@ export default function AdminStructure() {
                         ))}
                     </select>
                 </div>
+
                 <button 
                     onClick={() => handleCreate(
                         'caisses',
                         { 
                             nom: newCaisse, 
                             employe_id: newCaisseEmploye || null,
-                            compte_id: newCaisseCompte || null // Ajout ici
+                            compte_id: newCaisseCompte || null,
+                            seuil: newCaisseSeuil // Envoi du seuil
                         },
                         'caisses',
                         setCaisses,
                         () => {
                             setNewCaisse('');
+                            setNewCaisseSeuil('50000');
                             setNewCaisseEmploye('');
                             setNewCaisseCompte('');
                         }
                     )}
-                    className="w-full bg-green-600 text-white py-2 rounded-lg hover:bg-green-700 mb-6 disabled:opacity-50"
+                    className="w-full bg-green-600 text-white py-2 rounded-lg hover:bg-green-700 mb-6 disabled:opacity-50 font-medium"
                     disabled={!newCaisse}
                 >
-                    <Plus className="inline mr-2" /> Ajouter la caisse
+                    <Plus className="inline mr-2 h-4 w-4" /> Ajouter la caisse
                 </button>
-                <ul className="space-y-3">
+
+                {/* Liste des Caisses */}
+                <ul className="space-y-4">
                     {caisses.map((c) => (
-                        <li key={c.id} className="bg-gray-50 p-4 rounded-lg">
-                            <div className="flex items-center justify-between mb-3">
+                        <li key={c.id} className="bg-gray-50 p-4 rounded-lg border border-gray-100 hover:shadow-md transition-shadow">
+                            
+                            {/* En-tête de la carte */}
+                            <div className="flex items-center justify-between mb-3 border-b pb-2">
                                 <div>
-                                    <p className="font-semibold text-gray-900">{c.nom}</p>
-                                    <p className="text-xs text-gray-500">ID: {c.id}</p>
+                                    <p className="font-bold text-gray-800">{c.nom}</p>
+                                    <p className="text-xs text-gray-400 font-mono">ID: {c.id.substring(0,8)}...</p>
                                 </div>
-                                <span className={`text-xs px-2 py-1 rounded-full ${c.estOuverte ? 'bg-red-100 text-red-800' : 'bg-green-100 text-green-800'}`}>
-                                    {c.estOuverte ? 'OCCUPÉE' : 'DISPONIBLE'}
+                                <span className={`text-xs px-2 py-1 rounded-full font-bold ${c.estOuverte ? 'bg-red-100 text-red-700' : 'bg-green-100 text-green-700'}`}>
+                                    {c.estOuverte ? 'OUVERTE' : 'DISPONIBLE'}
                                 </span>
                             </div>
-                            <div>
-                                <label className="block text-xs text-gray-500 mb-1">Employé assigné</label>
-                                <select
-                                    value={c.employeAssigne?.id || ''}
-                                    onChange={(e) => handleAssignCaisse(c.id, e.target.value)}
-                                    className="w-full border rounded-lg px-3 py-2"
-                                >
-                                    <option value="">-- Non assignée --</option>
-                                    {caissiers.map((caissier: any) => (
-                                        <option key={caissier.id} value={caissier.id}>
-                                            {caissier.nom}
-                                        </option>
-                                    ))}
-                                </select>
-                            </div>
 
-                            <div className="mt-2">
-                            <label className="block text-xs text-gray-500 mb-1">Compte Comptable</label>
-                            <select
-                                value={c.compte?.id || ''}
-                                onChange={(e) => handleUpdateCaisse(c.id, { compte_id: e.target.value || null })}
-                                className="w-full border rounded-lg px-3 py-2 text-sm"
-                            >
-                                <option value="">-- Non défini --</option>
-                                {comptes.map((cc: any) => (
-                                    <option key={cc.id} value={cc.id}>{cc.numero} - {cc.libelle}</option>
-                                ))}
-                            </select>
-                        </div>
+                            {/* Corps de la carte */}
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                
+                                {/* Colonne Gauche : Affectation */}
+                                <div className="space-y-3">
+                                    <div>
+                                        <label className="block text-xs font-semibold text-gray-500 mb-1">Employé assigné</label>
+                                        <select
+                                            value={c.employeAssigne?.id || ''}
+                                            onChange={(e) => handleAssignCaisse(c.id, e.target.value)}
+                                            className="w-full border border-gray-300 rounded px-2 py-1 text-sm bg-white"
+                                        >
+                                            <option value="">-- Non assignée --</option>
+                                            {caissiers.map((caissier: any) => (
+                                                <option key={caissier.id} value={caissier.id}>
+                                                    {caissier.nom}
+                                                </option>
+                                            ))}
+                                        </select>
+                                    </div>
+                                    <div>
+                                        <label className="block text-xs font-semibold text-gray-500 mb-1">Compte Comptable</label>
+                                        <select
+                                            value={c.compte?.id || ''}
+                                            onChange={(e) => handleUpdateCaisse(c.id, { compte_id: e.target.value || null })}
+                                            className="w-full border border-gray-300 rounded px-2 py-1 text-sm bg-white"
+                                        >
+                                            <option value="">-- Non défini --</option>
+                                            {comptes.map((cc: any) => (
+                                                <option key={cc.id} value={cc.id}>{cc.numero} - {cc.libelle}</option>
+                                            ))}
+                                        </select>
+                                    </div>
+                                </div>
+
+                                {/* Colonne Droite : Paramètres */}
+                                <div>
+                                    <label className="block text-xs font-semibold text-gray-500 mb-1">Plafond Décaissement (FCFA)</label>
+                                    <div className="relative">
+                                        <input 
+                                            type="number"
+                                            defaultValue={c.seuilDecaissement}
+                                            onBlur={(e) => handleUpdateCaisse(c.id, { seuil: e.target.value })}
+                                            className="w-full border border-gray-300 rounded px-2 py-1 text-sm text-right pr-10 focus:ring-green-500 focus:border-green-500"
+                                        />
+                                        <span className="absolute right-2 top-1.5 text-xs text-gray-400">F</span>
+                                    </div>
+                                    <p className="text-[10px] text-gray-400 mt-1 italic">
+                                        Au-delà, validation requise.
+                                    </p>
+                                </div>
+                            </div>
                         </li>
                     ))}
                 </ul>

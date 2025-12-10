@@ -8,6 +8,7 @@ import AdminPage from './pages/AdminPage';
 import ForceChangePasswordPage from './pages/ForceChangePasswordPage';
 import ManagerValidationPage from './pages/ManagerValidationPage';
 import ProfilePage from './pages/ProfilePage';
+import HistoriquePage from './pages/HistoriquePage';
 import type { UserData } from './types';
 
 // --- AUTH GUARD CORRIGÉ ---
@@ -39,7 +40,6 @@ const AuthGuard = ({
                 
                 // --- CORRECTION ICI ---
                 // On ne ping plus /sessions/me (caisse), mais l'utilisateur lui-même via son ID
-                // Assure-toi que storedUser.id existe bien (stocké au login)
                 const userId = storedUser.id; 
 
                 const response = await fetch(`https://127.0.0.1:8000/api/users/${userId}`, {
@@ -47,7 +47,7 @@ const AuthGuard = ({
                     headers: {
                         'Authorization': `Bearer ${token}`,
                         'Content-Type': 'application/json',
-                        'Accept': 'application/json' // Important pour Symfony
+                        'Accept': 'application/json' 
                     }
                 });
 
@@ -172,7 +172,23 @@ function App() {
                         ) : <Navigate to="/login" replace />
                     } 
                 />
-                {/* Profil */}
+
+                {/* HISTORIQUE (CORRECTION ICI : DÉPLACÉ DANS ROUTES ET NETTOYÉ) */}
+                <Route
+                    path="/historique"
+                    element={
+                        isAuthenticated ? (
+                            <AuthGuard setUser={setUser} onLogout={handleLogout}>
+                                {user?.password_must_be_changed 
+                                    ? <Navigate to="/change-password-required" replace /> 
+                                    : <HistoriquePage />
+                                }
+                            </AuthGuard>        
+                        ) : <Navigate to="/login" replace />
+                    }
+                />
+
+                {/* PROFIL */}
                 <Route 
                     path="/profile" 
                     element={
