@@ -14,6 +14,8 @@ use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\Routing\Annotation\Route;
+use App\Entity\Notification;
+use App\Repository\UtilisateurRepository; // Pour trouver les managers
 
 #[Route('/api/operations', name: 'api_operations_')]
 class OperationController extends AbstractController
@@ -193,7 +195,8 @@ class OperationController extends AbstractController
         ModePaiementRepository $modeRepo,
         OperationRepository $opRepo,
         SessionCaisseRepository $sessionRepo,
-        CompteComptableRepository $compteRepo // <--- AJOUT OBLIGATOIRE (Injection)
+        CompteComptableRepository $compteRepo, 
+        UtilisateurRepository $userRepo 
     ): JsonResponse
     {
         $user = $this->getUser();
@@ -265,6 +268,18 @@ class OperationController extends AbstractController
         } else {
             $op->setStatut(Operation::STATUT_EN_ATTENTE);
             $msg = "Montant supérieur au plafond autorisé (" . number_format($seuilCaisse, 0, ',', ' ') . " F) : En attente de validation.";
+            // Envoi de notification aux managers
+            $allUsers = $userRepo->findAll(); 
+            foreach($allUsers as $u) {
+                if (in_array('ROLE_MANAGER', $u->getRoles())) {
+                    $notif = new Notification();
+                    $notif->setUser($u);
+                    $notif->setType('WARNING'); // Jaune/Orange
+                    $notif->setMessage("Nouveau décaissement à valider : " . number_format($montant) . " FCFA (Caissier: " . $user->getNom() . ")");
+                    $notif->setLink('/manager/validations');
+                    $em->persist($notif);
+                }
+            }
         }
 
         $em->persist($op);

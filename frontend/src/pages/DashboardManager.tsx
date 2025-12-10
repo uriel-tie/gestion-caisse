@@ -4,7 +4,8 @@ import { LogOut, Activity, Settings, Search, ArrowRight, FileText, Shield, Users
 import type { UserData } from '../types';
 import JournalTable from '../components/JournalTable';
 import CaissesLiveView from '../components/CaissesLiveView';
-import AuditTable from '../components/AuditTable'; // <-- AJOUTER
+import AuditTable from '../components/AuditTable'; 
+import NotificationWidget from '../components/NotificationWidget';
 
 interface DashboardProps {
   user: UserData;
@@ -36,6 +37,7 @@ export default function DashboardManager({ user, onLogout }: DashboardProps) {
                 >
                     <Settings className="h-4 w-4" /> 
                 </button>
+                <NotificationWidget />
                 <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-purple-100 text-purple-800">MANAGER</span>
             </div>
           </div>

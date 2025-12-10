@@ -10,6 +10,7 @@ import DecaissementModal from '../components/DecaissementModal';
 import { MyRequestsWidget } from '../components/MyRequestsWidget';
 import PaymentTerminal from '../components/PaymentTerminal';
 import JournalTable from '../components/JournalTable';
+import NotificationWidget from '../components/NotificationWidget';
 
 // Initialisation de SweetAlert pour React
 const MySwal = withReactContent(Swal);
@@ -331,6 +332,7 @@ export default function DashboardCaissier({ user, onLogout }: DashboardCaissierP
             </div>
             <div className="flex items-center space-x-4">
                 <p className="text-sm font-medium text-gray-800 hidden sm:block">{user.nom}</p>
+                <NotificationWidget />
                 <button onClick={onLogout} className="p-2 rounded-lg bg-gray-100 hover:bg-red-600 hover:text-white text-gray-500 transition-colors"><LogOut className="h-5 w-5" /></button>
             </div>
         </nav>
