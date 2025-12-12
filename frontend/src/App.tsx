@@ -3,15 +3,30 @@ import { BrowserRouter as Router, Routes, Route, Navigate, useLocation } from 'r
 
 // IMPORTS DES PAGES
 import LoginPage from './pages/LoginPage';
-import DashboardPage from './pages/DashboardPage';
+import DashboardEmploye from './pages/DashboardEmploye'; // Page d'accueil par défaut
 import AdminPage from './pages/AdminPage';
 import ForceChangePasswordPage from './pages/ForceChangePasswordPage';
 import ManagerValidationPage from './pages/ManagerValidationPage';
 import ProfilePage from './pages/ProfilePage';
 import HistoriquePage from './pages/HistoriquePage';
-import type { UserData } from './types';
+import CaisseHistoryPage from './pages/CaisseHistoryPage';
+import AuditPage from './pages/AuditPage';
+import LandingPage from './pages/LandingPage';
+import HomePage from './pages/HomePage';
 
-// --- AUTH GUARD CORRIGÉ ---
+// IMPORTS NOUVEAUX
+import RequestsPage from './pages/RequestsPage';
+import NewRequestPage from './pages/NewRequestPage';
+import ChefValidationPage from './pages/ChefValidationPage';
+import MyTeamPage from './pages/MyTeamPage';
+import WorkstationPage from './pages/WorkstationPage'; // On va le créer juste après
+import CaissesLiveView from './components/CaissesLiveView';
+
+// TYPES & LAYOUT
+import type { UserData } from './types';
+import MainLayout from './layouts/MainLayout';
+
+// --- AUTH GUARD ---
 const AuthGuard = ({ 
     children, 
     setUser, 
@@ -29,7 +44,6 @@ const AuthGuard = ({
             const token = localStorage.getItem('token');
             const storedUserString = localStorage.getItem('user');
 
-            // 1. Vérif basique : Token + User local requis
             if (!token || !storedUserString) {
                 onLogout();
                 return;
@@ -37,9 +51,6 @@ const AuthGuard = ({
 
             try {
                 const storedUser = JSON.parse(storedUserString);
-                
-                // --- CORRECTION ICI ---
-                // On ne ping plus /sessions/me (caisse), mais l'utilisateur lui-même via son ID
                 const userId = storedUser.id; 
 
                 const response = await fetch(`https://127.0.0.1:8000/api/users/${userId}`, {
@@ -51,26 +62,19 @@ const AuthGuard = ({
                     }
                 });
 
-                if (!response.ok) {
-                    throw new Error(`Utilisateur introuvable ou token invalide (${response.status})`);
-                }
+                if (!response.ok) throw new Error("Session expirée");
 
                 const freshUserData: UserData = await response.json();
-
-                // On met à jour le state et le storage avec les rôles/mdp à jour
                 setUser(freshUserData);
                 localStorage.setItem('user', JSON.stringify(freshUserData));
-                
                 setIsValidating(false);
 
             } catch (error) {
-                console.error("Erreur validation utilisateur :", error);
                 onLogout();
             }
         };
 
         checkUserStatus();
-
     }, [location.pathname]); 
 
     if (isValidating) {
@@ -86,7 +90,6 @@ const AuthGuard = ({
 
 // --- APP ---
 function App() {
-    // État initial
     const [user, setUser] = useState<UserData | null>(() => {
         try {
             const saved = localStorage.getItem('user');
@@ -110,6 +113,8 @@ function App() {
     return (
         <Router>
             <Routes>
+                {/* --- ROUTE PUBLIQUE (ACCUEIL) --- */}
+                <Route path="/" element={<LandingPage />} />
                 {/* LOGIN */}
                 <Route 
                     path="/login" 
@@ -128,82 +133,55 @@ function App() {
                     } 
                 />
 
-                {/* DASHBOARD */}
-                <Route 
-                    path="/dashboard" 
-                    element={
-                        isAuthenticated ? (
-                            <AuthGuard setUser={setUser} onLogout={handleLogout}>
-                                {user?.password_must_be_changed 
-                                    ? <Navigate to="/change-password-required" replace /> 
-                                    : <DashboardPage user={user} onLogout={handleLogout} />
-                                }
-                            </AuthGuard>
-                        ) : <Navigate to="/login" replace />
-                    } 
-                />
+                {/* ROUTES PROTÉGÉES AVEC LAYOUT */}
+                {isAuthenticated ? (
+                    <Route element={<AuthGuard setUser={setUser} onLogout={handleLogout}><MainLayout user={user} onLogout={handleLogout} /></AuthGuard>}>
 
-                {/* ADMIN */}
-                <Route 
-                    path="/admin" 
-                    element={
-                        isAuthenticated ? (
-                            <AuthGuard setUser={setUser} onLogout={handleLogout}>
-                                {user?.password_must_be_changed 
-                                    ? <Navigate to="/change-password-required" replace /> 
-                                    : <AdminPage user={user} onLogout={handleLogout} />
-                                }
-                            </AuthGuard>
-                        ) : <Navigate to="/login" replace />
-                    } 
-                />
+                        <Route path="/dashboard" element={<HomePage user={user} />} />
+                        
+                        {/* DISPATCHER */}
+                        <Route path="/dashboard" element={<DashboardDispatcher user={user} />} />
 
-                {/* MANAGER */}
-                <Route 
-                    path="/manager/validations" 
-                    element={
-                        isAuthenticated ? (
-                            <AuthGuard setUser={setUser} onLogout={handleLogout}>
-                                {user?.password_must_be_changed 
-                                    ? <Navigate to="/change-password-required" replace /> 
-                                    : <ManagerValidationPage user={user} onLogout={handleLogout} />
-                                }
-                            </AuthGuard>
-                        ) : <Navigate to="/login" replace />
-                    } 
-                />
+                        {/* COMMUNS */}
+                        <Route path="/requests" element={<RequestsPage />} />
+                        <Route path="/requests/new" element={<NewRequestPage />} />
+                        <Route path="/profile" element={<ProfilePage />} />
 
-                {/* HISTORIQUE (CORRECTION ICI : DÉPLACÉ DANS ROUTES ET NETTOYÉ) */}
-                <Route
-                    path="/historique"
-                    element={
-                        isAuthenticated ? (
-                            <AuthGuard setUser={setUser} onLogout={handleLogout}>
-                                {user?.password_must_be_changed 
-                                    ? <Navigate to="/change-password-required" replace /> 
-                                    : <HistoriquePage />
-                                }
-                            </AuthGuard>        
-                        ) : <Navigate to="/login" replace />
-                    }
-                />
+                        {/* EMPLOYÉ / CHEF */}
+                        <Route path="/chef/validations" element={<ChefValidationPage />} />
+                        <Route path="/chef/team" element={<MyTeamPage />} />
 
-                {/* PROFIL */}
-                <Route 
-                    path="/profile" 
-                    element={
-                        isAuthenticated ? (
-                            <AuthGuard setUser={setUser} onLogout={handleLogout}>
-                                <ProfilePage />
-                            </AuthGuard>
-                        ) : <Navigate to="/login" replace />
-                    } 
-                />
+                        {/* CAISSIER */}
+                        <Route path="/workstation" element={<WorkstationPage user={user} />} />
+                        <Route path="/caisse/history" element={<CaisseHistoryPage />} />
 
-                <Route path="*" element={<Navigate to="/dashboard" replace />} />
+                        {/* MANAGER */}
+                        <Route path="/manager/supervision" element={<CaissesLiveView />} />
+                        <Route path="/manager/validations" element={<ManagerValidationPage user={user} onLogout={handleLogout} />} />
+                        <Route path="/manager/history" element={<HistoriquePage />} />
+                        <Route path="/manager/audit" element={<AuditPage />} />
+                        
+                        {/* ADMIN */}
+                        <Route path="/admin/*" element={<AdminPage user={user} onLogout={handleLogout} />} />
+
+                        {/* Fallback */}
+                        <Route path="*" element={<Navigate to="/dashboard" replace />} />
+                    </Route>
+                ) : (
+                    <Route path="*" element={<Navigate to="/login" />} />
+                )}
             </Routes>
         </Router>
     );
 }
+
+const DashboardDispatcher = ({ user }: { user: UserData }) => {
+    if (user.roles.includes('ROLE_CAISSIER')) return <Navigate to="/workstation" replace />;
+    if (user.roles.includes('ROLE_MANAGER')) return <Navigate to="/manager/supervision" replace />;
+    if (user.roles.includes('ROLE_CHEF_SERVICE')) return <Navigate to="/chef/validations" replace />;
+    
+    // Par défaut (Employé)
+    return <DashboardEmploye user={user} onLogout={() => {}} />;
+};
 
 export default App;

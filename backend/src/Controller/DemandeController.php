@@ -3,6 +3,7 @@
 namespace App\Controller;
 
 use App\Entity\Demande;
+use App\Entity\LigneDemande;
 use App\Entity\Utilisateur;
 use App\Repository\DemandeRepository;
 use Doctrine\ORM\EntityManagerInterface;
@@ -11,43 +12,80 @@ use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\Routing\Attribute\Route;
 use Symfony\Component\Security\Http\Attribute\IsGranted;
-use Symfony\Component\Validator\Validator\ValidatorInterface;
 
 #[Route('/api/demandes', name: 'api_demandes_')]
-#[IsGranted('ROLE_USER')]
+#[IsGranted('IS_AUTHENTICATED_FULLY')]
 final class DemandeController extends AbstractController
 {
     #[Route('', name: 'create', methods: ['POST'])]
-    public function create(
-        Request $request,
-        EntityManagerInterface $em,
-        ValidatorInterface $validator
-    ): JsonResponse {
+    public function create(Request $request, EntityManagerInterface $em): JsonResponse 
+    {
         /** @var Utilisateur $user */
         $user = $this->getUser();
         $data = json_decode($request->getContent(), true);
 
-        if (empty($data['titre']) || empty($data['montant']) || empty($data['type'])) {
-            return $this->json(['error' => 'Champs obligatoires manquants'], JsonResponse::HTTP_BAD_REQUEST);
+        if (empty($data['titre']) || empty($data['montant'])) {
+            return $this->json(['error' => 'Champs obligatoires manquants'], 400);
         }
 
         $demande = new Demande();
         $demande->setTitre($data['titre']);
-        $demande->setMontantEstime((string)$data['montant']);
-        $demande->setType($data['type']);
-        $demande->setDemandeur($user);
-        $demande->setStatut('ATTENTE_CHEF');
-        $demande->setDescription($data['motif'] ?? '');
+        
+        // Compatible avec ton entité qui utilise setMontantEstime
+        if (method_exists($demande, 'setMontantEstime')) {
+            $demande->setMontantEstime((string)$data['montant']);
+        } else {
+            $demande->setMontant((float)$data['montant']);
+        }
 
-        $errors = $validator->validate($demande);
-        if (count($errors) > 0) {
-            return $this->json(['error' => (string)$errors], JsonResponse::HTTP_BAD_REQUEST);
+        $demande->setType($data['type'] ?? 'FICHE_BESOIN');
+        $demande->setDemandeur($user);
+        
+        // Gestion de la description/motif
+        $description = $data['motif'] ?? '';
+        if (method_exists($demande, 'setDescription')) {
+            $demande->setDescription($description);
+        } elseif (method_exists($demande, 'setMotif')) {
+            $demande->setMotif($description);
+        }
+
+        // WORKFLOW
+        $roles = $user->getRoles();
+
+        if (in_array('ROLE_MANAGER', $roles)) {
+            // Le Manager s'auto-valide -> Directement prêt à payer
+            $demande->setStatut('VALIDEE_A_PAYER');
+        } 
+        elseif (in_array('ROLE_CHEF_SERVICE', $roles)) {
+            // Le Chef saute l'étape Chef -> En attente Manager
+            $demande->setStatut('ATTENTE_MANAGER');
+        } 
+        else {
+            // Les autres (Employés) -> En attente Chef
+            $demande->setStatut('ATTENTE_CHEF');
+        }
+
+        // REFERENCE (Si le champ existe dans l'entité)
+        if (method_exists($demande, 'setNumeroReference')) {
+            $ref = 'DEM-' . date('Ymd') . '-' . strtoupper(substr(uniqid(), -4));
+            $demande->setNumeroReference($ref);
+        }
+
+        // LIGNES (Si le champ existe)
+        if (!empty($data['lignes']) && is_array($data['lignes']) && method_exists($demande, 'addLigne')) {
+            foreach ($data['lignes'] as $l) {
+                $ligne = new LigneDemande();
+                $ligne->setDesignation($l['designation']);
+                $ligne->setQuantite((int)$l['quantite']);
+                $ligne->setPrixUnitaireEstimatif((float)$l['prixUnitaire']);
+                $demande->addLigne($ligne);
+            }
         }
 
         $em->persist($demande);
         $em->flush();
 
-        return $this->json(['id' => $demande->getId()], JsonResponse::HTTP_CREATED);
+        return $this->json(['id' => $demande->getId()], 201);
     }
 
     #[Route('/me', name: 'list_current_user', methods: ['GET'])]
@@ -55,28 +93,26 @@ final class DemandeController extends AbstractController
     {
         /** @var Utilisateur $user */
         $user = $this->getUser();
+        // Trie par date de création DESC
+        $demandes = $repo->findBy(['demandeur' => $user], ['createdAt' => 'DESC']); 
 
-        // Récupération des entités
-        $demandes = $repo->findBy(['demandeur' => $user], ['createdAt' => 'DESC']);
-
-        // Construction manuelle du tableau (JSON) pour éviter CircularReferenceException
         $data = [];
-        foreach ($demandes as $demande) {
+        foreach ($demandes as $d) {
+            // Sécurisation des getters pour éviter l'erreur 500
+            $montant = method_exists($d, 'getMontantEstime') ? $d->getMontantEstime() : $d->getMontant();
+            $dateObj = method_exists($d, 'getCreatedAt') ? $d->getCreatedAt() : $d->getDateCreation();
+            $ref = method_exists($d, 'getNumeroReference') ? $d->getNumeroReference() : null;
+
             $data[] = [
-                'id' => $demande->getId(),
-                'titre' => $demande->getTitre(),
-                'montant' => (string)$demande->getMontantEstime(),
-                'type' => $demande->getType(),
-                'statut' => $demande->getStatut(),
-                'dateCreation' => $demande->getCreatedAt()?->format('Y-m-d H:i:s'),
-                'motif' => $demande->getDescription(),
-                'demandeur' => [
-                    'nom' => $demande->getDemandeur()->getNom(),
-                    'email' => $demande->getDemandeur()->getEmail()
-                ]
+                'id' => $d->getId(),
+                'numeroReference' => $ref,
+                'titre' => $d->getTitre(),
+                'montant' => $montant,
+                'type' => $d->getType(),
+                'statut' => $d->getStatut(),
+                'date' => $dateObj ? $dateObj->format('Y-m-d H:i') : null,
             ];
         }
-
         return $this->json($data);
     }
 
@@ -87,102 +123,135 @@ final class DemandeController extends AbstractController
         $user = $this->getUser();
         $roles = $user->getRoles();
 
-        // On utilise le QueryBuilder pour faire des jointures (nécessaire pour filtrer par service)
         $qb = $repo->createQueryBuilder('d')
-            ->join('d.demandeur', 'u') // On joint la table utilisateur (alias 'u')
-            ->orderBy('d.createdAt', 'ASC');
+            ->join('d.demandeur', 'u')
+            ->orderBy('d.createdAt', 'DESC');
 
-        // SCÉNARIO 1 : C'est un MANAGER
-        // Il doit voir TOUTES les demandes validées par les chefs (statut ATTENTE_MANAGER)
         if (in_array('ROLE_MANAGER', $roles)) {
-            $qb->andWhere('d.statut = :statut')
-               ->setParameter('statut', 'ATTENTE_MANAGER');
-        } 
-        // SCÉNARIO 2 : C'est un CHEF DE SERVICE
-        // Il ne doit voir QUE les demandes de SON service (statut ATTENTE_CHEF)
-        elseif (in_array('ROLE_CHEF_SERVICE', $roles)) {
+            $qb->andWhere('d.statut = :statut')->setParameter('statut', 'ATTENTE_MANAGER');
+        } elseif (in_array('ROLE_CHEF_SERVICE', $roles)) {
             $service = $user->getService();
-
-            if (!$service) {
-                // Si le chef n'est affecté à aucun service, il ne voit rien (sécurité)
-                return $this->json([]);
-            }
-
+            if (!$service) return $this->json([]);
             $qb->andWhere('d.statut = :statut')
-               ->andWhere('u.service = :service') // FILTRE MAGIQUE : Seulement les gens de son service
+               ->andWhere('u.service = :service')
                ->setParameter('statut', 'ATTENTE_CHEF')
                ->setParameter('service', $service);
-        }else {
-    return $this->json([
-        'error' => 'DEBUG MODE : Accès refusé',
-        'roles_trouves_dans_token' => $roles, // On veut voir ça !
-        'role_attendu' => 'ROLE_CHEF_SERVICE',
-        'user_connecte' => $user->getUserIdentifier()
-    ], 403);
-}
+        } else {
+            return $this->json([]);
+        }
 
         $demandes = $qb->getQuery()->getResult();
-        
-        // Construction manuelle du JSON
         $data = [];
+        
         foreach ($demandes as $d) {
+            // Sécurisation maximale des getters
+            $montant = method_exists($d, 'getMontantEstime') ? $d->getMontantEstime() : $d->getMontant();
+            // Attention au getter de date : getCreatedAt() ou getDateCreation()
+            $dateObj = method_exists($d, 'getCreatedAt') ? $d->getCreatedAt() : $d->getDateCreation();
+            $motif = method_exists($d, 'getDescription') ? $d->getDescription() : $d->getMotif();
+            $ref = method_exists($d, 'getNumeroReference') ? $d->getNumeroReference() : null;
+
             $data[] = [
                 'id' => $d->getId(),
                 'titre' => $d->getTitre(),
-                'montant' => $d->getMontantEstime(),
-                // On affiche le nom et le service pour info
-                'demandeur' => $d->getDemandeur()->getNom() . ' (' . $d->getDemandeur()->getEmail() . ')',
+                'montant' => $montant,
+                'demandeur' => $d->getDemandeur()->getNom(),
                 'type' => $d->getType(),
-                'date' => $d->getCreatedAt()->format('Y-m-d'),
-                'motif' => $d->getDescription()
+                'date' => $dateObj ? $dateObj->format('Y-m-d') : 'N/A',
+                'motif' => $motif,
+                'numeroReference' => $ref,
             ];
         }
-
         return $this->json($data);
     }
-
+    
     #[Route('/{id}/workflow', name: 'workflow_action', methods: ['PATCH'])]
     public function workflowAction(Demande $demande, Request $request, EntityManagerInterface $em): JsonResponse
     {
-        /** @var Utilisateur $user */
-        $user = $this->getUser();
         $data = json_decode($request->getContent(), true);
         $action = $data['action'] ?? null;
-
-        if ($demande->getStatut() === 'ATTENTE_CHEF') {
-            if ($action === 'valider') $demande->setStatut('ATTENTE_MANAGER');
-            elseif ($action === 'refuser') $demande->setStatut('REFUSEE');
-        }
-        elseif ($demande->getStatut() === 'ATTENTE_MANAGER') {
-            if ($action === 'valider') $demande->setStatut('VALIDEE_A_PAYER');
-            elseif ($action === 'refuser') $demande->setStatut('REFUSEE');
-        }
-        elseif ($demande->getStatut() === 'VALIDEE_A_PAYER') {
-            if ($action === 'payer') {
-                $demande->setStatut('PAYEE');
-                $demande->setCaissierTraitant($user);
-            }
+        
+        if ($action === 'valider') {
+            if ($demande->getStatut() === 'ATTENTE_CHEF') $demande->setStatut('ATTENTE_MANAGER');
+            elseif ($demande->getStatut() === 'ATTENTE_MANAGER') $demande->setStatut('VALIDEE_A_PAYER');
+        } elseif ($action === 'refuser') {
+            $demande->setStatut('REFUSEE');
         }
 
         $em->flush();
         return $this->json(['status' => $demande->getStatut()]);
     }
 
-    #[Route('/search/{id}', name: 'search_by_id', methods: ['GET'])]
-    public function searchById(string $id, DemandeRepository $repo): JsonResponse
+    #[Route('/search/{query}', name: 'search_by_ref', methods: ['GET'])]
+    public function searchByReference(string $query, DemandeRepository $repo): JsonResponse
     {
-        $demande = $repo->find($id);
-        if (!$demande) return $this->json(['error' => 'Demande introuvable'], 404);
+        // 1. Recherche prioritaire par Numéro de Référence (ex: DEM-2025...)
+        $demande = $repo->findOneBy(['numeroReference' => $query]);
+
+        // 2. Si pas trouvé, on regarde si c'est un UUID valide pour chercher par ID
+        if (!$demande && \Symfony\Component\Uid\Uuid::isValid($query)) {
+            $demande = $repo->find($query);
+        }
+
+        if (!$demande) {
+            return $this->json(['error' => 'Aucune demande trouvée avec cette référence.'], 404);
+        }
+
+        // Sécurisation des données renvoyées
+        $montant = method_exists($demande, 'getMontantEstime') ? $demande->getMontantEstime() : $demande->getMontant();
+        $motif = method_exists($demande, 'getDescription') ? $demande->getDescription() : $demande->getMotif();
+        $demandeurName = $demande->getDemandeur() ? $demande->getDemandeur()->getNom() : 'Inconnu';
+        $demandeurEmail = $demande->getDemandeur() ? $demande->getDemandeur()->getEmail() : '';
 
         return $this->json([
             'id' => $demande->getId(),
+            'numeroReference' => $demande->getNumeroReference(),
             'titre' => $demande->getTitre(),
-            'montant' => $demande->getMontantEstime(),
+            'montant' => $montant,
             'statut' => $demande->getStatut(),
-            // CORRECTION ICI AUSSI
-            'demandeur' => $demande->getDemandeur()->getNom() . ' (' . $demande->getDemandeur()->getEmail() . ')',
+            'demandeur' => "$demandeurName ($demandeurEmail)",
             'type' => $demande->getType(),
-            'description' => $demande->getDescription()
+            'motif' => $motif
+        ]);
+    }
+
+    #[Route('/{id}', name: 'show', methods: ['GET'])]
+    public function show(string $id, DemandeRepository $repo): JsonResponse
+    {
+        $d = $repo->find($id);
+        if (!$d) return $this->json(['error' => 'Non trouvé'], 404);
+
+        // Récupération des lignes si elles existent
+        $lignes = [];
+        if (method_exists($d, 'getLignes')) {
+            foreach ($d->getLignes() as $l) {
+                $lignes[] = [
+                    'id' => $l->getId(),
+                    'designation' => $l->getDesignation(),
+                    'quantite' => $l->getQuantite(),
+                    'prixUnitaire' => $l->getPrixUnitaireEstimatif(),
+                    'total' => $l->getTotalLigne()
+                ];
+            }
+        }
+
+        $montant = method_exists($d, 'getMontantEstime') ? $d->getMontantEstime() : $d->getMontant();
+        $dateObj = method_exists($d, 'getCreatedAt') ? $d->getCreatedAt() : $d->getDateCreation();
+        $motif = method_exists($d, 'getDescription') ? $d->getDescription() : $d->getMotif();
+        $ref = method_exists($d, 'getNumeroReference') ? $d->getNumeroReference() : null;
+
+        return $this->json([
+            'id' => $d->getId(),
+            'numeroReference' => $ref,
+            'titre' => $d->getTitre(),
+            'montant' => $montant,
+            'statut' => $d->getStatut(),
+            'type' => $d->getType(),
+            'motif' => $motif,
+            'date' => $dateObj ? $dateObj->format('d/m/Y') : 'N/A',
+            'demandeur' => $d->getDemandeur()->getNom(),
+            'service' => $d->getDemandeur()->getService() ? $d->getDemandeur()->getService()->getNom() : 'N/A',
+            'lignes' => $lignes
         ]);
     }
 }

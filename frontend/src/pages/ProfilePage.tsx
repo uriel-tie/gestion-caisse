@@ -1,120 +1,116 @@
-import React, { useState, useEffect } from 'react';
-import { User, Mail, Save, Lock, AlertTriangle, Clock } from 'lucide-react';
-import InputField from '../components/InputField'; 
+import React, { useState } from 'react';
+import { User, Lock, Save, Mail, Briefcase } from 'lucide-react';
+import Swal from 'sweetalert2';
 
 export default function ProfilePage() {
-    const [user, setUser] = useState<any>(null);
-    const [nom, setNom] = useState('');
-    const [email, setEmail] = useState('');
-    const [password, setPassword] = useState('');
-    const [loading, setLoading] = useState(false);
+    const [user, setUser] = useState<any>(() => {
+        try { return JSON.parse(localStorage.getItem('user') || '{}'); } 
+        catch { return {}; }
+    });
 
-    useEffect(() => {
-        // Charger les infos actuelles
-        const localUser = JSON.parse(localStorage.getItem('user') || '{}');
-        // Idéalement, faire un fetch sur /api/users/me pour avoir les infos fraîches
-        setNom(localUser.nom || '');
-        setEmail(localUser.email || '');
-    }, []);
+    const [passwords, setPasswords] = useState({ current: '', new: '', confirm: '' });
 
-    const handleUpdate = async (e: React.FormEvent) => {
+    const handleUpdatePassword = async (e: React.FormEvent) => {
         e.preventDefault();
-        setLoading(true);
-        const token = localStorage.getItem('token');
+        if (passwords.new !== passwords.confirm) {
+            Swal.fire('Erreur', 'Les mots de passe ne correspondent pas', 'error');
+            return;
+        }
 
+        const token = localStorage.getItem('token');
         try {
-            const res = await fetch('https://127.0.0.1:8000/api/users/profile', {
+            const res = await fetch('https://127.0.0.1:8000/api/users/change-password', {
                 method: 'PATCH',
                 headers: { 
-                    'Content-Type': 'application/json', 
-                    'Authorization': `Bearer ${token}` 
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`
                 },
                 body: JSON.stringify({ 
-                    nom, 
-                    email, 
-                    password: password || undefined // On n'envoie pas si vide
+                    current_password: passwords.current, // Si ton backend le demande
+                    new_password: passwords.new 
                 })
             });
 
-            const data = await res.json();
-
-            if (!res.ok) {
-                alert(data.error || "Erreur lors de la mise à jour");
+            if (res.ok) {
+                Swal.fire('Succès', 'Mot de passe mis à jour', 'success');
+                setPasswords({ current: '', new: '', confirm: '' });
             } else {
-                alert("Profil mis à jour !");
-                setPassword('');
-                // Mettre à jour le localStorage pour l'affichage immédiat
-                const localUser = JSON.parse(localStorage.getItem('user') || '{}');
-                localUser.nom = nom;
-                localUser.email = email;
-                localStorage.setItem('user', JSON.stringify(localUser));
+                const err = await res.json();
+                Swal.fire('Erreur', err.message || 'Erreur lors de la mise à jour', 'error');
             }
-        } catch (err) {
-            console.error(err);
-        } finally {
-            setLoading(false);
+        } catch (error) {
+            Swal.fire('Erreur', 'Erreur serveur', 'error');
         }
     };
 
     return (
-        <div className="max-w-2xl mx-auto mt-8 p-6 bg-white rounded-xl shadow-sm border border-gray-200">
-            <h2 className="text-2xl font-bold text-gray-800 mb-6 flex items-center">
-                <User className="mr-2 text-purple-600" /> Mon Profil
-            </h2>
+        <div className="max-w-4xl mx-auto">
+            <h1 className="text-2xl font-bold text-gray-900 mb-8 flex items-center">
+                <User className="mr-3 text-blue-600" /> Mon Profil
+            </h1>
 
-            <div className="bg-blue-50 text-blue-800 p-4 rounded-lg mb-6 text-sm flex items-start">
-                <Clock className="h-5 w-5 mr-2 flex-shrink-0" />
-                <p>
-                    Par mesure de sécurité et de traçabilité, le changement de nom n'est autorisé qu'une fois par mois.
-                    Toute modification est enregistrée dans le journal d'audit.
-                </p>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+                {/* Carte Info */}
+                <div className="md:col-span-1">
+                    <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200 text-center">
+                        <div className="w-24 h-24 bg-blue-100 rounded-full flex items-center justify-center text-blue-600 text-3xl font-bold mx-auto mb-4">
+                            {user.nom ? user.nom.charAt(0) : 'U'}
+                        </div>
+                        <h2 className="text-xl font-bold text-gray-800">{user.nom}</h2>
+                        <div className="flex items-center justify-center text-gray-500 mt-2 text-sm">
+                            <Mail size={14} className="mr-1"/> {user.email}
+                        </div>
+                        <div className="mt-4 inline-flex items-center px-3 py-1 bg-gray-100 text-gray-700 rounded-full text-xs font-bold uppercase">
+                            <Briefcase size={12} className="mr-2"/>
+                            {user.roles ? user.roles[0].replace('ROLE_', '') : 'EMPLOYE'}
+                        </div>
+                    </div>
+                </div>
+
+                {/* Formulaire Sécurité */}
+                <div className="md:col-span-2">
+                    <div className="bg-white p-8 rounded-xl shadow-sm border border-gray-200">
+                        <h3 className="text-lg font-bold text-gray-800 mb-6 flex items-center">
+                            <Lock size={18} className="mr-2 text-gray-400"/> Sécurité du compte
+                        </h3>
+                        
+                        <form onSubmit={handleUpdatePassword} className="space-y-4">
+                            {/* Si ton backend exige l'ancien mot de passe, décommente ceci :
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-1">Mot de passe actuel</label>
+                                <input type="password" required className="w-full border rounded-lg p-2.5 outline-none focus:ring-2 focus:ring-blue-500"
+                                    value={passwords.current} onChange={e => setPasswords({...passwords, current: e.target.value})}
+                                />
+                            </div> 
+                            */}
+
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-1">Nouveau mot de passe</label>
+                                <input 
+                                    type="password" required minLength={6}
+                                    className="w-full border border-gray-300 rounded-lg p-2.5 outline-none focus:ring-2 focus:ring-blue-500 transition"
+                                    value={passwords.new} onChange={e => setPasswords({...passwords, new: e.target.value})}
+                                />
+                            </div>
+
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-1">Confirmer le nouveau mot de passe</label>
+                                <input 
+                                    type="password" required minLength={6}
+                                    className="w-full border border-gray-300 rounded-lg p-2.5 outline-none focus:ring-2 focus:ring-blue-500 transition"
+                                    value={passwords.confirm} onChange={e => setPasswords({...passwords, confirm: e.target.value})}
+                                />
+                            </div>
+
+                            <div className="pt-4 flex justify-end">
+                                <button type="submit" className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2.5 rounded-lg font-bold flex items-center shadow-lg transition transform active:scale-95">
+                                    <Save size={18} className="mr-2" /> Mettre à jour
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
             </div>
-
-            <form onSubmit={handleUpdate} className="space-y-6">
-                <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Nom Complet</label>
-                    <input 
-                        type="text" 
-                        value={nom} 
-                        onChange={e => setNom(e.target.value)}
-                        className="w-full border rounded-lg px-3 py-2 focus:ring-2 focus:ring-purple-500 outline-none"
-                    />
-                </div>
-
-                <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Email Professionnel</label>
-                    <input 
-                        type="email" 
-                        value={email} 
-                        onChange={e => setEmail(e.target.value)}
-                        className="w-full border rounded-lg px-3 py-2 focus:ring-2 focus:ring-purple-500 outline-none"
-                    />
-                </div>
-
-                <div className="pt-4 border-t border-gray-100">
-                    <h3 className="text-sm font-bold text-gray-900 mb-3 flex items-center">
-                        <Lock className="h-4 w-4 mr-2"/> Sécurité
-                    </h3>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Nouveau mot de passe (laisser vide pour ne pas changer)</label>
-                    <input 
-                        type="password" 
-                        value={password} 
-                        onChange={e => setPassword(e.target.value)}
-                        placeholder="••••••••"
-                        className="w-full border rounded-lg px-3 py-2 focus:ring-2 focus:ring-purple-500 outline-none"
-                    />
-                </div>
-
-                <div className="flex justify-end">
-                    <button 
-                        type="submit" 
-                        disabled={loading}
-                        className="bg-purple-600 text-white px-6 py-2 rounded-lg font-bold hover:bg-purple-700 disabled:opacity-50 transition flex items-center"
-                    >
-                        <Save className="mr-2 h-4 w-4" /> Enregistrer les modifications
-                    </button>
-                </div>
-            </form>
         </div>
     );
 }

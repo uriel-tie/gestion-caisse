@@ -1,7 +1,8 @@
-import React, { useState, useEffect } from 'react';
-import { ArrowLeft, Settings, Users, BookOpen, CreditCard } from 'lucide-react'; // Ajout BookOpen
-import { useNavigate } from 'react-router-dom';
+import React, { useState } from 'react';
+import { Settings, Users, BookOpen, CreditCard } from 'lucide-react';
 import type { UserData } from '../types';
+
+// On garde tes composants existants
 import AdminStructure from '../components/AdminStructure';
 import AdminUsers from '../components/AdminUsers';
 import AdminCompta from '../components/AdminCompta'; 
@@ -13,73 +14,68 @@ interface AdminPageProps {
 }
 
 export default function AdminPage({ user }: AdminPageProps) {
-    const navigate = useNavigate();
-    const [activeTab, setActiveTab] = useState<'structure' | 'users' | 'compta' | 'modes'>('users');
+    // Plus besoin de useNavigate ici pour le retour
+    const [activeTab, setActiveTab] = useState<'users' | 'structure' | 'compta' | 'modes'>('users');
 
-    // Fonction utilitaire pour le style des onglets
     const getTabClass = (tabName: string, colorClass: string) => {
         const isActive = activeTab === tabName;
-        return `pb-4 px-4 flex items-center font-medium transition-colors border-b-2 ${
+        return `pb-3 px-1 border-b-2 font-medium text-sm transition-colors flex items-center gap-2 ${
             isActive ? `${colorClass} border-current` : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
         }`;
     };
 
     return (
-        <div className="min-h-screen bg-gray-50 p-8">
-            <div className="max-w-7xl mx-auto">
-                {/* Header */}
-                <div className="flex items-center justify-between mb-8">
-                    <div className="flex items-center">
-                        <button 
-                            onClick={() => navigate('/dashboard')} 
-                            className="mr-4 p-2 bg-white rounded-full shadow-sm hover:bg-gray-100 transition-colors"
-                        >
-                            <ArrowLeft className="h-6 w-6 text-gray-600" />
-                        </button>
-                        <div>
-                            <h1 className="text-3xl font-bold text-gray-800">Administration</h1>
-                            <p className="text-gray-500 text-sm mt-1">Configuration globale du système</p>
-                        </div>
-                    </div>
-                </div>
+        <div className="max-w-7xl mx-auto">
+            {/* Nouvel En-tête simplifié */}
+            <div className="mb-8">
+                <h1 className="text-3xl font-bold text-gray-900 flex items-center gap-3">
+                    <Settings className="text-gray-400" size={32} />
+                    Administration
+                </h1>
+                <p className="text-gray-500 mt-2">
+                    Configuration globale du système. Certaines actions sensibles sont enregistrées dans l'audit.
+                </p>
+            </div>
 
-                {/* Onglets de navigation */}
-                <div className="flex space-x-1 mb-8 border-b border-gray-200 overflow-x-auto">
+            {/* Navigation par Onglets (Style épuré) */}
+            <div className="border-b border-gray-200 mb-8">
+                <nav className="-mb-px flex space-x-8">
                     <button
                         onClick={() => setActiveTab('users')}
                         className={getTabClass('users', 'text-purple-600')}
                     >
-                        <Users className="mr-2 h-5 w-5" /> Personnel
+                        <Users size={18} /> Personnel
                     </button>
                     
                     <button
                         onClick={() => setActiveTab('structure')}
                         className={getTabClass('structure', 'text-blue-600')}
                     >
-                        <Settings className="mr-2 h-5 w-5" /> Services & Caisses
+                        <Settings size={18} /> Services & Caisses
                     </button>
 
                     <button
                         onClick={() => setActiveTab('compta')}
                         className={getTabClass('compta', 'text-orange-600')}
                     >
-                        <BookOpen className="mr-2 h-5 w-5" /> Plan Comptable
+                        <BookOpen size={18} /> Plan Comptable
                     </button>
 
                     <button 
-                    onClick={() => setActiveTab('modes')} className={getTabClass('modes', 'text-indigo-600')}
+                        onClick={() => setActiveTab('modes')} 
+                        className={getTabClass('modes', 'text-indigo-600')}
                     >
-                         <CreditCard className="mr-2 h-5 w-5" /> Modes Paiement
+                         <CreditCard size={18} /> Modes Paiement
                     </button>
-                </div>
+                </nav>
+            </div>
 
-                {/* Contenu Dynamique */}
-                <div className="animate-in fade-in slide-in-from-bottom-4 duration-300">
-                    {activeTab === 'users' && <AdminUsers />}
-                    {activeTab === 'structure' && <AdminStructure />}
-                    {activeTab === 'compta' && <AdminCompta />}
-                    {activeTab === 'modes' && <AdminModes />}
-                </div>
+            {/* Zone de Contenu */}
+            <div className="animate-in fade-in slide-in-from-bottom-2 duration-200">
+                {activeTab === 'users' && <AdminUsers />}
+                {activeTab === 'structure' && <AdminStructure />}
+                {activeTab === 'compta' && <AdminCompta />}
+                {activeTab === 'modes' && <AdminModes />}
             </div>
         </div>
     );

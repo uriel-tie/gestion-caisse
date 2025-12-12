@@ -58,7 +58,7 @@ export default function PaymentTerminal({ onSuccess }: PaymentTerminalProps) {
             });
 
             if (res.ok) {
-                setSuccessMsg(`Paiement de ${demande.montant}€ effectué avec succès !`);
+                setSuccessMsg(`Paiement de ${demande.montant} F CFA effectué avec succès !`);
                 setDemande(null);
                 setCode('');
                 onSuccess(); // Rafraîchit le solde global
@@ -130,7 +130,9 @@ export default function PaymentTerminal({ onSuccess }: PaymentTerminalProps) {
                     </div>
 
                     {/* BOUTON D'ACTION */}
-                    {(demande.statut === 'VALIDEE_A_PAYER') ? (
+                    {/* GESTION DES ÉTATS DU BOUTON */}
+                    {demande.statut === 'VALIDEE_A_PAYER' ? (
+                        /* CAS 1 : PRÊT À PAYER */
                         <button 
                             onClick={handlePay}
                             disabled={loading}
@@ -138,13 +140,26 @@ export default function PaymentTerminal({ onSuccess }: PaymentTerminalProps) {
                         >
                             {loading ? 'Traitement...' : <>CONFIRMER LE DÉCAISSEMENT <ArrowRight className="ml-2 h-5 w-5"/></>}
                         </button>
+
+                    ) : demande.statut === 'PAYEE' ? (
+                        /* CAS 2 : DÉJÀ PAYÉ (NOUVEAU) */
+                        <div className="bg-blue-50 border border-blue-200 text-blue-800 p-4 rounded-lg text-center">
+                            <div className="flex justify-center mb-2">
+                                {/* Tu peux importer CheckCircle de lucide-react si tu l'as, sinon une emoji suffit */}
+                                <span className="text-3xl">✅</span> 
+                            </div>
+                            <p className="font-bold">Cette demande a déjà été réglée.</p>
+                            <p className="text-xs text-blue-600 mt-1">Impossible d'effectuer un nouveau décaissement.</p>
+                        </div>
+
                     ) : (
-                        <div className="bg-orange-100 text-orange-800 p-3 rounded-lg text-center font-medium">
-                            ⛔ Cette demande n'est pas encore validée pour paiement.
+                        /* CAS 3 : AUTRES STATUTS (Brouillon, En attente...) */
+                        <div className="bg-orange-100 border border-orange-200 text-orange-800 p-3 rounded-lg text-center font-medium flex items-center justify-center gap-2">
+                            <span>⛔ Impossible de payer : Statut <b>{demande.statut}</b></span>
                         </div>
                     )}
                 </div>
-            )}
-        </div>
+            )}        
+            </div>
     );
 }

@@ -6,6 +6,9 @@ use App\Repository\DemandeRepository;
 use Doctrine\DBAL\Types\Types;
 use Doctrine\ORM\Mapping as ORM;
 use Symfony\Component\Uid\Uuid;
+use App\Entity\LigneDemande;
+use Doctrine\Common\Collections\ArrayCollection;
+use Doctrine\Common\Collections\Collection;
 
 #[ORM\Entity(repositoryClass: DemandeRepository::class)]
 class Demande
@@ -44,8 +47,11 @@ class Demande
 
     #[ORM\Column(type: Types::DATETIME_IMMUTABLE)]
     private ?\DateTimeImmutable $createdAt = null;
+    #[ORM\Column(length: 50, unique: true, nullable: true)]
+    private ?string $numeroReference = null; // Ex: DEM-2025-001
 
-    // --- Relations ---
+    #[ORM\OneToMany(mappedBy: 'demande', targetEntity: LigneDemande::class, cascade: ['persist', 'remove'])]
+    private Collection $lignes;
 
     // Qui demande ?
     #[ORM\ManyToOne(targetEntity: Utilisateur::class, inversedBy: 'demandes')]
@@ -59,6 +65,7 @@ class Demande
     public function __construct()
     {
         $this->createdAt = new \DateTimeImmutable();
+        $this->lignes = new ArrayCollection();
     }
 
     public function getId(): ?Uuid
@@ -147,6 +154,45 @@ class Demande
         $this->operation = $operation;
         return $this;
     }
+
+    public function getNumeroReference(): ?string
+    {
+        return $this->numeroReference;
+    }
+
+    public function setNumeroReference(?string $numeroReference): static
+    {
+        $this->numeroReference = $numeroReference;
+        return $this;
+    }
+
+    /**
+     * @return Collection<int, LigneDemande>
+     */
+    public function getLignes(): Collection
+    {
+        return $this->lignes;
+    }
+
+    public function addLigne(LigneDemande $ligne): static
+    {
+        if (!$this->lignes->contains($ligne)) {
+            $this->lignes->add($ligne);
+            $ligne->setDemande($this);
+        }
+        return $this;
+    }
+
+    public function removeLigne(LigneDemande $ligne): static
+    {
+        if ($this->lignes->removeElement($ligne)) {
+            if ($ligne->getDemande() === $this) {
+                // set the owning side to null (unless already changed)
+            }
+        }
+        return $this;
+    }
+
     public const STATUT_ATTENTE_TRAITEMENT_CAISSE = 'ATTENTE_TRAITEMENT_CAISSE';
 
     #[ORM\ManyToOne(targetEntity: Utilisateur::class)]

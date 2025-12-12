@@ -1,79 +1,103 @@
-import React, { useState } from 'react';
-import {AlertCircle, LogOut } from 'lucide-react';
+import React from 'react';
+import { AlertCircle, Plus, ArrowRight } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 import { MyRequestsWidget } from '../components/MyRequestsWidget';
 import type { UserData } from '../types';
 
 interface DashboardEmployeProps {
   user: UserData;
-  onLogout: () => void;
+  onLogout: () => void; // On garde la prop même si inutilisée ici (compatibilité)
 }
 
-export const DashboardEmploye: React.FC<DashboardEmployeProps> = ({ user, onLogout }) => {
-  
-
+export default function DashboardEmploye({ user }: DashboardEmployeProps) {
+  const navigate = useNavigate();
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      {/* Navbar Corrigée */}
-      <nav className="bg-blue-600 text-white p-4 shadow-lg">
-            <div className="max-w-7xl mx-auto flex justify-between items-center">
-                <h1 className="text-xl font-bold">Espace Employé</h1>
-                <div className="flex items-center gap-4">
-                    <span className="font-medium"> {user.nom}</span>
-                    <button 
-                        onClick={onLogout} 
-                        className="flex items-center gap-2 bg-blue-700 px-3 py-1 rounded-full hover:bg-blue-800 transition text-sm"
-                    >
-                        <LogOut size={16} /> Déconnexion
-                    </button>
-                </div>
-            </div>
-      </nav>
+    <div className="max-w-7xl mx-auto">
+      
+      {/* En-tête de bienvenue */}
+      <div className="flex flex-col md:flex-row justify-between items-end mb-8 gap-4">
+        <div>
+          <h1 className="text-3xl font-bold text-gray-900">Bonjour, {user.nom.split(' ')[0]} 👋</h1>
+          <p className="text-gray-500 mt-1">Bienvenue sur votre espace personnel. Que souhaitez-vous faire aujourd'hui ?</p>
+        </div>
+        <button 
+            onClick={() => navigate('/requests/new')}
+            className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-5 py-3 rounded-lg shadow-lg shadow-blue-500/30 transition-all font-bold"
+        >
+            <Plus size={20} /> Nouvelle Demande
+        </button>
+      </div>
 
-      <div className="max-w-7xl mx-auto py-8 px-4 sm:px-6 lg:px-8">
-        {/* Header */}
-        <div className="flex justify-between items-end mb-8">
-            <div>
-                <h1 className="text-3xl font-bold text-gray-900">Tableau de bord</h1>
-                <p className="text-gray-600 mt-1">Suivez l'état de vos demandes de fonds en temps réel.</p>
-            </div>
-         
+      {/* Grille de contenu */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+        
+        {/* Colonne Principale : Widget des demandes récentes */}
+        <div className="lg:col-span-2 space-y-6">
+           {/* On enveloppe le widget pour lui donner un style cohérent */}
+           <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+               <div className="flex justify-between items-center mb-6">
+                   <h2 className="text-lg font-bold text-gray-800">Vos demandes récentes</h2>
+                   <button 
+                      onClick={() => navigate('/requests')} 
+                      className="text-sm text-blue-600 hover:text-blue-800 font-medium flex items-center"
+                   >
+                      Voir tout <ArrowRight size={16} className="ml-1"/>
+                   </button>
+               </div>
+               {/* Le widget existant s'intègre ici */}
+               <MyRequestsWidget /> 
+           </div>
         </div>
 
-        {/* Widgets Grid */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          {/* Widget Mes Demandes (Prend 2 colonnes sur grand écran) */}
-          <div className="lg:col-span-2">
-            <MyRequestsWidget  />
+        {/* Colonne Latérale : Informations & Aide */}
+        <div className="space-y-6">
+          
+          {/* Carte : Circuit de validation */}
+          <div className="bg-blue-50 border border-blue-100 rounded-xl p-6 relative overflow-hidden">
+             <div className="absolute top-0 right-0 p-4 opacity-10 text-blue-600 pointer-events-none">
+                <AlertCircle size={100} />
+             </div>
+             
+             <h3 className="font-bold text-blue-900 text-lg mb-4 relative z-10">Circuit de validation</h3>
+             <ul className="space-y-4 relative z-10">
+                <li className="flex items-start">
+                    <span className="flex-shrink-0 w-6 h-6 rounded-full bg-white text-blue-600 font-bold text-xs flex items-center justify-center border border-blue-200 mt-0.5">1</span>
+                    <p className="ml-3 text-sm text-blue-800">
+                        <span className="font-bold block">Validation Chef de Service</span>
+                        Votre responsable direct approuve le besoin.
+                    </p>
+                </li>
+                <li className="flex items-start">
+                    <span className="flex-shrink-0 w-6 h-6 rounded-full bg-white text-blue-600 font-bold text-xs flex items-center justify-center border border-blue-200 mt-0.5">2</span>
+                    <p className="ml-3 text-sm text-blue-800">
+                        <span className="font-bold block">Validation Manager</span>
+                        Contrôle final et autorisation de décaissement.
+                    </p>
+                </li>
+                <li className="flex items-start">
+                    <span className="flex-shrink-0 w-6 h-6 rounded-full bg-green-500 text-white font-bold text-xs flex items-center justify-center mt-0.5">3</span>
+                    <p className="ml-3 text-sm text-blue-900">
+                        <span className="font-bold block">Paiement Caisse</span>
+                        Présentez-vous à la caisse avec votre numéro de demande.
+                    </p>
+                </li>
+             </ul>
           </div>
 
-          {/* Info Box - Conseils (Prend 1 colonne) */}
-          <div className="space-y-6">
-            <div className="bg-white border border-blue-100 rounded-xl p-6 shadow-sm">
-                <div className="flex items-start gap-4">
-                    <AlertCircle className="text-blue-500 flex-shrink-0 mt-1" size={24} />
-                    <div>
-                        <h3 className="font-bold text-gray-800 text-lg">Circuit de validation</h3>
-                        <ul className="mt-3 space-y-3">
-                            <li className="flex items-center text-sm text-gray-600">
-                                <span className="w-6 h-6 rounded-full bg-gray-100 text-gray-500 flex items-center justify-center text-xs mr-2">1</span>
-                                Validation par le Chef de Service
-                            </li>
-                            <li className="flex items-center text-sm text-gray-600">
-                                <span className="w-6 h-6 rounded-full bg-gray-100 text-gray-500 flex items-center justify-center text-xs mr-2">2</span>
-                                Validation par le Manager
-                            </li>
-                            <li className="flex items-center text-sm text-gray-600">
-                                <span className="w-6 h-6 rounded-full bg-green-100 text-green-600 flex items-center justify-center text-xs mr-2">3</span>
-                                Paiement à la Caisse (avec Code)
-                            </li>
-                        </ul>
-                    </div>
-                </div>
-            </div>
+          {/* Carte : Conseil rapide */}
+          <div className="bg-white border border-gray-200 rounded-xl p-6 shadow-sm">
+              <h4 className="font-bold text-gray-800 mb-2">Besoin d'aide ?</h4>
+              <p className="text-sm text-gray-500 mb-4">
+                  Pour tout problème technique ou question sur une procédure, contactez le support IT.
+              </p>
+              <div className="text-xs font-mono bg-gray-100 p-2 rounded text-center text-gray-600">
+                  support@entreprise.com
+              </div>
           </div>
+
         </div>
       </div>
     </div>
   );
-};
+}

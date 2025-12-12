@@ -87,7 +87,7 @@ class UserController extends AbstractController
         return $this->json($data);
     }
 
-    #[Route('', name: 'create', methods: ['POST'])]
+   #[Route('', name: 'create', methods: ['POST'])]
     public function create(
         Request $request, 
         EntityManagerInterface $em, 
@@ -95,39 +95,49 @@ class UserController extends AbstractController
         ServiceRepository $serviceRepo
     ): JsonResponse
     {
-        $this->denyAccessUnlessGranted('ROLE_MANAGER');
+        /** @var Utilisateur $currentUser */
+        $currentUser = $this->getUser();
+        $roles = $currentUser->getRoles();
+        $isManager = in_array('ROLE_MANAGER', $roles);
+        $isChef = in_array('ROLE_CHEF_SERVICE', $roles);
+
+        // Sécurité d'accès
+        if (!$isManager && !$isChef) {
+            throw $this->createAccessDeniedException('Accès réservé aux Managers et Chefs de Service.');
+        }
 
         $data = json_decode($request->getContent(), true);
-
-        // 1. Validations basiques
-        if (empty($data['email']) || empty($data['nom']) || empty($data['role'])) {
+        if (empty($data['email']) || empty($data['nom'])) {
             return $this->json(['error' => 'Données incomplètes'], 400);
         }
 
-        // 2. Création
         $user = new Utilisateur();
         $user->setEmail($data['email']);
         $user->setNom($data['nom']);
-        $user->setRoles([$data['role']]); // ex: ["ROLE_CAISSIER"]
 
-        // 3. Assignation Service (si envoyé)
-        if (!empty($data['service_id'])) {
-            $service = $serviceRepo->find($data['service_id']);
-            if ($service) $user->setService($service);
+        // LOGIQUE SPÉCIFIQUE PAR RÔLE
+        if ($isChef) {
+            // Le Chef ne peut créer QUE des employés de SON service
+            $user->setRoles(['ROLE_EMPLOYE']);
+            $user->setService($currentUser->getService());
+        } else {
+            // Le Manager peut tout faire
+            $role = $data['role'] ?? 'ROLE_EMPLOYE';
+            $user->setRoles([$role]);
+            
+            if (!empty($data['service_id'])) {
+                $service = $serviceRepo->find($data['service_id']);
+                if ($service) $user->setService($service);
+            }
         }
 
-        // 4. GÉNÉRATION INTELLIGENTE DU MOT DE PASSE
-        // Pattern : Partie gauche de l'email + "@2025!"
-        // Ex: thomas.guichet@cashflow.com -> Thomas.guichet@2025!
+        // Génération Password et Reste du code (identique à avant)
         $emailParts = explode('@', $data['email']);
-        $prefix = ucfirst($emailParts[0]); // Met la 1ère lettre en majuscule
+        $prefix = ucfirst($emailParts[0]);
         $tempPassword = $prefix . '@2025!';
-
-        // Hashage
+        
         $hashedPassword = $hasher->hashPassword($user, $tempPassword);
         $user->setPassword($hashedPassword);
-
-        // 5. Sécurité : On force le changement au premier login
         $user->setPasswordMustBeChanged(true);
         $user->setEstActif(true);
 
@@ -136,7 +146,7 @@ class UserController extends AbstractController
 
         return $this->json([
             'message' => 'Utilisateur créé avec succès.',
-            'temp_password' => $tempPassword, // On le renvoie juste pour info au Manager (à noter)
+            'temp_password' => $tempPassword,
             'id' => $user->getId()
         ], 201);
     }

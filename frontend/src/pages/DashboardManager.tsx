@@ -1,10 +1,8 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
-import { LogOut, Activity, Settings, Search, ArrowRight, FileText, Shield, Users } from 'lucide-react'; 
+import { ArrowRight, FileText, Shield, Users, TrendingUp, Settings } from 'lucide-react'; 
 import type { UserData } from '../types';
-import JournalTable from '../components/JournalTable';
 import CaissesLiveView from '../components/CaissesLiveView';
-import AuditTable from '../components/AuditTable'; 
 import NotificationWidget from '../components/NotificationWidget';
 
 interface DashboardProps {
@@ -12,121 +10,85 @@ interface DashboardProps {
   onLogout: () => void;
 }
 
-export default function DashboardManager({ user, onLogout }: DashboardProps) {
+export default function DashboardManager({ user }: DashboardProps) {
   const navigate = useNavigate();
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      {/* NAVBAR */}
-      <nav className="bg-white shadow-sm border-b border-gray-200 px-6 py-4 flex justify-between items-center sticky top-0 z-10">
-        <div className="flex items-center space-x-3">
-          <div className="bg-purple-100 p-2 rounded-lg">
-            <Activity className="h-6 w-6 text-purple-600" />
-          </div>
-          <span className="text-xl font-bold text-gray-800">CashFlow <span className="text-purple-600">Supervision</span></span>
-        </div>
-        <div className="flex items-center space-x-4">
-          <div className="text-right hidden sm:block">
-            <p className="text-sm font-medium text-gray-800">{user.nom}</p>
-            <div className="flex items-center justify-end mt-1">
-                {/* Petit raccourci profil */}
-                <button 
-                    onClick={() => navigate('/profile')} 
-                    className="p-1 rounded-lg bg-gray-50 hover:bg-gray-100 text-gray-600 mr-2 transition-colors" 
-                    title="Mon Profil"
-                >
-                    <Settings className="h-4 w-4" /> 
-                </button>
-                <NotificationWidget />
-                <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-purple-100 text-purple-800">MANAGER</span>
-            </div>
-          </div>
-          <button onClick={onLogout} className="p-2 rounded-lg bg-gray-100 hover:bg-red-600 hover:text-white text-gray-500 transition-colors" title="Se déconnecter">
-            <LogOut className="h-5 w-5" />
-          </button>
-        </div>
-      </nav>
-
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+    <div className="max-w-7xl mx-auto">
         
-        {/* EN-TÊTE DE SECTION */}
-        <div className="flex justify-between items-end mb-6">
+        {/* Header simple avec Bienvenue */}
+        <div className="flex justify-between items-end mb-8">
             <div>
-                <h2 className="text-2xl font-bold text-gray-800">État du Parc</h2>
-                <p className="text-gray-500">Supervision des caisses physiques en temps réel</p>
+                <h1 className="text-3xl font-bold text-gray-900">Supervision Globale</h1>
+                <p className="text-gray-500 mt-1">Vue d'ensemble de la trésorerie et des opérations en cours.</p>
+            </div>
+            {/* Widget KPI rapide (Optionnel) */}
+            <div className="bg-white px-4 py-2 rounded-lg border border-gray-200 shadow-sm flex items-center gap-3">
+                <div className="bg-green-100 p-2 rounded-full">
+                    <TrendingUp size={20} className="text-green-600"/>
+                </div>
+                <div>
+                    <span className="block text-xs text-gray-500 uppercase font-bold">État Système</span>
+                    <span className="block text-sm font-bold text-green-600">Opérationnel</span>
+                </div>
             </div>
         </div>
    
-        {/* VUE EN DIRECT DES CAISSES (Polling via le composant enfant) */}
-        <CaissesLiveView />
+        {/* VUE EN DIRECT DES CAISSES */}
+        {/* On laisse ce composant gérer son propre affichage (polling) */}
+        <section className="mb-10">
+            <CaissesLiveView />
+        </section>
 
-        {/* ACTIONS DE GESTION */}
-        <div className="mt-8 grid grid-cols-1 lg:grid-cols-2 gap-8">
+        {/* ACTIONS RAPIDES (Cartes) */}
+        <h2 className="text-xl font-bold text-gray-800 mb-6">Actions & Gestion</h2>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             
-            {/* Carte Gestion RH */}
-            <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200 hover:shadow-md transition-shadow">
-                <h3 className="font-bold text-gray-800 mb-4 flex items-center text-lg">
-                    <FileText className="h-6 w-6 mr-2 text-blue-600 p-1 bg-blue-100 rounded-lg"/> 
-                    Gestion RH
-                </h3>
-                <p className="text-sm text-gray-500 mb-6">
-                    Valider les demandes d'achats et ordres de mission en attente de validation finale.
+            {/* Carte Validations */}
+            <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200 hover:shadow-md transition-all group cursor-pointer"
+                 onClick={() => navigate('/manager/validations')}>
+                <div className="flex justify-between items-start mb-4">
+                    <div className="bg-blue-50 p-3 rounded-lg group-hover:bg-blue-100 transition">
+                        <FileText className="h-6 w-6 text-blue-600"/> 
+                    </div>
+                    <ArrowRight className="text-gray-300 group-hover:text-blue-600 transition"/>
+                </div>
+                <h3 className="font-bold text-gray-800 text-lg mb-2">Validations</h3>
+                <p className="text-sm text-gray-500">
+                    Traiter les demandes d'achats, ordres de mission et décaissements exceptionnels.
                 </p>
-                <button 
-                    onClick={() => navigate('/manager/validations')}
-                    className="w-full py-3 bg-blue-50 text-blue-700 rounded-lg hover:bg-blue-100 font-medium transition-colors flex justify-center items-center"
-                >
-                    Voir les demandes <ArrowRight className="h-4 w-4 ml-2"/>
-                </button>
+            </div>
+
+            {/* Carte Historique Financier */}
+            <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200 hover:shadow-md transition-all group cursor-pointer"
+                 onClick={() => navigate('/manager/history')}>
+                <div className="flex justify-between items-start mb-4">
+                    <div className="bg-purple-50 p-3 rounded-lg group-hover:bg-purple-100 transition">
+                        <TrendingUp className="h-6 w-6 text-purple-600"/> 
+                    </div>
+                    <ArrowRight className="text-gray-300 group-hover:text-purple-600 transition"/>
+                </div>
+                <h3 className="font-bold text-gray-800 text-lg mb-2">Historique Financier</h3>
+                <p className="text-sm text-gray-500">
+                    Consulter le journal global des mouvements et exporter les données comptables.
+                </p>
             </div>
 
             {/* Carte Administration */}
-            <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200 relative overflow-hidden group">
-                <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
-                    <Settings className="h-16 w-16 text-purple-600" />
+            <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200 hover:shadow-md transition-all group cursor-pointer"
+                 onClick={() => navigate('/admin')}>
+                <div className="flex justify-between items-start mb-4">
+                    <div className="bg-gray-50 p-3 rounded-lg group-hover:bg-gray-100 transition">
+                        <Settings className="h-6 w-6 text-gray-600"/> 
+                    </div>
+                    <ArrowRight className="text-gray-300 group-hover:text-gray-600 transition"/>
                 </div>
-                <h3 className="font-bold text-gray-800 mb-4 flex items-center">
-                    <Shield className="h-5 w-5 mr-2 text-purple-600"/> Administration
-                </h3>
-                <p className="text-sm text-gray-500 mb-4">Gérer les utilisateurs, les services et les caisses physiques.</p>
-                
-                <button 
-                    onClick={() => navigate('/admin')}
-                    className="w-full py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 font-medium transition-colors flex justify-center items-center shadow-md"
-                >
-                    <Users className="h-4 w-4 mr-2" /> Accéder à l'Admin
-                </button>
+                <h3 className="font-bold text-gray-800 text-lg mb-2">Administration</h3>
+                <p className="text-sm text-gray-500">
+                    Gérer les utilisateurs, configurer les services et les caisses physiques.
+                </p>
             </div>
         </div>
-
-        {/* SECTION JOURNAL */}
-        <section className="mt-8">
-            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between mb-4">
-                <div>
-                    <h3 className="text-lg font-bold text-gray-800">Flux Financiers Globaux</h3>
-                    <p className="text-xs text-gray-500">Consolidated live feed (Toutes caisses)</p>
-                </div>
-                <button
-                    onClick={() => navigate('/historique')}
-                 className="self-start sm:self-auto text-sm text-purple-600 hover:text-purple-800 flex items-center font-medium">
-                    <Search className="h-4 w-4 mr-1"/> Recherche avancée
-                </button>
-            </div>
-            {/* Le tableau gère ses propres données via l'API */}
-            <JournalTable />
-        </section>
-        {/* SECTION AUDIT LOG */}
-        <section className="mt-12 mb-12">
-            <div className="mb-4">
-                <h3 className="text-lg font-bold text-gray-800 flex items-center">
-                    <Shield className="h-5 w-5 mr-2 text-indigo-600" />
-                    Traçabilité & Sécurité
-                </h3>
-                <p className="text-xs text-gray-500">Historique des actions sensibles sur la plateforme.</p>
-            </div>
-            <AuditTable />
-        </section>
-      </main>
     </div>
   );
 }

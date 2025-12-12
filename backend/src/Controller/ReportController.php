@@ -136,7 +136,7 @@ class ReportController extends AbstractController
         $headers = [
             'Date', 
             'N° Pièce', 
-            'Compte', // <--- AJOUTÉ
+            'Compte', 
             'Type', 
             'Libellé / Motif', 
             'Tiers / Caissier', 

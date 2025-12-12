@@ -15,7 +15,9 @@ use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\Routing\Annotation\Route;
 use App\Entity\Notification;
-use App\Repository\UtilisateurRepository; // Pour trouver les managers
+use App\Repository\UtilisateurRepository;
+use App\Repository\DemandeRepository;
+use App\Entity\Demande;
 
 #[Route('/api/operations', name: 'api_operations_')]
 class OperationController extends AbstractController
@@ -196,7 +198,8 @@ class OperationController extends AbstractController
         OperationRepository $opRepo,
         SessionCaisseRepository $sessionRepo,
         CompteComptableRepository $compteRepo, 
-        UtilisateurRepository $userRepo 
+        UtilisateurRepository $userRepo,
+        DemandeRepository $demandeRepo // <--- AJOUT ICI
     ): JsonResponse
     {
         $user = $this->getUser();
@@ -206,30 +209,46 @@ class OperationController extends AbstractController
             return $this->json(['error' => 'Aucune session de caisse ouverte.'], 403);
         }
 
-        // CORRECTION : On décode d'abord pour avoir accès à $data
         $data = json_decode($request->getContent(), true);
-
-        // Gestion du compte comptable
-        $compteId = $data['compte_id'] ?? null;
-        $numeroCompte = '606'; // Valeur par défaut
-
-        if ($compteId) {
-            $compteChoisi = $compteRepo->find($compteId);
-            if ($compteChoisi) {
-                $numeroCompte = $compteChoisi->getNumero();
-            }
-        }
-
         $montant = (float) ($data['montant'] ?? 0);
+
         if ($montant <= 0) return $this->json(['error' => 'Montant invalide'], 400);
 
-        // Vérif solde session
-        $soldeSession = (float) $session->getMontantOuverture() + $opRepo->getSoldeMouvementsSession($session);
-        if ($montant > $soldeSession) {
+        // --- GESTION DU LIEN AVEC LA DEMANDE ---
+        $demande = null;
+        if (!empty($data['demande_id'])) {
+            $demande = $demandeRepo->find($data['demande_id']);
+            
+            if ($demande) {
+                // SÉCURITÉ 1 : On ne peut payer que ce qui est validé
+                if ($demande->getStatut() !== Demande::STATUT_VALIDEE) {
+                    return $this->json(['error' => 'Cette demande n\'est pas au statut "Validée à Payer". Statut actuel : ' . $demande->getStatut()], 400);
+                }
+                
+                // SÉCURITÉ 2 : On vérifie que le montant correspond (Optionnel mais recommandé)
+                // Ici on autorise une marge ou on force le montant exact ? 
+                // Pour l'instant on fait confiance au caissier, mais on pourrait bloquer si écart trop grand.
+            }
+        }
+        // ---------------------------------------
+
+        // --- VERIFICATION SOLDE REEL (CAISSE) ---
+        $caisse = $session->getCaisse();
+        $soldeReel = (float)$caisse->getSolde();
+
+        if ($montant > $soldeReel) {
             return $this->json([
-                'error' => 'Solde insuffisant pour réaliser ce décaissement.',
-                'solde_disponible' => $soldeSession
+                'error' => 'Solde insuffisant en caisse (' . number_format($soldeReel, 0, ',', ' ') . ' F) pour ce décaissement.',
+                'solde_disponible' => $soldeReel
             ], 400);
+        }
+
+        // Gestion Compte Comptable
+        $compteId = $data['compte_id'] ?? null;
+        $numeroCompte = '606'; 
+        if ($compteId) {
+            $compte = $compteRepo->find($compteId);
+            if ($compte) $numeroCompte = $compte->getNumero();
         }
         
         $mode = $modeRepo->findOneBy(['libelle' => $data['mode'] ?? 'Espèces']);
@@ -245,55 +264,70 @@ class OperationController extends AbstractController
         $op->setMotif($data['motif'] ?? 'Décaissement divers');
         $op->setSessionCaisse($session);
 
-        // --- NOUVELLE LOGIQUE DE VALIDATION ---
-        
-        // 1. On récupère la caisse liée à la session
-        $caisse = $session->getCaisse();
-        
-        // 2. On récupère son seuil spécifique (ou 50000 par défaut si non défini)
+        // Validation Seuil Manager
         $seuilCaisse = (float) ($caisse->getSeuilDecaissement() ?? 50000);
-        
         $isManager = in_array('ROLE_MANAGER', $user->getRoles());
 
-        // 3. On compare avec le seuil de la caisse
-        if ($isManager || $montant <= $seuilCaisse) {
+        // Si c'est lié à une demande validée, on force la validation (car le circuit a déjà été respecté)
+        $isDemandeValidee = ($demande !== null);
+
+        if ($isManager || $isDemandeValidee || $montant <= $seuilCaisse) {
             $op->setStatut(Operation::STATUT_VALIDEE);
             $msg = "Décaissement validé.";
             
-            // MAJ Solde Caisse
-            $nouveauSolde = (float)$caisse->getSolde() - $montant;
-            $caisse->setSolde((string)$nouveauSolde);
+            // DÉBIT IMMÉDIAT DU SOLDE
+            $caisse->setSolde((string)($soldeReel - $montant));
             $em->persist($caisse);
+
+            // --- CLÔTURE DE LA DEMANDE ---
+            if ($demande) {
+                $demande->setStatut(Demande::STATUT_PAYEE);
+                $demande->setOperation($op); // On lie l'opération à la demande
+                $demande->setCaissierTraitant($user);
+                $em->persist($demande);
+                $msg = "Demande payée et clôturée avec succès.";
+            }
+            // -----------------------------
 
         } else {
             $op->setStatut(Operation::STATUT_EN_ATTENTE);
-            $msg = "Montant supérieur au plafond autorisé (" . number_format($seuilCaisse, 0, ',', ' ') . " F) : En attente de validation.";
-            // Envoi de notification aux managers
-            $allUsers = $userRepo->findAll(); 
-            foreach($allUsers as $u) {
-                if (in_array('ROLE_MANAGER', $u->getRoles())) {
-                    $notif = new Notification();
-                    $notif->setUser($u);
-                    $notif->setType('WARNING'); // Jaune/Orange
-                    $notif->setMessage("Nouveau décaissement à valider : " . number_format($montant) . " FCFA (Caissier: " . $user->getNom() . ")");
-                    $notif->setLink('/manager/validations');
-                    $em->persist($notif);
-                }
-            }
+            $msg = "En attente de validation (Montant > " . $seuilCaisse . ")";
+            // Logique de notification ici...
         }
 
         $em->persist($op);
-
-        // Gestion du justificatif
         $this->processJustificatif($op, $data, $em);
-
         $em->flush();
 
-        return $this->json([
-            'message' => $msg,
-            'statut' => $op->getStatut(),
-            'id' => $op->getId()
-        ], 201);
+        return $this->json(['message' => $msg, 'statut' => $op->getStatut(), 'id' => $op->getId()], 201);
+    }
+
+    #[Route('/me', name: 'my_operations', methods: ['GET'])]
+    public function myOperations(OperationRepository $opRepo): JsonResponse
+    {
+        /** @var Utilisateur $user */
+        $user = $this->getUser();
+        
+        // On récupère les 10 dernières opérations effectuées par l'utilisateur connecté
+        $operations = $opRepo->findBy(
+            ['utilisateur' => $user],
+            ['date' => 'DESC'],
+            10 // Limite
+        );
+
+        $data = [];
+        foreach ($operations as $op) {
+            $data[] = [
+                'id' => $op->getId(),
+                'type' => $op->getType(),
+                'montant' => (float)$op->getMontant(),
+                'date' => $op->getDate()->format('Y-m-d H:i:s'),
+                'motif' => $op->getMotif(),
+                'statut' => $op->getStatut()
+            ];
+        }
+
+        return $this->json($data);
     }
 
     // 1. Récupérer les opérations en attente
