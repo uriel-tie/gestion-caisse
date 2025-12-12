@@ -32,7 +32,7 @@ export default function MainLayout({ user, onLogout }: MainLayoutProps) {
       >
         {/* Logo */}
         <div className="h-16 flex items-center px-6 bg-slate-950">
-            <span className="text-xl font-bold tracking-wider text-blue-400">CASHFLOW</span>
+            <span className="text-xl font-bold tracking-wider text-blue-400">ORBIS CAISSE</span>
         </div>
 
         {/* Navigation Links */}
