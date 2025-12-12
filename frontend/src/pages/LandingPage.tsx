@@ -16,7 +16,7 @@ export default function LandingPage() {
             <div className="bg-blue-600 p-2 rounded-lg">
                 <Activity className="text-white h-6 w-6" />
             </div>
-            <span className="text-2xl font-bold tracking-tight text-gray-900">CashFlow</span>
+            <span className="text-2xl font-bold tracking-tight text-gray-900">ORBIS CAISSE</span>
           </div>
           
           <nav className="hidden md:flex gap-8 text-sm font-medium text-gray-600">
@@ -140,7 +140,7 @@ export default function LandingPage() {
       <footer className="bg-gray-900 text-gray-400 py-12 border-t border-gray-800">
         <div className="max-w-7xl mx-auto px-6 flex flex-col md:flex-row justify-between items-center">
           <div className="mb-4 md:mb-0">
-            <span className="text-white font-bold text-lg">CashFlow</span>
+            <span className="text-white font-bold text-lg">ORBIS CAISSE</span>
             <span className="ml-4 text-sm">© 2025 Tous droits réservés.</span>
           </div>
           <div className="flex gap-6 text-sm">

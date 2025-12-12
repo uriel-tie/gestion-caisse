@@ -60,7 +60,7 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLoginSuccess }) => {
         <div className="bg-white rounded-lg shadow-xl border border-purple-100 overflow-hidden">
           {/* Header */}
           <div className="px-8 py-6 text-center border-b border-gray-100 bg-purple-600">
-            <h2 className="text-2xl font-bold text-white">CashFlow</h2>
+            <h2 className="text-2xl font-bold text-white">ORBIS CAISSE</h2>
             <p className="text-purple-200 mt-1 text-sm">Accès sécurisé</p>
           </div>
 
@@ -113,7 +113,7 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLoginSuccess }) => {
 
         {/* Footer */}
         <p className="text-center text-sm text-gray-400 mt-8">
-          © 2025 CashFlow Manager. Sécurisé par Symfony & React.
+          © 2025 ORBIS CAISSE Manager. Sécurisé par Symfony & React.
         </p>
       </div>
     </div>
