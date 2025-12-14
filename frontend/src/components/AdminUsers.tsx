@@ -66,7 +66,7 @@ export default function AdminUsers() {
                     </div>
                     <div className="lg:col-span-1">
                         <label className="text-xs text-gray-500">Email Pro</label>
-                        <input required type="email" placeholder="jean@cashflow.com" className="w-full border rounded-lg px-3 py-2"
+                        <input required type="email" placeholder="jean@gmail.com" className="w-full border rounded-lg px-3 py-2"
                             value={formData.email} onChange={e => setFormData({...formData, email: e.target.value})} />
                     </div>
                     <div className="lg:col-span-1">

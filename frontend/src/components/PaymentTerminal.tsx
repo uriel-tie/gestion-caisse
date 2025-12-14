@@ -1,9 +1,11 @@
 import React, { useState } from 'react';
 import { Search, CheckCircle, AlertCircle, Banknote, ArrowRight } from 'lucide-react';
+import BonDeCaissePrint from './BonDeCaissePrint';
 
 interface PaymentTerminalProps {
     onSuccess: () => void; // Pour rafraîchir le solde après paiement
 }
+
 
 export default function PaymentTerminal({ onSuccess }: PaymentTerminalProps) {
     const [code, setCode] = useState('');
@@ -12,6 +14,7 @@ export default function PaymentTerminal({ onSuccess }: PaymentTerminalProps) {
     const [error, setError] = useState<string | null>(null);
     const [successMsg, setSuccessMsg] = useState<string | null>(null);
     const token = localStorage.getItem('token');
+    const [operationToPrint, setOperationToPrint] = useState<any>(null);
 
     // 1. RECHERCHER LA DEMANDE
     const handleSearch = async (e: React.FormEvent) => {
@@ -41,8 +44,11 @@ export default function PaymentTerminal({ onSuccess }: PaymentTerminalProps) {
     // 2. PAYER (DÉCAISSER)
     const handlePay = async () => {
         if (!demande) return;
+        if (!confirm(`Confirmer le décaissement de ${demande.montant} F pour "${demande.titre}" ?`)) return;
+
         setLoading(true);
         try {
+            const token = localStorage.getItem('token');
             const res = await fetch('https://127.0.0.1:8000/api/operations/decaissement', {
                 method: 'POST',
                 headers: { 
@@ -50,24 +56,37 @@ export default function PaymentTerminal({ onSuccess }: PaymentTerminalProps) {
                     'Authorization': `Bearer ${token}` 
                 },
                 body: JSON.stringify({
-                    montant: parseFloat(demande.montant),
-                    mode: 'Espèces', // Par défaut (on pourrait mettre un select)
-                    motif: `Paiement Demande #${demande.id.substring(0,8)} - ${demande.titre}`,
-                    demande_id: demande.id
+                    montant: demande.montant,
+                    motif: `Paiement Demande ${demande.numeroReference} - ${demande.titre}`,
+                    demande_id: demande.id,
+                    mode: 'Espèces'
                 })
             });
 
+            const data = await res.json();
+
             if (res.ok) {
-                setSuccessMsg(`Paiement de ${demande.montant} F CFA effectué avec succès !`);
-                setDemande(null);
+                // SUCCÈS : On prépare l'objet pour l'impression
+                const opForPrint = {
+                    id: data.id || 'N/A', // L'ID retourné par l'API operation
+                    date: new Date().toISOString(),
+                    montant: demande.montant,
+                    motif: demande.titre,
+                    demandeur: demande.demandeur, // Nom du demandeur
+                    utilisateur: 'Moi (Caissier)', // Ou récupérer depuis le user context
+                    lignes: demande.lignes // On passe les lignes pour le détail
+                };
+
+                setOperationToPrint(opForPrint); // <-- Ouvre la modale d'impression
+                
+                onSuccess(); // Rafraichir le solde en arrière-plan
+                setDemande(null); // Reset recherche
                 setCode('');
-                onSuccess(); // Rafraîchit le solde global
             } else {
-                const errData = await res.json();
-                setError(errData.error || "Erreur lors du paiement");
+                setError(data.error || "Erreur de paiement");
             }
         } catch (e) {
-            setError("Erreur technique");
+            setError("Erreur réseau");
         } finally {
             setLoading(false);
         }
@@ -160,6 +179,14 @@ export default function PaymentTerminal({ onSuccess }: PaymentTerminalProps) {
                     )}
                 </div>
             )}        
+
+            {/* MODALE D'IMPRESSION (S'affiche si operationToPrint existe) */}
+            {operationToPrint && (
+                <BonDeCaissePrint 
+                    operation={operationToPrint} 
+                    onClose={() => setOperationToPrint(null)} 
+                />
+            )}
             </div>
     );
 }

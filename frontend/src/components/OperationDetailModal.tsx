@@ -1,6 +1,7 @@
 import React, { useState, useRef } from 'react';
-import { X, FileText, User, Calendar, CreditCard, CheckCircle, Clock, AlertCircle, UploadCloud, RotateCcw, AlertTriangle, Loader, Ban } from 'lucide-react';
+import { X, FileText, User, Calendar, CreditCard, CheckCircle, Clock, AlertCircle, UploadCloud, RotateCcw, AlertTriangle, Loader, Ban, Printer } from 'lucide-react';
 import Swal from 'sweetalert2';
+import BonDeCaissePrint from './BonDeCaissePrint';
 
 interface Operation {
     id: string;
@@ -14,7 +15,7 @@ interface Operation {
     caisse: string;
     estDemandeAnnulation?: boolean;
     motif_annulation?: string;
-    operationLiee?: boolean; // Pour savoir si déjà contre-passée
+    operationLiee?: boolean;
     justificatif?: {
         type: string;
         url?: string;
@@ -27,21 +28,22 @@ interface OperationDetailModalProps {
     operation: Operation | null;
     onClose: () => void;
     onRefresh?: () => void;
-    userRole?: 'MANAGER' | 'CAISSIER'; // C'est ici que ça se joue !
+    userRole?: 'MANAGER' | 'CAISSIER';
 }
 
 export default function OperationDetailModal({ operation, onClose, onRefresh, userRole }: OperationDetailModalProps) {
-    // --- États pour l'upload ---
     const [isUploading, setIsUploading] = useState(false);
     const [selectedFile, setSelectedFile] = useState<File | null>(null);
     const fileInputRef = useRef<HTMLInputElement>(null);
-    
-    // --- États pour les actions ---
+    const [showPrint, setShowPrint] = useState(false);
     const [actionLoading, setActionLoading] = useState(false);
 
     if (!operation) return null;
 
-    // --- LOGIQUE JUSTIFICATIF (Ton code préservé) ---
+    if (showPrint) {
+        return <BonDeCaissePrint operation={operation} onClose={() => setShowPrint(false)} />;
+    }
+
     const convertFileToBase64 = (file: File): Promise<string> => {
         return new Promise((resolve, reject) => {
             const reader = new FileReader();
@@ -66,8 +68,7 @@ export default function OperationDetailModal({ operation, onClose, onRefresh, us
             
             Swal.fire('Succès', 'Justificatif ajouté !', 'success');
             if (onRefresh) onRefresh();
-            setSelectedFile(null); // Reset fichier
-            // On ne ferme pas forcément la modale pour laisser voir le résultat
+            setSelectedFile(null);
         } catch (e) {
             Swal.fire('Erreur', "Impossible d'envoyer le fichier.", 'error');
         } finally {
@@ -75,12 +76,10 @@ export default function OperationDetailModal({ operation, onClose, onRefresh, us
         }
     };
 
-    // --- LOGIQUE ACTIONS ---
-    
     const handleReverse = async () => {
         const { isConfirmed } = await Swal.fire({
-            title: 'Contre-passation',
-            html: `Créer une écriture inverse pour annuler l'opération <b>#${operation.id}</b> ?<br/><small>Cette action est comptable et irréversible.</small>`,
+            title: 'Confirmation de contre-passation',
+            html: `Attention, cette action est irréversible.<br/>Elle va créer une opération inverse pour annuler l'écriture <b>#${operation.id}</b>.`,
             icon: 'warning',
             showCancelButton: true,
             confirmButtonText: 'Oui, contre-passer',
@@ -99,12 +98,12 @@ export default function OperationDetailModal({ operation, onClose, onRefresh, us
             });
 
             if (res.ok) {
-                Swal.fire('Terminé', 'Opération contre-passée.', 'success');
-                if(onRefresh) onRefresh();
+                Swal.fire('Succès', 'Opération contre-passée.', 'success');
+                if (onRefresh) onRefresh();
                 onClose();
             } else {
                 const err = await res.json();
-                Swal.fire('Erreur', err.error || 'Impossible de contre-passer', 'error');
+                Swal.fire('Erreur', err.error || 'Erreur inconnue', 'error');
             }
         } catch (e) {
             Swal.fire('Erreur', 'Erreur réseau', 'error');
@@ -117,11 +116,11 @@ export default function OperationDetailModal({ operation, onClose, onRefresh, us
         const { value: motif } = await Swal.fire({
             title: 'Demande d\'annulation',
             input: 'textarea',
-            inputLabel: 'Motif',
+            inputLabel: 'Motif de l\'annulation',
             inputPlaceholder: 'Ex: Erreur de saisie...',
             showCancelButton: true,
             confirmButtonText: 'Envoyer',
-            inputValidator: (v) => !v && 'Motif requis !'
+            inputValidator: (value) => !value && 'Le motif est obligatoire !'
         });
 
         if (!motif) return;
@@ -137,7 +136,7 @@ export default function OperationDetailModal({ operation, onClose, onRefresh, us
 
             if (res.ok) {
                 Swal.fire('Envoyé', 'Demande transmise au manager.', 'success');
-                if(onRefresh) onRefresh();
+                if (onRefresh) onRefresh();
                 onClose();
             } else {
                 const err = await res.json();
@@ -150,7 +149,6 @@ export default function OperationDetailModal({ operation, onClose, onRefresh, us
         }
     };
 
-    // UI Helpers
     const getStatusConfig = (status: string) => {
         switch (status) {
             case 'VALIDEE': return { color: 'bg-green-100 text-green-800', icon: CheckCircle, label: 'Validée' };
@@ -162,12 +160,14 @@ export default function OperationDetailModal({ operation, onClose, onRefresh, us
     const statusConfig = getStatusConfig(operation.statut);
     const StatusIcon = statusConfig.icon;
 
+    const isEncaissement = operation.type === 'ENCAISSEMENT';
+
     return (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50 backdrop-blur-sm p-4">
             <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl overflow-hidden animate-in fade-in zoom-in duration-200 flex flex-col max-h-[90vh]">
                 
-                {/* Header */}
-                <div className={`px-6 py-4 flex justify-between items-center border-b shrink-0 ${operation.type === 'ENCAISSEMENT' ? 'bg-green-600 text-white' : 'bg-red-600 text-white'}`}>
+                {/* HEADER (Fixe) */}
+                <div className={`px-6 py-4 flex justify-between items-center border-b shrink-0 ${isEncaissement ? 'bg-green-600 text-white' : 'bg-red-600 text-white'}`}>
                     <div className="flex items-center space-x-2">
                         <span className="font-bold text-lg">{operation.type}</span>
                     </div>
@@ -176,13 +176,13 @@ export default function OperationDetailModal({ operation, onClose, onRefresh, us
                     </button>
                 </div>
 
-                {/* Content */}
+                {/* CONTENT (Scrollable) */}
                 <div className="p-6 space-y-6 overflow-y-auto">
                     
                     {/* Info Principale */}
                     <div className="text-center">
-                        <h2 className={`text-4xl font-extrabold ${operation.type === 'ENCAISSEMENT' ? 'text-green-600' : 'text-red-600'}`}>
-                            {operation.type === 'DECAISSEMENT' ? '-' : '+'}{new Intl.NumberFormat('fr-FR', { style: 'currency', currency: 'XOF' }).format(operation.montant)}
+                        <h2 className={`text-4xl font-extrabold ${isEncaissement ? 'text-green-600' : 'text-red-600'}`}>
+                            {isEncaissement ? '+' : '-'}{new Intl.NumberFormat('fr-FR', { style: 'currency', currency: 'XOF' }).format(operation.montant)}
                         </h2>
                         <div className="flex justify-center items-center gap-2 mt-2">
                             <span className={`px-3 py-1 rounded-full text-xs font-medium flex items-center ${statusConfig.color}`}>
@@ -195,7 +195,7 @@ export default function OperationDetailModal({ operation, onClose, onRefresh, us
                         </div>
                     </div>
 
-                    {/* Détails */}
+                    {/* Détails Grille */}
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm bg-gray-50 p-4 rounded-xl border border-gray-100">
                         <div>
                             <p className="text-gray-500 text-xs uppercase font-bold mb-1">Motif</p>
@@ -215,7 +215,7 @@ export default function OperationDetailModal({ operation, onClose, onRefresh, us
                         </div>
                     </div>
 
-                    {/* Alerte Demande Annulation */}
+                    {/* Alertes Annulation */}
                     {operation.estDemandeAnnulation && operation.statut !== 'ANNULEE' && (
                         <div className="bg-orange-50 border border-orange-200 rounded-lg p-3 flex gap-3 items-start">
                             <AlertTriangle className="text-orange-600 flex-shrink-0 mt-0.5" size={18}/>
@@ -232,12 +232,11 @@ export default function OperationDetailModal({ operation, onClose, onRefresh, us
                         </div>
                     )}
 
-                    {/* ZONE JUSTIFICATIF (Ton code) */}
+                    {/* Zone Justificatif & Upload */}
                     <div className="border-t pt-4">
                         <h4 className="text-sm font-bold text-gray-700 mb-3 flex items-center"><FileText className="h-4 w-4 mr-2"/> Justificatif</h4>
                         
                         {operation.justificatif ? (
-                            /* Affichage Justificatif existant */
                             <div className="bg-blue-50 border border-blue-100 rounded-lg p-4">
                                 {operation.justificatif.type === 'BON_INTERNE' ? (
                                     <div className="text-sm">
@@ -252,15 +251,14 @@ export default function OperationDetailModal({ operation, onClose, onRefresh, us
                                     </div>
                                 ) : (
                                     <div className="flex items-center justify-between">
-                                        <span className="text-blue-700 text-sm">Document joint</span>
+                                        <span className="text-blue-700 text-sm">Document joint disponible</span>
                                         <a href={operation.justificatif.url} target="_blank" rel="noopener noreferrer" className="px-3 py-1.5 bg-blue-600 text-white text-xs font-bold rounded hover:bg-blue-700 transition">
-                                            Voir
+                                            Voir le document
                                         </a>
                                     </div>
                                 )}
                             </div>
                         ) : (
-                            /* Zone Upload */
                             <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 flex flex-col items-center justify-center bg-gray-50 transition hover:bg-gray-100">
                                 {selectedFile ? (
                                     <div className="text-center w-full">
@@ -277,7 +275,7 @@ export default function OperationDetailModal({ operation, onClose, onRefresh, us
                                         <UploadCloud className="h-10 w-10 text-gray-400 mb-2" />
                                         <p className="text-sm text-gray-500 mb-1">Aucun justificatif lié.</p>
                                         <button onClick={() => fileInputRef.current?.click()} className="text-blue-600 font-semibold text-sm hover:underline">
-                                            Cliquez pour ajouter un fichier
+                                            Cliquez pour ajouter un fichier (Photo/PDF)
                                         </button>
                                         <input type="file" ref={fileInputRef} className="hidden" accept="image/*,.pdf" onChange={(e) => { if (e.target.files?.[0]) setSelectedFile(e.target.files[0]); }} />
                                     </>
@@ -287,10 +285,20 @@ export default function OperationDetailModal({ operation, onClose, onRefresh, us
                     </div>
                 </div>
 
-                {/* FOOTER ACTIONS : C'EST ICI QUE CA SE JOUE ! */}
-                <div className="bg-gray-50 px-6 py-4 flex flex-col sm:flex-row justify-end gap-3 shrink-0 border-t">
+                {/* FOOTER ACTIONS (Fixe) */}
+                <div className="bg-gray-50 px-6 py-4 flex flex-col sm:flex-row justify-end gap-3 shrink-0 border-t items-center">
                     
-                    {/* BOUTON MANAGER : Toujours visible tant que pas annulé */}
+                    {/* Bouton IMPRIMER (Décaissement validé uniquement) */}
+                    {operation.type === 'DECAISSEMENT' && operation.statut === 'VALIDEE' && (
+                        <button 
+                            onClick={() => setShowPrint(true)}
+                            className="flex items-center justify-center gap-2 bg-gray-800 text-white px-4 py-2 rounded-lg font-bold hover:bg-gray-900 transition shadow-sm w-full sm:w-auto"
+                        >
+                            <Printer size={18}/> Imprimer Bon
+                        </button>
+                    )}
+
+                    {/* MANAGER : Contre-passer */}
                     {userRole === 'MANAGER' && operation.statut !== 'ANNULEE' && (
                         <button 
                             onClick={handleReverse} 
@@ -304,7 +312,7 @@ export default function OperationDetailModal({ operation, onClose, onRefresh, us
                         </button>
                     )}
 
-                    {/* BOUTON CAISSIER */}
+                    {/* CAISSIER : Demander Annulation */}
                     {userRole === 'CAISSIER' && !operation.estDemandeAnnulation && operation.statut !== 'ANNULEE' && (
                         <button 
                             onClick={handleRequestCancel} 

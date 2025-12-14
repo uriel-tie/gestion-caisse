@@ -1,69 +1,96 @@
 import React, { useState } from 'react';
-import { Outlet, NavLink, useNavigate } from 'react-router-dom';
-import { LogOut, Menu, X, Bell, User } from 'lucide-react';
+import { Outlet, NavLink, useNavigate, useLocation } from 'react-router-dom';
+import { LogOut, Menu, Bell, X, User } from 'lucide-react';
 import { NAVIGATION } from '../config/navigation';
 import type { UserData } from '../types';
 
 interface MainLayoutProps {
   user: UserData;
   onLogout: () => void;
+  children?: React.ReactNode; // On accepte les enfants
 }
 
-export default function MainLayout({ user, onLogout }: MainLayoutProps) {
+export default function MainLayout({ user, onLogout, children }: MainLayoutProps) {
   const [isSidebarOpen, setSidebarOpen] = useState(true);
   const navigate = useNavigate();
+  const location = useLocation(); // Pour savoir quelle page est active
 
-  // Filtrer les liens selon le rôle
+  // Filtrage du menu selon les rôles
   const filteredNav = NAVIGATION.filter(item => {
     if (item.roles.includes('ALL')) return true;
     return item.roles.some(role => user.roles.includes(role));
   });
 
   return (
-    <div className="flex h-screen bg-gray-50 overflow-hidden">
+    <div className="flex h-screen bg-gray-50 overflow-hidden font-sans">
       
       {/* --- SIDEBAR --- */}
       <aside 
-        className={`
-          fixed inset-y-0 left-0 z-50 w-64 bg-slate-900 text-white transition-transform duration-300 ease-in-out
-          ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full'}
-          lg:relative lg:translate-x-0 flex flex-col
-        `}
+        className={`${
+          isSidebarOpen ? 'w-64' : 'w-20'
+        } bg-slate-900 text-white transition-all duration-300 ease-in-out flex flex-col shadow-xl z-20`}
       >
         {/* Logo */}
-        <div className="h-16 flex items-center px-6 bg-slate-950">
-            <span className="text-xl font-bold tracking-wider text-blue-400">CASHFLOW</span>
+        <div className="h-16 flex items-center justify-center border-b border-slate-800 bg-slate-950">
+            {isSidebarOpen ? (
+               <div className="flex items-center gap-2 font-bold text-xl tracking-tight">
+                   <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center text-white">OC</div>
+                   <span>ORBIS CAISSE</span>
+               </div>
+            ) : (
+               <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center text-white font-bold">OC</div>
+            )}
         </div>
 
-        {/* Navigation Links */}
-        <nav className="flex-1 px-3 py-6 space-y-1 overflow-y-auto">
-          {filteredNav.map((item) => (
-            <NavLink
-              key={item.path}
-              to={item.path}
-              className={({ isActive }) => `
-                flex items-center px-3 py-3 rounded-lg transition-colors text-sm font-medium
-                ${isActive 
-                  ? 'bg-blue-600 text-white shadow-lg shadow-blue-900/50' 
-                  : 'text-slate-300 hover:bg-slate-800 hover:text-white'}
-              `}
-            >
-              <item.icon className="w-5 h-5 mr-3" />
-              {item.label}
-            </NavLink>
-          ))}
+        {/* Navigation */}
+        <nav className="flex-1 overflow-y-auto py-6 px-3 space-y-2 custom-scrollbar">
+          {filteredNav.map((item) => {
+             const isActive = location.pathname.startsWith(item.path);
+             return (
+              <div key={item.path}>
+                <button
+                  onClick={() => navigate(item.path)}
+                  className={`w-full flex items-center p-3 rounded-xl transition-all duration-200 group ${
+                    isActive
+                      ? 'bg-blue-600 text-white shadow-lg shadow-blue-900/50'
+                      : 'text-slate-400 hover:bg-slate-800 hover:text-white'
+                  }`}
+                  title={!isSidebarOpen ? item.label : ''}
+                >
+                  <item.icon size={22} className={`min-w-[22px] ${isActive ? 'text-white' : 'text-slate-400 group-hover:text-white'}`} />
+                  
+                  <span className={`ml-3 whitespace-nowrap transition-opacity duration-200 ${
+                    isSidebarOpen ? 'opacity-100' : 'opacity-0 hidden'
+                  }`}>
+                    {item.label}
+                  </span>
+                </button>
+              </div>
+            );
+          })}
         </nav>
 
-        {/* Footer Sidebar (Profil rapide) */}
-        <div className="p-4 bg-slate-950 border-t border-slate-800">
-            <div className="flex items-center gap-3">
-                <div className="w-8 h-8 rounded-full bg-blue-500 flex items-center justify-center text-xs font-bold">
-                    {user.nom.charAt(0)}
-                </div>
-                <div className="flex-1 overflow-hidden">
-                    <p className="text-sm font-medium truncate">{user.nom}</p>
-                    <p className="text-xs text-slate-400 truncate">{user.email}</p>
-                </div>
+        {/* User Footer */}
+        <div className="p-4 border-t border-slate-800 bg-slate-950">
+            <div className={`flex items-center ${isSidebarOpen ? 'justify-between' : 'justify-center'}`}>
+                {isSidebarOpen && (
+                    <div className="flex items-center gap-3 overflow-hidden">
+                        <div className="w-8 h-8 rounded-full bg-slate-700 flex items-center justify-center text-xs font-bold text-slate-300">
+                            {user.nom.charAt(0)}
+                        </div>
+                        <div className="flex-1 min-w-0">
+                            <p className="text-sm font-medium text-white truncate">{user.nom.split(' ')[0]}</p>
+                            <p className="text-xs text-slate-500 truncate">{user.email}</p>
+                        </div>
+                    </div>
+                )}
+                <button 
+                    onClick={onLogout}
+                    className="text-slate-400 hover:text-red-400 transition p-1 rounded-md hover:bg-slate-800"
+                    title="Déconnexion"
+                >
+                    <LogOut size={20} />
+                </button>
             </div>
         </div>
       </aside>
@@ -72,42 +99,33 @@ export default function MainLayout({ user, onLogout }: MainLayoutProps) {
       <div className="flex-1 flex flex-col h-full overflow-hidden relative">
         
         {/* Header */}
-        <header className="h-16 bg-white shadow-sm flex items-center justify-between px-6 z-10">
+        <header className="h-16 bg-white shadow-sm flex items-center justify-between px-6 z-10 border-b border-gray-100">
           <button 
             onClick={() => setSidebarOpen(!isSidebarOpen)}
-            className="p-2 rounded-md hover:bg-gray-100 lg:hidden"
+            className="text-gray-500 hover:text-blue-600 p-2 rounded-lg hover:bg-gray-50 transition"
           >
-            <Menu className="w-6 h-6 text-gray-600" />
+            <Menu size={24} />
           </button>
 
-          <div className="flex items-center ml-auto space-x-4">
-            <button className="relative p-2 text-gray-400 hover:text-gray-600 transition">
-                <Bell className="w-5 h-5" />
-                <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-red-500 rounded-full"></span>
-            </button>
-            <div className="h-6 w-px bg-gray-200 mx-2"></div>
-            <button 
-                onClick={onLogout}
-                className="flex items-center gap-2 text-sm font-medium text-red-600 hover:text-red-700 transition"
-            >
-                <LogOut className="w-4 h-4" />
-                <span className="hidden sm:inline">Déconnexion</span>
-            </button>
+          <div className="flex items-center gap-4">
+            <div className="relative">
+                <Bell size={20} className="text-gray-400 hover:text-gray-600 cursor-pointer transition" />
+                <span className="absolute -top-1 -right-1 w-2 h-2 bg-red-500 rounded-full"></span>
+            </div>
+            <div className="h-8 w-px bg-gray-200 mx-2"></div>
+            <div className="flex items-center gap-2">
+                <span className="text-sm font-medium text-gray-700 bg-gray-100 px-3 py-1 rounded-full">
+                    {user.roles[0]?.replace('ROLE_', '') || 'EMPLOYE'}
+                </span>
+            </div>
           </div>
         </header>
 
         {/* Page Content */}
-        <main className="flex-1 overflow-y-auto p-6 scroll-smooth">
-             <Outlet />
+        <main className="flex-1 overflow-y-auto p-6 scroll-smooth bg-gray-50/50">
+             {children ? children : <Outlet />}
         </main>
         
-        {/* Overlay Mobile */}
-        {isSidebarOpen && (
-            <div 
-                className="fixed inset-0 bg-black/50 z-40 lg:hidden"
-                onClick={() => setSidebarOpen(false)}
-            />
-        )}
       </div>
     </div>
   );

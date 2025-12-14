@@ -84,7 +84,7 @@ export const NAVIGATION = [
   },
 
   { 
-    label: 'profile', 
+    label: 'profil', 
     path: '/profile', 
     icon: Users, 
     roles: ['ALL'] 

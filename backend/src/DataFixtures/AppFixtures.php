@@ -35,7 +35,7 @@ class AppFixtures extends Fixture
 
         // 2. UTILISATEURS
         $admin = new Utilisateur();
-        $admin->setEmail('admin@cashflow.com');
+        $admin->setEmail('admin@gmail.com');
         $admin->setNom('Super Admin');
         $admin->setRoles(['ROLE_ADMIN', 'ROLE_MANAGER']);
         $admin->setPassword($this->hasher->hashPassword($admin, 'password123'));
@@ -44,7 +44,7 @@ class AppFixtures extends Fixture
         $manager->persist($admin);
 
         $managerUser = new Utilisateur();
-        $managerUser->setEmail('manager@cashflow.com');
+        $managerUser->setEmail('manager@gmail.com');
         $managerUser->setNom('Directeur Financier');
         $managerUser->setRoles(['ROLE_MANAGER']);
         $managerUser->setPassword($this->hasher->hashPassword($managerUser, 'password123'));
@@ -53,7 +53,7 @@ class AppFixtures extends Fixture
         $manager->persist($managerUser);
 
         $chefService = new Utilisateur();
-        $chefService->setEmail('chef@cashflow.com');
+        $chefService->setEmail('chef@gmail.com');
         $chefService->setNom('Chef Compta');
         $chefService->setRoles(['ROLE_CHEF_SERVICE']);
         $chefService->setService($serviceCompta);
@@ -63,7 +63,7 @@ class AppFixtures extends Fixture
         $manager->persist($chefService);
 
         $caissier = new Utilisateur();
-        $caissier->setEmail('caissier@cashflow.com');
+        $caissier->setEmail('caissier@gmail.com');
         $caissier->setNom('Thomas Guichet');
         $caissier->setRoles(['ROLE_CAISSIER']);
         $caissier->setPassword($this->hasher->hashPassword($caissier, 'password123'));

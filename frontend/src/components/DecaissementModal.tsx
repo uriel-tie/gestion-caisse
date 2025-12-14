@@ -2,6 +2,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import { X, AlertTriangle, Loader, ArrowRight, FileText, PenTool, UploadCloud, Trash2 } from 'lucide-react';
 import ItemsTable, { type ItemDetail } from '../components/ItemsTable';
 import SignatureArea from '../components/SignatureArea';
+import BonDeCaissePrint from './BonDeCaissePrint'; // <-- Assurez-vous que l'import est là
 
 interface DecaissementModalProps {
   isOpen: boolean;
@@ -16,17 +17,20 @@ interface ModePaiement {
 
 export default function DecaissementModal({ isOpen, onClose, onSuccess }: DecaissementModalProps) {
   const [montant, setMontant] = useState('');
-  const [mode, setMode] = useState(''); // Dynamique
+  const [mode, setMode] = useState('');
   const [motif, setMotif] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   
+  // NOUVEAU : État pour déclencher l'impression
+  const [operationToPrint, setOperationToPrint] = useState<any>(null);
+  
   // Données dynamiques
   const [comptes, setComptes] = useState<any[]>([]);
-  const [modes, setModes] = useState<ModePaiement[]>([]); // Ajouté
+  const [modes, setModes] = useState<ModePaiement[]>([]);
   const [selectedCompte, setSelectedCompte] = useState('');
 
-  // States existants (Bon/Fichier)...
+  // States existants
   const [isBonInterne, setIsBonInterne] = useState(false);
   const [items, setItems] = useState<ItemDetail[]>([]);
   const [signature, setSignature] = useState<string | null>(null);
@@ -34,24 +38,21 @@ export default function DecaissementModal({ isOpen, onClose, onSuccess }: Decais
   const [fichier, setFichier] = useState<File | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // Chargement des données (Comptes + Modes)
+  // Chargement des données
   useEffect(() => {
     if (isOpen) {
         const token = localStorage.getItem('token');
         const headers = { 'Authorization': `Bearer ${token}` };
 
-        // 1. Fetch Comptes
         fetch('https://127.0.0.1:8000/api/comptes', { headers })
             .then(r => r.json())
             .then(data => setComptes(data))
             .catch(console.error);
 
-        // 2. Fetch Modes
         fetch('https://127.0.0.1:8000/api/modes', { headers })
             .then(r => r.json())
             .then((data: ModePaiement[]) => {
                 setModes(data);
-                // Sélection par défaut intelligente
                 const especes = data.find(m => m.libelle === 'Espèces');
                 if (especes) setMode(especes.libelle);
                 else if (data.length > 0) setMode(data[0].libelle);
@@ -103,7 +104,7 @@ export default function DecaissementModal({ isOpen, onClose, onSuccess }: Decais
 
       const payload = {
         montant: montantFinal,
-        mode: mode, // Envoi du libellé choisi
+        mode: mode,
         motif: motif,
         compte_id: selectedCompte || null,
         is_bon_interne: isBonInterne,
@@ -131,16 +132,28 @@ export default function DecaissementModal({ isOpen, onClose, onSuccess }: Decais
 
       if (data.statut === 'EN_ATTENTE') {
         alert("⚠️ Montant élevé : Opération en attente de validation Manager.");
+        onSuccess();
+        onClose(); // On ferme car pas de bon à imprimer pour une attente
+        return;
       }
 
-      setMontant('');
-      setMotif('');
-      setItems([]);
-      setSignature(null);
-      setBeneficiaire('');
-      setFichier(null);
-      onSuccess();
-      onClose();
+      // SUCCÈS VALIDÉ -> PRÉPARATION DE L'IMPRESSION
+      const opForPrint = {
+          id: data.id || 'N/A',
+          date: new Date().toISOString(),
+          montant: montantFinal,
+          motif: motif,
+          beneficiaire: beneficiaire || '__________________',
+          utilisateur: 'Moi (Caissier)',
+          lignes: isBonInterne ? items : []
+      };
+
+      setOperationToPrint(opForPrint); // Affiche la vue impression
+      
+      // Reset du form
+      setMontant(''); setMotif(''); setItems([]); setSignature(null); setBeneficiaire(''); setFichier(null);
+      
+      onSuccess(); // Rafraichir le solde en arrière plan
 
     } catch (err: any) {
       setError(err.message);
@@ -149,12 +162,28 @@ export default function DecaissementModal({ isOpen, onClose, onSuccess }: Decais
     }
   };
 
+  // --- RENDU CONDITIONNEL : IMPRESSION OU FORMULAIRE ---
+  
+  if (operationToPrint) {
+      return (
+          <BonDeCaissePrint 
+              operation={operationToPrint} 
+              onClose={() => {
+                  setOperationToPrint(null);
+                  onClose(); // Ferme tout quand l'impression est finie
+              }} 
+          />
+      );
+  }
+
   if (!isOpen) return null;
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50 backdrop-blur-sm p-4">
       <div className="bg-white rounded-xl shadow-2xl w-full max-w-2xl overflow-hidden flex flex-col max-h-[90vh]">
         
+        {/* ... (Le reste de votre JSX de formulaire reste identique à ce que vous avez envoyé) ... */}
+        {/* Header Rouge */}
         <div className="bg-red-600 px-6 py-4 flex justify-between items-center shrink-0">
           <h3 className="text-white font-bold text-lg flex items-center gap-2">
             {isBonInterne ? <PenTool className="h-5 w-5"/> : <FileText className="h-5 w-5"/>}
@@ -166,7 +195,6 @@ export default function DecaissementModal({ isOpen, onClose, onSuccess }: Decais
         </div>
 
         <div className="overflow-y-auto p-6 space-y-6">
-          
           {error && (
             <div className="bg-red-50 text-red-600 p-3 rounded-lg text-sm border border-red-200 flex items-center animate-pulse">
               <AlertTriangle className="h-4 w-4 mr-2" />
@@ -174,14 +202,10 @@ export default function DecaissementModal({ isOpen, onClose, onSuccess }: Decais
             </div>
           )}
 
+          {/* ... (Votre Toggle Bon Interne / Upload) ... */}
           <div className="bg-gray-100 p-4 rounded-lg flex items-center justify-between">
-            <div>
-              <span className="font-bold text-gray-700 block">Type de Justificatif</span>
-              <span className="text-xs text-gray-500">
-                  {isBonInterne ? "Création d'un bon numérique" : "Upload d'un document existant"}
-              </span>
-            </div>
-            <label className="relative inline-flex items-center cursor-pointer">
+            {/* ... */}
+             <label className="relative inline-flex items-center cursor-pointer">
               <input 
                 type="checkbox" 
                 className="sr-only peer"
@@ -194,7 +218,7 @@ export default function DecaissementModal({ isOpen, onClose, onSuccess }: Decais
 
           <form onSubmit={handleSubmit} className="space-y-6">
             
-            {/* Contenu spécifique Bon Interne ou Fichier (Identique à avant, omis pour brièveté, garder votre code ici) */}
+            {/* Contenu spécifique (Votre code est bon ici, je le laisse tel quel) */}
             {isBonInterne ? (
                <div className="space-y-4">
                   <div>
@@ -210,14 +234,16 @@ export default function DecaissementModal({ isOpen, onClose, onSuccess }: Decais
                </div>
             ) : (
               <div className="space-y-4">
+                 {/* ... Vos champs Montant et Upload ... */}
                  <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">Montant à sortir (F)</label>
                     <div className="relative rounded-md shadow-sm">
                       <input type="number" step="1" required={!isBonInterne} min="1" value={montant} onChange={(e) => setMontant(e.target.value)} className="block w-full rounded-md border-gray-300 pl-4 pr-12 py-3 text-2xl font-bold text-red-600 focus:border-red-500 focus:ring-red-500 border" placeholder="0" />
                       <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none"><span className="text-gray-500 sm:text-sm">FCFA</span></div>
                     </div>
-                  </div>
-                  <div>
+                 </div>
+                 {/* ... Upload ... */}
+                 <div>
                       <label className="block text-sm font-medium text-gray-700 mb-1">Justificatif</label>
                       {!fichier ? (
                           <div onClick={() => fileInputRef.current?.click()} className="border-2 border-dashed border-gray-300 rounded-lg p-6 flex flex-col items-center justify-center cursor-pointer hover:bg-gray-50 text-center">
@@ -235,7 +261,6 @@ export default function DecaissementModal({ isOpen, onClose, onSuccess }: Decais
               </div>
             )}
 
-            {/* CHAMPS COMMUNS AVEC SELECTEUR DYNAMIQUE */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Motif global</label>

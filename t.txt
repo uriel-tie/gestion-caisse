@@ -1,4 +1,4 @@
-TITRE DU PROJET : CASHFLOW MANAGER (ERP DE TRÉSORERIE)
+TITRE DU PROJET : ORBIS CAISSE MANAGER (ERP DE TRÉSORERIE)
 DATE : 25 NOVEMBRE 2025
 
 ================================================================================
