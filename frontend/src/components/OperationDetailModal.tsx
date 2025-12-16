@@ -1,8 +1,10 @@
 import React, { useState, useRef } from 'react';
 import { X, FileText, User, Calendar, CreditCard, CheckCircle, Clock, AlertCircle, UploadCloud, RotateCcw, AlertTriangle, Loader, Ban, Printer } from 'lucide-react';
 import Swal from 'sweetalert2';
+// L'import par défaut fonctionne maintenant car on a mis "export default" dans le fichier précédent
 import BonDeCaissePrint from './BonDeCaissePrint';
 
+// 1. Correction de l'interface pour inclure tous les champs possibles
 interface Operation {
     id: string;
     type: string;
@@ -13,6 +15,9 @@ interface Operation {
     utilisateur: string;
     motif: string;
     caisse: string;
+    beneficiaire?: string;      // Ajouté
+    demandeur?: string;         // Ajouté
+    numeroReference?: string;   // Ajouté
     estDemandeAnnulation?: boolean;
     motif_annulation?: string;
     operationLiee?: boolean;
@@ -40,6 +45,7 @@ export default function OperationDetailModal({ operation, onClose, onRefresh, us
 
     if (!operation) return null;
 
+    // Affiche l'écran d'impression par-dessus si demandé
     if (showPrint) {
         return <BonDeCaissePrint operation={operation} onClose={() => setShowPrint(false)} />;
     }
@@ -59,7 +65,8 @@ export default function OperationDetailModal({ operation, onClose, onRefresh, us
         try {
             const base64 = await convertFileToBase64(selectedFile);
             const token = localStorage.getItem('token');
-            const res = await fetch(`https://127.0.0.1:8000/api/operations/${operation.id}/attach-justificatif`, {
+            // Remplace l'URL par la tienne si différente de localhost
+            const res = await fetch(`http://localhost:8000/api/operations/${operation.id}/attach-justificatif`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
                 body: JSON.stringify({ fichier_data: base64, fichier_nom: selectedFile.name })
@@ -92,7 +99,7 @@ export default function OperationDetailModal({ operation, onClose, onRefresh, us
         setActionLoading(true);
         try {
             const token = localStorage.getItem('token');
-            const res = await fetch(`https://127.0.0.1:8000/api/operations/${operation.id}/reverse`, {
+            const res = await fetch(`http://localhost:8000/api/operations/${operation.id}/reverse`, {
                 method: 'POST',
                 headers: { 'Authorization': `Bearer ${token}` }
             });
@@ -128,7 +135,7 @@ export default function OperationDetailModal({ operation, onClose, onRefresh, us
         setActionLoading(true);
         try {
             const token = localStorage.getItem('token');
-            const res = await fetch(`https://127.0.0.1:8000/api/operations/${operation.id}/request-cancellation`, {
+            const res = await fetch(`http://localhost:8000/api/operations/${operation.id}/request-cancellation`, {
                 method: 'POST',
                 headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
                 body: JSON.stringify({ motif })
@@ -166,7 +173,7 @@ export default function OperationDetailModal({ operation, onClose, onRefresh, us
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50 backdrop-blur-sm p-4">
             <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl overflow-hidden animate-in fade-in zoom-in duration-200 flex flex-col max-h-[90vh]">
                 
-                {/* HEADER (Fixe) */}
+                {/* HEADER */}
                 <div className={`px-6 py-4 flex justify-between items-center border-b shrink-0 ${isEncaissement ? 'bg-green-600 text-white' : 'bg-red-600 text-white'}`}>
                     <div className="flex items-center space-x-2">
                         <span className="font-bold text-lg">{operation.type}</span>
@@ -176,10 +183,9 @@ export default function OperationDetailModal({ operation, onClose, onRefresh, us
                     </button>
                 </div>
 
-                {/* CONTENT (Scrollable) */}
+                {/* CONTENT */}
                 <div className="p-6 space-y-6 overflow-y-auto">
                     
-                    {/* Info Principale */}
                     <div className="text-center">
                         <h2 className={`text-4xl font-extrabold ${isEncaissement ? 'text-green-600' : 'text-red-600'}`}>
                             {isEncaissement ? '+' : '-'}{new Intl.NumberFormat('fr-FR', { style: 'currency', currency: 'XOF' }).format(operation.montant)}
@@ -195,7 +201,6 @@ export default function OperationDetailModal({ operation, onClose, onRefresh, us
                         </div>
                     </div>
 
-                    {/* Détails Grille */}
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm bg-gray-50 p-4 rounded-xl border border-gray-100">
                         <div>
                             <p className="text-gray-500 text-xs uppercase font-bold mb-1">Motif</p>
@@ -209,54 +214,26 @@ export default function OperationDetailModal({ operation, onClose, onRefresh, us
                             <p className="text-gray-500 text-xs uppercase font-bold mb-1">Mode</p>
                             <p className="font-medium text-gray-900 flex items-center"><CreditCard className="h-3 w-3 mr-1"/> {operation.mode}</p>
                         </div>
-                        <div>
-                            <p className="text-gray-500 text-xs uppercase font-bold mb-1">Caisse</p>
-                            <p className="font-medium text-gray-900">{operation.caisse}</p>
-                        </div>
+                        {(operation.beneficiaire || operation.demandeur) && (
+                            <div>
+                                <p className="text-gray-500 text-xs uppercase font-bold mb-1">Bénéficiaire</p>
+                                <p className="font-medium text-gray-900">{operation.beneficiaire || operation.demandeur}</p>
+                            </div>
+                        )}
                     </div>
 
-                    {/* Alertes Annulation */}
-                    {operation.estDemandeAnnulation && operation.statut !== 'ANNULEE' && (
-                        <div className="bg-orange-50 border border-orange-200 rounded-lg p-3 flex gap-3 items-start">
-                            <AlertTriangle className="text-orange-600 flex-shrink-0 mt-0.5" size={18}/>
-                            <div>
-                                <p className="text-orange-800 font-bold text-sm">Demande d'annulation en cours</p>
-                                <p className="text-orange-600 text-xs mt-1">Motif : {operation.motif_annulation}</p>
-                            </div>
-                        </div>
-                    )}
-
-                    {operation.statut === 'ANNULEE' && (
-                        <div className="bg-red-50 border border-red-200 rounded-lg p-3 text-center text-red-700 font-bold flex items-center justify-center gap-2">
-                            <Ban size={18}/> Opération Annulée / Contre-passée
-                        </div>
-                    )}
-
-                    {/* Zone Justificatif & Upload */}
+                    {/* Zone Justificatif */}
                     <div className="border-t pt-4">
                         <h4 className="text-sm font-bold text-gray-700 mb-3 flex items-center"><FileText className="h-4 w-4 mr-2"/> Justificatif</h4>
                         
                         {operation.justificatif ? (
                             <div className="bg-blue-50 border border-blue-100 rounded-lg p-4">
-                                {operation.justificatif.type === 'BON_INTERNE' ? (
-                                    <div className="text-sm">
-                                        <p className="font-bold text-blue-800 mb-2">Bon Interne</p>
-                                        {Array.isArray(operation.justificatif.contenu) && (
-                                            <ul className="list-disc pl-4 space-y-1">
-                                                {operation.justificatif.contenu.map((item:any, i:number) => (
-                                                    <li key={i}>{item.designation} (x{item.quantite}) - {item.total} F</li>
-                                                ))}
-                                            </ul>
-                                        )}
-                                    </div>
-                                ) : (
-                                    <div className="flex items-center justify-between">
-                                        <span className="text-blue-700 text-sm">Document joint disponible</span>
-                                        <a href={operation.justificatif.url} target="_blank" rel="noopener noreferrer" className="px-3 py-1.5 bg-blue-600 text-white text-xs font-bold rounded hover:bg-blue-700 transition">
-                                            Voir le document
-                                        </a>
-                                    </div>
-                                )}
+                                <div className="flex items-center justify-between">
+                                    <span className="text-blue-700 text-sm">Document joint disponible</span>
+                                    <a href={operation.justificatif.url} target="_blank" rel="noopener noreferrer" className="px-3 py-1.5 bg-blue-600 text-white text-xs font-bold rounded hover:bg-blue-700 transition">
+                                        Voir le document
+                                    </a>
+                                </div>
                             </div>
                         ) : (
                             <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 flex flex-col items-center justify-center bg-gray-50 transition hover:bg-gray-100">
@@ -285,10 +262,9 @@ export default function OperationDetailModal({ operation, onClose, onRefresh, us
                     </div>
                 </div>
 
-                {/* FOOTER ACTIONS (Fixe) */}
+                {/* FOOTER ACTIONS */}
                 <div className="bg-gray-50 px-6 py-4 flex flex-col sm:flex-row justify-end gap-3 shrink-0 border-t items-center">
                     
-                    {/* Bouton IMPRIMER (Décaissement validé uniquement) */}
                     {operation.type === 'DECAISSEMENT' && operation.statut === 'VALIDEE' && (
                         <button 
                             onClick={() => setShowPrint(true)}
@@ -298,7 +274,6 @@ export default function OperationDetailModal({ operation, onClose, onRefresh, us
                         </button>
                     )}
 
-                    {/* MANAGER : Contre-passer */}
                     {userRole === 'MANAGER' && operation.statut !== 'ANNULEE' && (
                         <button 
                             onClick={handleReverse} 
@@ -312,7 +287,6 @@ export default function OperationDetailModal({ operation, onClose, onRefresh, us
                         </button>
                     )}
 
-                    {/* CAISSIER : Demander Annulation */}
                     {userRole === 'CAISSIER' && !operation.estDemandeAnnulation && operation.statut !== 'ANNULEE' && (
                         <button 
                             onClick={handleRequestCancel} 

@@ -53,14 +53,46 @@ class Demande
     #[ORM\OneToMany(mappedBy: 'demande', targetEntity: LigneDemande::class, cascade: ['persist', 'remove'])]
     private Collection $lignes;
 
-    // Qui demande ?
     #[ORM\ManyToOne(targetEntity: Utilisateur::class, inversedBy: 'demandes')]
     #[ORM\JoinColumn(nullable: false)]
-    private ?Utilisateur $demandeur = null;
+    private ?Utilisateur $emetteur = null;
+
+    #[ORM\ManyToOne(targetEntity: Utilisateur::class)]
+    #[ORM\JoinColumn(nullable: false)]
+    private ?Utilisateur $beneficiaire = null;
 
     // Lien final vers la caisse (Une fois payée, on lie l'opération réelle ici)
     #[ORM\OneToOne(inversedBy: 'demande', targetEntity: Operation::class, cascade: ['persist', 'remove'])]
     private ?Operation $operation = null;
+
+    // NOUVEAU : Le Service concerné (celui du bénéficiaire, pour figer l'historique)
+    #[ORM\ManyToOne(targetEntity: Service::class)]
+    #[ORM\JoinColumn(nullable: false)]
+    private ?Service $service = null;
+
+    // --- Getters / Setters ---
+
+    public function getBeneficiaire(): ?Utilisateur
+    {
+        return $this->beneficiaire;
+    }
+
+    public function setBeneficiaire(?Utilisateur $beneficiaire): static
+    {
+        $this->beneficiaire = $beneficiaire;
+        return $this;
+    }
+
+    public function getService(): ?Service
+    {
+        return $this->service;
+    }
+
+    public function setService(?Service $service): static
+    {
+        $this->service = $service;
+        return $this;
+    }
 
     public function __construct()
     {

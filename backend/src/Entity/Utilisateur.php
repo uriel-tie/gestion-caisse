@@ -66,13 +66,40 @@ class Utilisateur implements UserInterface, PasswordAuthenticatedUserInterface
     #[ORM\OneToMany(mappedBy: 'demandeur', targetEntity: Demande::class)]
     private Collection $demandes;
 
-    // ...
     #[ORM\Column(type: 'boolean', options: ['default' => true])]
     private bool $passwordMustBeChanged = true;
 
     #[ORM\Column(nullable: true)]
     private ?\DateTimeImmutable $derniereModificationNom = null;
 
+    #[ORM\Column(type: 'boolean', options: ['default' => true])]
+    private bool $isActive = true;
+
+    #[ORM\Column(type: 'boolean', options: ['default' => false])]
+    private bool $isDeleted = false;
+    // --- Getters / Setters ---
+
+    public function isIsActive(): bool
+    {
+        return $this->isActive;
+    }
+
+    public function setIsActive(bool $isActive): static
+    {
+        $this->isActive = $isActive;
+        return $this;
+    }
+
+    public function isIsDeleted(): bool
+    {
+        return $this->isDeleted;
+    }
+
+    public function setIsDeleted(bool $isDeleted): static
+    {
+        $this->isDeleted = $isDeleted;
+        return $this;
+    }
     public function isPasswordMustBeChanged(): bool
     {
         return $this->passwordMustBeChanged;
@@ -83,7 +110,6 @@ class Utilisateur implements UserInterface, PasswordAuthenticatedUserInterface
         $this->passwordMustBeChanged = $passwordMustBeChanged;
         return $this;
     }
-    // ...
 
     public function __construct()
     {

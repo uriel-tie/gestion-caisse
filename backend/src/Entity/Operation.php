@@ -15,6 +15,7 @@ class Operation
     public const STATUT_VALIDEE = 'VALIDEE';
     public const STATUT_EN_ATTENTE = 'EN_ATTENTE';
     public const STATUT_ANNULEE = 'ANNULEE';
+    public const STATUT_ATTENTE_RECEPTION = 'ATTENTE_RECEPTION';
 
     #[ORM\Id]
     #[ORM\Column(type: 'uuid', unique: true)]
@@ -71,7 +72,21 @@ class Operation
     #[ORM\Column(length: 255, nullable: true)]
     private ?string $motifAnnulation = null;
 
+    #[ORM\Column(length: 255, nullable: true)]
+    private ?string $beneficiaire = null;
+
     // --- Getters / Setters ---
+
+    public function getBeneficiaire(): ?string
+    {
+        return $this->beneficiaire;
+    }
+
+    public function setBeneficiaire(?string $beneficiaire): static
+    {
+        $this->beneficiaire = $beneficiaire;
+        return $this;
+    }
 
     public function isEstDemandeAnnulation(): bool
     {

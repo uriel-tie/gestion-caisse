@@ -29,6 +29,20 @@ class Service
     #[ORM\OneToMany(mappedBy: 'service', targetEntity: Utilisateur::class)]
     private Collection $employes;
 
+    #[ORM\Column(length: 20, options: ['default' => 'STANDARD'])]
+    private string $modeValidation = 'STANDARD'; 
+
+    public function getModeValidation(): string
+    {
+        return $this->modeValidation;
+    }
+
+    public function setModeValidation(string $modeValidation): static
+    {
+        $this->modeValidation = $modeValidation;
+        return $this;
+    }
+
     public function __construct()
     {
         $this->employes = new ArrayCollection();

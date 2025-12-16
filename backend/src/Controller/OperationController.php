@@ -264,6 +264,13 @@ class OperationController extends AbstractController
         $op->setMotif($data['motif'] ?? 'Décaissement divers');
         $op->setSessionCaisse($session);
 
+        $nomBeneficiaire = $data['beneficiaire'] ?? null;
+
+        if ($demande && $demande->getBeneficiaire()) {
+        $userBenef = $demande->getBeneficiaire(); 
+        $nomBeneficiaire = is_string($userBenef) ? $userBenef : $userBenef->getNomComplet(); 
+    }
+
         // Validation Seuil Manager
         $seuilCaisse = (float) ($caisse->getSeuilDecaissement() ?? 50000);
         $isManager = in_array('ROLE_MANAGER', $user->getRoles());
@@ -299,7 +306,16 @@ class OperationController extends AbstractController
         $this->processJustificatif($op, $data, $em);
         $em->flush();
 
-        return $this->json(['message' => $msg, 'statut' => $op->getStatut(), 'id' => $op->getId()], 201);
+        return $this->json([
+        'id' => $operation->getId(),
+        'numeroReference' => $operation->getNumeroReference() ?? 'OP-'.time(), // Si tu as un champ référence
+        'montant' => $operation->getMontant(),
+        'beneficiaire' => $operation->getBeneficiaire() ?? $data['beneficiaire'] ?? 'Porteur',
+        'motif' => $operation->getMotif(),
+        'date' => $operation->getDate()->format('d/m/Y H:i'),
+        'modePaiement' => $operation->getModePaiement() ? $operation->getModePaiement()->getLibelle() : 'Espèces',
+        'message' => 'Opération enregistrée avec succès'
+    ], 201);
     }
 
     #[Route('/me', name: 'my_operations', methods: ['GET'])]

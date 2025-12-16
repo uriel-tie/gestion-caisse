@@ -34,6 +34,21 @@ class Cloture
     #[ORM\JoinColumn(nullable: false)]
     private ?Utilisateur $utilisateur = null;
 
+    #[ORM\Column(type: 'json', nullable: true)]
+    private array $billetage = []; 
+    // Exemple de structure stockée : {"10000": 5, "5000": 2, "2000": 10}
+
+    public function getBilletage(): array
+    {
+        return $this->billetage;
+    }
+
+    public function setBilletage(?array $billetage): static
+    {
+        $this->billetage = $billetage ?? [];
+        return $this;
+    }
+
     public function __construct()
     {
         $this->dateCloture = new \DateTimeImmutable();
