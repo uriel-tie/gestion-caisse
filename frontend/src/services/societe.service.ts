@@ -1,8 +1,8 @@
-// src/services/societe.service.ts
+
 import { type Societe } from '../types';
 
 // Adapte cette URL si ton backend n'est pas sur localhost:8000
-const API_URL = 'http://localhost:8000/api/societe'; 
+const API_URL = 'https://localhost:8000/api/societe'; 
 
 export const societeService = {
     /**

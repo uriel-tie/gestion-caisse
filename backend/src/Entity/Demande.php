@@ -66,6 +66,20 @@ class Demande
     #[ORM\JoinColumn(nullable: true)]
     private ?Utilisateur $beneficiaire = null;
 
+    #[ORM\Column(length: 255, nullable: true)]
+    private ?string $beneficiaireAutre = null;
+
+    public function getBeneficiaireAutre(): ?string
+    {
+        return $this->beneficiaireAutre;
+    }
+
+    public function setBeneficiaireAutre(?string $beneficiaireAutre): static
+    {
+        $this->beneficiaireAutre = $beneficiaireAutre;
+        return $this;
+    }
+
     public function getBeneficiaire(): ?Utilisateur
     {
         return $this->beneficiaire;
