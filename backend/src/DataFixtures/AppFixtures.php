@@ -4,10 +4,12 @@ namespace App\DataFixtures;
 
 use App\Entity\Caisse;
 use App\Entity\CompteComptable;
+use App\Entity\Demande;
 use App\Entity\ModePaiement;
 use App\Entity\Operation;
 use App\Entity\Service;
 use App\Entity\SessionCaisse;
+use App\Entity\Societe;
 use App\Entity\Utilisateur;
 use Doctrine\Bundle\FixturesBundle\Fixture;
 use Doctrine\Persistence\ObjectManager;
@@ -24,118 +26,143 @@ class AppFixtures extends Fixture
 
     public function load(ObjectManager $manager): void
     {
-        // 1. SERVICES
-        $serviceCompta = new Service();
-        $serviceCompta->setNom('Comptabilité');
-        $manager->persist($serviceCompta);
+        // 1. CRÉATION DE LA SOCIÉTÉ
+        $societe = new Societe();
+        $societe->setNom('Ma Super Entreprise');
+        $societe->setForme('SARL');
+        $societe->setAdresse('Abidjan, Cocody Riviera');
+        $societe->setTelephone('+225 07 07 07 07 07');
+        $societe->setCapitalSocial('10 000 000 FCFA');
+        $societe->setModeValidation(Societe::MODE_STANDARD); 
+        $manager->persist($societe);
 
-        $serviceRH = new Service();
-        $serviceRH->setNom('Ressources Humaines');
-        $manager->persist($serviceRH);
+        // 2. MODES DE PAIEMENT & COMPTES
+        $modeEspece = new ModePaiement();
+        $modeEspece->setLibelle('Espèces');
+        $modeEspece->setType('ESPECE'); // <--- LIGNE AJOUTÉE (CORRECTION)
+        $manager->persist($modeEspece);
 
-        // 2. UTILISATEURS
-        $admin = new Utilisateur();
-        $admin->setEmail('admin@gmail.com');
-        $admin->setNom('Super Admin');
-        $admin->setRoles(['ROLE_ADMIN', 'ROLE_MANAGER']);
-        $admin->setPassword($this->hasher->hashPassword($admin, 'password123'));
-        $admin->setEstActif(true);
-        $admin->setPasswordMustBeChanged(false);
-        $manager->persist($admin);
+        $modeCheque = new ModePaiement();
+        $modeCheque->setLibelle('Chèque');
+        $modeCheque->setType('CHEQUE'); // <--- LIGNE AJOUTÉE (CORRECTION)
+        $manager->persist($modeCheque);
 
-        $managerUser = new Utilisateur();
-        $managerUser->setEmail('manager@gmail.com');
-        $managerUser->setNom('Directeur Financier');
-        $managerUser->setRoles(['ROLE_MANAGER']);
-        $managerUser->setPassword($this->hasher->hashPassword($managerUser, 'password123'));
-        $managerUser->setEstActif(true);
-        $managerUser->setPasswordMustBeChanged(false);
-        $manager->persist($managerUser);
-
-        $chefService = new Utilisateur();
-        $chefService->setEmail('chef@gmail.com');
-        $chefService->setNom('Chef Compta');
-        $chefService->setRoles(['ROLE_CHEF_SERVICE']);
-        $chefService->setService($serviceCompta);
-        $chefService->setPassword($this->hasher->hashPassword($chefService, 'password123'));
-        $chefService->setEstActif(true);
-        $chefService->setPasswordMustBeChanged(false);
-        $manager->persist($chefService);
-
-        $caissier = new Utilisateur();
-        $caissier->setEmail('caissier@gmail.com');
-        $caissier->setNom('Thomas Guichet');
-        $caissier->setRoles(['ROLE_CAISSIER']);
-        $caissier->setPassword($this->hasher->hashPassword($caissier, 'password123'));
-        $caissier->setEstActif(true);
-        $caissier->setPasswordMustBeChanged(false); // Pour éviter la redirection au login
-        $manager->persist($caissier);
-
-        // 3. COMPTES COMPTABLES
         $compteCaisse = new CompteComptable();
-        $compteCaisse->setNumero('530');
-        $compteCaisse->setLibelle('Caisse Principale');
-        $compteCaisse->setType('TRESORERIE');
+        $compteCaisse->setNumero('531');
+        $compteCaisse->setLibelle('Caisse Siège');
+        $compteCaisse->setType('CAISSE');
         $manager->persist($compteCaisse);
 
-        $compteAchat = new CompteComptable();
-        $compteAchat->setNumero('606');
-        $compteAchat->setLibelle('Achats Fournitures');
-        $compteAchat->setType('DEPENSE');
-        $manager->persist($compteAchat);
+        $compteAchats = new CompteComptable();
+        $compteAchats->setNumero('606');
+        $compteAchats->setLibelle('Achats Fournitures');
+        $compteAchats->setType('CHARGE');
+        $manager->persist($compteAchats);
 
-        $compteVente = new CompteComptable();
-        $compteVente->setNumero('707');
-        $compteVente->setLibelle('Ventes Marchandises');
-        $compteVente->setType('RECETTE');
-        $manager->persist($compteVente);
+        // 3. SERVICES
+        $serviceDirection = new Service(); $serviceDirection->setNom('Direction Générale');
+        $manager->persist($serviceDirection);
 
-        // 4. MODES DE PAIEMENT
-        $especes = new ModePaiement();
-        $especes->setLibelle('Espèces');
-        $especes->setType('ESPECE');
-        $manager->persist($especes);
+        $serviceCompta = new Service(); $serviceCompta->setNom('Comptabilité & Finances');
+        $manager->persist($serviceCompta);
 
-        $cb = new ModePaiement();
-        $cb->setLibelle('Carte Bancaire');
-        $cb->setType('ELECTRONIQUE');
-        $manager->persist($cb);
+        $serviceIT = new Service(); $serviceIT->setNom('Informatique (DSI)');
+        $manager->persist($serviceIT);
 
-        // 5. CAISSES PHYSIQUES
-        $caissePrincipale = new Caisse();
-        $caissePrincipale->setNom('Caisse Principale (Accueil)');
-        $caissePrincipale->setEstOuverte(true); // On simule qu'elle est déjà ouverte
-        $caissePrincipale->setSolde('1500.00'); // Fond de départ
-        $caissePrincipale->setEmployeAssigne($caissier);
-        $caissePrincipale->setCompteComptable($compteCaisse);
-        $manager->persist($caissePrincipale);
+        // 4. UTILISATEURS (HIERARCHIE)
+        // -> Le Manager (Directeur)
+        $managerUser = new Utilisateur();
+        $managerUser->setEmail('manager@app.com');
+        $managerUser->setNom('Directeur Général');
+        $managerUser->setRoles(['ROLE_MANAGER']);
+        $managerUser->setPassword($this->hasher->hashPassword($managerUser, 'password'));
+        $managerUser->setService($serviceDirection);
+        $manager->persist($managerUser);
 
-        $caisseSecondaire = new Caisse();
-        $caisseSecondaire->setNom('Caisse Boutique');
-        $caisseSecondaire->setEstOuverte(false);
-        $caisseSecondaire->setSolde('0.00');
-        $manager->persist($caisseSecondaire);
+        // -> Le Chef de Service IT
+        $chefIT = new Utilisateur();
+        $chefIT->setEmail('chef.it@app.com');
+        $chefIT->setNom('Chef DSI');
+        $chefIT->setRoles(['ROLE_CHEF_SERVICE']);
+        $chefIT->setPassword($this->hasher->hashPassword($chefIT, 'password'));
+        $chefIT->setService($serviceIT);
+        $manager->persist($chefIT);
+        $serviceIT->setChef($chefIT);
 
-        // 6. SESSION ACTIVE (Pour le caissier)
+        // -> Le Caissier
+        $caissier = new Utilisateur();
+        $caissier->setEmail('caissier@app.com');
+        $caissier->setNom('Jean Caissier');
+        $caissier->setRoles(['ROLE_CAISSIER']);
+        $caissier->setPassword($this->hasher->hashPassword($caissier, 'password'));
+        $caissier->setService($serviceCompta);
+        $manager->persist($caissier);
+
+        // -> Une employée (Assistante)
+        $employe = new Utilisateur();
+        $employe->setEmail('employe@app.com');
+        $employe->setNom('Sophie Assistante');
+        $employe->setRoles(['ROLE_USER']);
+        $employe->setPassword($this->hasher->hashPassword($employe, 'password'));
+        $employe->setService($serviceIT);
+        $manager->persist($employe);
+
+        // 5. CAISSE & SESSION
+        $caisse = new Caisse();
+        $caisse->setNom('Caisse Principale');
+        $caisse->setSolde('500000.00'); 
+        $caisse->setEstOuverte(true);
+        $caisse->setEmployeAssigne($caissier);
+        $caisse->setCompteComptable($compteCaisse);
+        $manager->persist($caisse);
+
         $session = new SessionCaisse();
         $session->setCaissier($caissier);
-        $session->setCaisse($caissePrincipale);
+        $session->setCaisse($caisse);
         $session->setDateOuverture(new \DateTimeImmutable());
-        $session->setMontantOuverture('500.00'); // Il a ouvert avec 500
+        $session->setMontantOuverture('500000.00');
         $session->setStatut(SessionCaisse::STATUT_OUVERTE);
         $manager->persist($session);
 
-        // 7. OPÉRATIONS (Historique)
-        $op1 = new Operation();
-        $op1->setType('ENCAISSEMENT');
-        $op1->setMontant('1000.00');
-        $op1->setDate(new \DateTimeImmutable('-1 hour'));
-        $op1->setStatut(Operation::STATUT_VALIDEE);
-        $op1->setModePaiement($especes);
-        $op1->setUtilisateur($caissier);
-        $op1->setSessionCaisse($session);
-        $op1->setMotif('Vente initale importante');
-        $manager->persist($op1);
+        // 6. DEMANDES
+        // Cas A : Demande simple
+        $demandeSimple = new Demande();
+        $demandeSimple->setTitre("Achat Claviers");
+        $demandeSimple->setMontantEstime("25000");
+        $demandeSimple->setDescription("Remplacement matériel défectueux");
+        $demandeSimple->setType(Demande::TYPE_BESOIN);
+        $demandeSimple->setDemandeur($employe);
+        $demandeSimple->setBeneficiaire($employe);
+        $demandeSimple->setStatut(Demande::STATUT_ATTENTE_CHEF);
+        $manager->persist($demandeSimple);
+
+        // Cas B : Demande pour tiers
+        $demandeTiers = new Demande();
+        $demandeTiers->setTitre("Déjeuner Client VIP");
+        $demandeTiers->setMontantEstime("45000");
+        $demandeTiers->setDescription("Avance sur frais de mission");
+        $demandeTiers->setType(Demande::TYPE_MISSION);
+        $demandeTiers->setDemandeur($employe);
+        $demandeTiers->setBeneficiaire($chefIT);
+        $demandeTiers->setStatut(Demande::STATUT_VALIDEE);
+        $manager->persist($demandeTiers);
+
+        // 7. OPERATIONS
+        $opExterne = new Operation();
+        $opExterne->setType('DECAISSEMENT');
+        $opExterne->setMontant('15000');
+        $opExterne->setDate(new \DateTimeImmutable('-1 hour'));
+        $opExterne->setStatut(Operation::STATUT_VALIDEE);
+        $opExterne->setCompteComptable('606');
+        $opExterne->setUtilisateur($caissier);
+        $opExterne->setSessionCaisse($session);
+        $opExterne->setModePaiement($modeEspece);
+        $opExterne->setMotif("Facture Eau Mois Mars");
+        $opExterne->setBeneficiaire("SODECI Agence Riviera"); 
+        $manager->persist($opExterne);
+
+        // Mise à jour solde
+        $caisse->setSolde('485000.00'); 
 
         $manager->flush();
     }

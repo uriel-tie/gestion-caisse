@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Settings, Users, BookOpen, CreditCard } from 'lucide-react';
+import { Settings, Users, BookOpen, CreditCard, Building2 } from 'lucide-react';
 import type { UserData } from '../types';
 
 // On garde tes composants existants
@@ -7,6 +7,7 @@ import AdminStructure from '../components/AdminStructure';
 import AdminUsers from '../components/AdminUsers';
 import AdminCompta from '../components/AdminCompta'; 
 import AdminModes from '../components/AdminModes';
+import AdminSoc from '../components/AdminSoc';
 
 interface AdminPageProps {
     user: UserData;
@@ -15,7 +16,7 @@ interface AdminPageProps {
 
 export default function AdminPage({ user }: AdminPageProps) {
     // Plus besoin de useNavigate ici pour le retour
-    const [activeTab, setActiveTab] = useState<'users' | 'structure' | 'compta' | 'modes'>('users');
+    const [activeTab, setActiveTab] = useState<'users' | 'structure' | 'compta' | 'modes' | 'soc'>('users');
 
     const getTabClass = (tabName: string, colorClass: string) => {
         const isActive = activeTab === tabName;
@@ -40,6 +41,13 @@ export default function AdminPage({ user }: AdminPageProps) {
             {/* Navigation par Onglets (Style épuré) */}
             <div className="border-b border-gray-200 mb-8">
                 <nav className="-mb-px flex space-x-8">
+                     <button 
+                        onClick={() => setActiveTab('soc')} 
+                        className={getTabClass('soc', 'text-green-600')}
+                    >
+                         <Building2 size={18} /> Société
+                    </button>
+                    
                     <button
                         onClick={() => setActiveTab('users')}
                         className={getTabClass('users', 'text-purple-600')}
@@ -76,6 +84,7 @@ export default function AdminPage({ user }: AdminPageProps) {
                 {activeTab === 'structure' && <AdminStructure />}
                 {activeTab === 'compta' && <AdminCompta />}
                 {activeTab === 'modes' && <AdminModes />}
+                {activeTab === 'soc' && <AdminSoc />}
             </div>
         </div>
     );

@@ -62,6 +62,21 @@ class Demande
     #[ORM\OneToOne(inversedBy: 'demande', targetEntity: Operation::class, cascade: ['persist', 'remove'])]
     private ?Operation $operation = null;
 
+    #[ORM\ManyToOne(targetEntity: Utilisateur::class)]
+    #[ORM\JoinColumn(nullable: true)]
+    private ?Utilisateur $beneficiaire = null;
+
+    public function getBeneficiaire(): ?Utilisateur
+    {
+        return $this->beneficiaire;
+    }
+
+    public function setBeneficiaire(?Utilisateur $beneficiaire): static
+    {
+        $this->beneficiaire = $beneficiaire;
+        return $this;
+    }
+
     public function __construct()
     {
         $this->createdAt = new \DateTimeImmutable();

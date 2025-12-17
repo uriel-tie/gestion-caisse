@@ -10,7 +10,7 @@ interface LoginPageProps {
 
 const LoginPage: React.FC<LoginPageProps> = ({ onLoginSuccess }) => {
   const navigate = useNavigate();
-  const [email, setEmail] = useState<string>('admin@gmail.com');
+  const [email, setEmail] = useState<string>('manager@app.com');
   const [password, setPassword] = useState<string>('');
   const [error, setError] = useState<string>('');
   const [isLoading, setIsLoading] = useState<boolean>(false);

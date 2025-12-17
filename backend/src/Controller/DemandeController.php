@@ -5,6 +5,7 @@ namespace App\Controller;
 use App\Entity\Demande;
 use App\Entity\LigneDemande;
 use App\Entity\Utilisateur;
+use App\Entity\Societe;
 use App\Repository\DemandeRepository;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
@@ -14,15 +15,17 @@ use Symfony\Component\Routing\Attribute\Route;
 use Symfony\Component\Security\Http\Attribute\IsGranted;
 
 #[Route('/api/demandes', name: 'api_demandes_')]
-#[IsGranted('IS_AUTHENTICATED_FULLY')]
 final class DemandeController extends AbstractController
 {
-    #[Route('', name: 'create', methods: ['POST'])]
     public function create(Request $request, EntityManagerInterface $em): JsonResponse 
     {
         /** @var Utilisateur $user */
         $user = $this->getUser();
         $data = json_decode($request->getContent(), true);
+
+        // --- 1. Récupération de la Config Société ---
+        $societe = $em->getRepository(Societe::class)->findOneBy([]); // On prend la première (et unique) société
+        $modeValidation = $societe ? $societe->getModeValidation() : Societe::MODE_STANDARD;
 
         if (empty($data['titre']) || empty($data['montant'])) {
             return $this->json(['error' => 'Champs obligatoires manquants'], 400);
@@ -31,7 +34,7 @@ final class DemandeController extends AbstractController
         $demande = new Demande();
         $demande->setTitre($data['titre']);
         
-        // Compatible avec ton entité qui utilise setMontantEstime
+        // Gestion montant (compatible avec ton code actuel)
         if (method_exists($demande, 'setMontantEstime')) {
             $demande->setMontantEstime((string)$data['montant']);
         } else {
@@ -39,39 +42,52 @@ final class DemandeController extends AbstractController
         }
 
         $demande->setType($data['type'] ?? 'FICHE_BESOIN');
-        $demande->setDemandeur($user);
-        
-        // Gestion de la description/motif
+        $demande->setDemandeur($user); // L'auteur est TOUJOURS l'utilisateur connecté
+
+        // --- 2. Gestion du Bénéficiaire (NOUVEAU) ---
+        // Si un ID bénéficiaire est envoyé et que ce n'est pas moi, je définis le bénéficiaire
+        if (!empty($data['beneficiaire_id'])) {
+            $beneficiaire = $em->getRepository(Utilisateur::class)->find($data['beneficiaire_id']);
+            $demande->setBeneficiaire($beneficiaire ?: $user);
+        } else {
+            $demande->setBeneficiaire($user);
+        }
+
         $description = $data['motif'] ?? '';
         if (method_exists($demande, 'setDescription')) {
             $demande->setDescription($description);
-        } elseif (method_exists($demande, 'setMotif')) {
-            $demande->setMotif($description);
         }
 
-        // WORKFLOW
+        // --- 3. Logique des Statuts selon le Mode (CRITIQUE) ---
         $roles = $user->getRoles();
 
         if (in_array('ROLE_MANAGER', $roles)) {
-            // Le Manager s'auto-valide -> Directement prêt à payer
+            // Le Manager s'auto-valide toujours
             $demande->setStatut('VALIDEE_A_PAYER');
         } 
         elseif (in_array('ROLE_CHEF_SERVICE', $roles)) {
-            // Le Chef saute l'étape Chef -> En attente Manager
-            $demande->setStatut('ATTENTE_MANAGER');
+            // Si le Chef valide :
+            if ($modeValidation === Societe::MODE_DELEGATION) {
+                // En mode DÉLÉGATION, le Chef a le pouvoir final -> Direct Caisse
+                $demande->setStatut('VALIDEE_A_PAYER');
+            } else {
+                // En mode STANDARD, ça doit encore passer par le Manager
+                $demande->setStatut('ATTENTE_MANAGER');
+            }
         } 
         else {
-            // Les autres (Employés) -> En attente Chef
+            // Les employés normaux -> Toujours vers le Chef
             $demande->setStatut('ATTENTE_CHEF');
         }
 
-        // REFERENCE (Si le champ existe dans l'entité)
+        // ... (Le reste du code pour Reference et Lignes reste inchangé) ...
+        // REFERENCE
         if (method_exists($demande, 'setNumeroReference')) {
             $ref = 'DEM-' . date('Ymd') . '-' . strtoupper(substr(uniqid(), -4));
             $demande->setNumeroReference($ref);
         }
 
-        // LIGNES (Si le champ existe)
+         // LIGNES (Si le champ existe)
         if (!empty($data['lignes']) && is_array($data['lignes']) && method_exists($demande, 'addLigne')) {
             foreach ($data['lignes'] as $l) {
                 $ligne = new LigneDemande();
@@ -168,12 +184,25 @@ final class DemandeController extends AbstractController
     #[Route('/{id}/workflow', name: 'workflow_action', methods: ['PATCH'])]
     public function workflowAction(Demande $demande, Request $request, EntityManagerInterface $em): JsonResponse
     {
+        // On récupère le mode actuel
+        $societe = $em->getRepository(Societe::class)->findOneBy([]);
+        $modeValidation = $societe ? $societe->getModeValidation() : Societe::MODE_STANDARD;
+
         $data = json_decode($request->getContent(), true);
         $action = $data['action'] ?? null;
         
         if ($action === 'valider') {
-            if ($demande->getStatut() === 'ATTENTE_CHEF') $demande->setStatut('ATTENTE_MANAGER');
-            elseif ($demande->getStatut() === 'ATTENTE_MANAGER') $demande->setStatut('VALIDEE_A_PAYER');
+            if ($demande->getStatut() === 'ATTENTE_CHEF') {
+                // Le Chef vient de valider. Où ça va ensuite ?
+                if ($modeValidation === Societe::MODE_DELEGATION) {
+                    $demande->setStatut('VALIDEE_A_PAYER'); // Saute le Manager
+                } else {
+                    $demande->setStatut('ATTENTE_MANAGER'); // Workflow classique
+                }
+            }
+            elseif ($demande->getStatut() === 'ATTENTE_MANAGER') {
+                $demande->setStatut('VALIDEE_A_PAYER');
+            }
         } elseif ($action === 'refuser') {
             $demande->setStatut('REFUSEE');
         }

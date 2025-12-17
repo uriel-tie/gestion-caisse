@@ -71,7 +71,19 @@ class Operation
     #[ORM\Column(length: 255, nullable: true)]
     private ?string $motifAnnulation = null;
 
-    // --- Getters / Setters ---
+    #[ORM\Column(length: 255, nullable: true)]
+    private ?string $beneficiaire = null;
+
+    public function getBeneficiaire(): ?string
+    {
+        return $this->beneficiaire;
+    }
+
+    public function setBeneficiaire(?string $beneficiaire): static
+    {
+        $this->beneficiaire = $beneficiaire;
+        return $this;
+    }
 
     public function isEstDemandeAnnulation(): bool
     {

@@ -25,3 +25,16 @@ export interface AuditLog {
     service: string;
   };
 }
+
+export interface Societe {
+    id: string;
+    nom: string;
+    forme?: string;
+    adresse?: string;
+    telephone?: string;
+    registreCommerce?: string;
+    siegeSocial?: string;
+    capitalSocial?: string;
+    // LE CHAMP CRITIQUE
+    modeValidation: 'STANDARD' | 'DELEGATION' | 'AUTONOMIE'; 
+}

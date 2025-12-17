@@ -8,6 +8,7 @@ interface MainLayoutProps {
   user: UserData;
   onLogout: () => void;
   children?: React.ReactNode; // On accepte les enfants
+  title?: string;
 }
 
 export default function MainLayout({ user, onLogout, children }: MainLayoutProps) {
