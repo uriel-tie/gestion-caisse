@@ -18,6 +18,7 @@ import WorkstationPage from './pages/WorkstationPage';
 import CaissesLiveView from './components/CaissesLiveView';
 import AuditPage from './pages/AuditPage';
 import LandingPage from './pages/LandingPage';
+import BonDeCaissePrint from './components/BonDeCaissePrint';
 
 import type { UserData } from './types';
 import MainLayout from './layouts/MainLayout';
@@ -151,6 +152,10 @@ function App() {
                         ) : <Navigate to="/login" replace />
                     } 
                 />
+
+                {isAuthenticated && (
+                    <Route path="/print/bon-caisse/:id" element={<BonDeCaissePrint />} />
+                )}
 
                 {/* TOUTES LES AUTRES ROUTES PROTÉGÉES */}
                 {isAuthenticated ? (

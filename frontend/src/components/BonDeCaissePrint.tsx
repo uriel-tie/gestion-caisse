@@ -1,113 +1,138 @@
-import React from 'react';
-import { X, Printer, FileText } from 'lucide-react';
+import React, { useEffect, useState } from 'react';
+import { useParams } from 'react-router-dom';
+import { Loader2, Printer } from 'lucide-react';
 
-interface BonProps {
-    operation: any; // L'objet opération complet (avec détails demande si dispo)
-    onClose: () => void;
-}
+export default function BonDeCaissePrint() {
+    const { id } = useParams();
+    const [data, setData] = useState<any>(null);
+    const [loading, setLoading] = useState(true);
 
-export default function BonDeCaissePrint({ operation, onClose }: BonProps) {
-    if (!operation) return null;
+    useEffect(() => {
+        const fetchData = async () => {
+            try {
+                const token = localStorage.getItem('token');
+                const res = await fetch(`https://127.0.0.1:8000/api/operations/${id}/print-data`, {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+                if (res.ok) {
+                    setData(await res.json());
+                }
+            } catch (err) {
+                console.error(err);
+            } finally {
+                setLoading(false);
+            }
+        };
+        fetchData();
+    }, [id]);
+
+    useEffect(() => {
+        // Lance l'impression auto quand les données sont là
+        if (data) {
+            setTimeout(() => window.print(), 500);
+        }
+    }, [data]);
+
+    if (loading) return <div className="h-screen flex items-center justify-center"><Loader2 className="animate-spin w-8 h-8"/></div>;
+    if (!data) return <div className="p-10 text-center text-red-500">Document introuvable</div>;
+
+    const { operation, societe, demande } = data;
 
     return (
-        <div className="fixed inset-0 bg-black/80 z-[60] flex items-center justify-center p-4 overflow-y-auto print:p-0 print:bg-white print:static print:block">
-            <div className="bg-white w-full max-w-3xl rounded-xl shadow-2xl overflow-hidden print:shadow-none print:w-full print:max-w-none print:rounded-none">
+        <div className="min-h-screen bg-gray-100 p-8 print:p-0 print:bg-white flex justify-center">
+            
+            {/* Bouton retour (Masqué à l'impression) */}
+            <div className="fixed top-4 left-4 print:hidden">
+                <button 
+                    onClick={() => window.close()} 
+                    className="bg-gray-800 text-white px-4 py-2 rounded shadow hover:bg-gray-700"
+                >
+                    Fermer
+                </button>
+            </div>
+
+            {/* LA FEUILLE A4/A5 */}
+            <div className="bg-white w-[210mm] min-h-[148mm] shadow-xl print:shadow-none p-10 border border-gray-200 print:border-none relative">
                 
-                {/* Header Action (Caché à l'impression) */}
-                <div className="bg-slate-900 text-white p-4 flex justify-between items-center print:hidden">
-                    <h3 className="font-bold flex items-center gap-2">
-                        <FileText size={18}/> Bon de Caisse (À Imprimer & Signer)
-                    </h3>
-                    <div className="flex gap-3">
-                        <button 
-                            onClick={() => window.print()} 
-                            className="flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-500 rounded font-bold transition shadow-lg"
-                        >
-                            <Printer size={18}/> IMPRIMER
-                        </button>
-                        <button onClick={onClose} className="p-2 hover:bg-white/20 rounded-full transition">
-                            <X size={20}/>
-                        </button>
+                {/* 1. EN-TÊTE SOCIÉTÉ */}
+                <div className="flex justify-between items-start border-b-2 border-gray-800 pb-4 mb-8">
+                    <div>
+                        <h1 className="text-xl font-bold uppercase tracking-widest">{societe?.nom || 'MA SOCIÉTÉ'}</h1>
+                        <p className="text-xs text-gray-500 max-w-xs">{societe?.adresse}</p>
+                        <p className="text-xs text-gray-500">{societe?.telephone}</p>
+                    </div>
+                    <div className="text-right">
+                        <h2 className="text-3xl font-black text-gray-900 uppercase">BON DE CAISSE</h2>
+                        <p className="text-sm font-mono text-gray-600 mt-1">N° {operation.numero}</p>
                     </div>
                 </div>
 
-                {/* LE DOCUMENT A4 */}
-                <div className="p-10 md:p-16 text-gray-900 font-serif relative">
+                {/* 2. DÉTAILS DE L'OPÉRATION */}
+                <div className="mb-8">
+                    <div className="grid grid-cols-2 gap-8">
+                        <div className="bg-gray-50 p-4 rounded border border-gray-100">
+                            <span className="block text-xs font-bold text-gray-400 uppercase mb-1">Bénéficiaire</span>
+                            <span className="block text-lg font-bold text-gray-800">{operation.beneficiaire}</span>
+                        </div>
+                        <div className="bg-gray-50 p-4 rounded border border-gray-100 text-right">
+                            <span className="block text-xs font-bold text-gray-400 uppercase mb-1">Montant Net</span>
+                            <span className="block text-2xl font-black text-gray-900">{parseFloat(operation.montant).toLocaleString()} FCFA</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div className="mb-8">
+                    <table className="w-full text-sm">
+                        <tbody>
+                            <tr className="border-b border-gray-100">
+                                <td className="py-2 text-gray-500 w-1/4">Date de l'opération</td>
+                                <td className="py-2 font-medium">{operation.date}</td>
+                            </tr>
+                            <tr className="border-b border-gray-100">
+                                <td className="py-2 text-gray-500">Motif du règlement</td>
+                                <td className="py-2 font-medium italic">"{operation.motif}"</td>
+                            </tr>
+                            {demande && (
+                                <tr className="border-b border-gray-100">
+                                    <td className="py-2 text-gray-500">Référence Demande</td>
+                                    <td className="py-2 font-mono text-blue-600">{demande.reference}</td>
+                                </tr>
+                            )}
+                            <tr>
+                                <td className="py-2 text-gray-500">Mode de paiement</td>
+                                <td className="py-2 font-medium">{operation.mode}</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                {/* 3. ZONE DE SIGNATURES (CRUCIAL) */}
+                <div className="grid grid-cols-2 gap-10 mt-12 border-t border-dashed border-gray-300 pt-8">
                     
-                    {/* En-tête Société */}
-                    <div className="flex justify-between items-start border-b-4 border-gray-900 pb-6 mb-8">
-                        <div>
-                            <h1 className="text-4xl font-black uppercase tracking-tight text-gray-900">ORBIS CAISSE</h1>
-                            <p className="text-sm font-bold text-gray-500 uppercase tracking-widest mt-1">Justificatif de Décaissement</p>
-                        </div>
-                        <div className="text-right">
-                            <div className="border-2 border-gray-900 px-4 py-2 font-mono font-bold text-xl">
-                                N° {operation.id.substring(0, 8).toUpperCase()}
-                            </div>
-                            <p className="text-sm text-gray-600 mt-2">Date: {new Date(operation.date).toLocaleDateString('fr-FR')}</p>
+                    {/* CAISSIER */}
+                    <div className="text-center">
+                        <p className="text-xs font-bold text-gray-400 uppercase mb-4">Pour la Caisse (Cachet & Signature)</p>
+                        <div className="h-32 border-2 border-gray-200 rounded-lg bg-gray-50 flex flex-col justify-end p-2">
+                            <span className="text-xs text-gray-500">Caissier: {operation.caissier}</span>
                         </div>
                     </div>
 
-                    {/* Montant & Bénéficiaire */}
-                    <div className="mb-10">
-                        <div className="flex justify-between items-end mb-2">
-                            <span className="text-sm font-bold uppercase text-gray-500">Montant Payé</span>
-                            <span className="text-4xl font-black">{Number(operation.montant).toLocaleString()} FCFA</span>
+                    {/* BENEFICIAIRE */}
+                    <div className="text-center">
+                        <p className="text-xs font-bold text-gray-400 uppercase mb-4">Pour Acquit, Le Bénéficiaire</p>
+                        <div className="h-32 border-2 border-gray-200 rounded-lg bg-white relative">
+                            <p className="absolute top-2 left-2 text-[10px] text-gray-300">Lu et approuvé</p>
+                            {/* Espace vide pour signature physique */}
                         </div>
-                        <div className="w-full h-px bg-gray-300 mb-6"></div>
-
-                        <div className="grid grid-cols-2 gap-8">
-                            <div>
-                                <span className="block text-xs font-bold text-gray-400 uppercase mb-1">Bénéficiaire / Demandeur</span>
-                                {/* On essaie de récupérer le demandeur de la demande liée, sinon on met un champ vide à remplir */}
-                                <p className="text-lg font-bold border-b border-dotted border-gray-400 pb-1">
-                                    {operation.demandeur || operation.beneficiaire || "______________________"}
-                                </p>
-                            </div>
-                            <div>
-                                <span className="block text-xs font-bold text-gray-400 uppercase mb-1">Caissier</span>
-                                <p className="text-lg font-bold border-b border-dotted border-gray-400 pb-1">
-                                    {operation.utilisateur || "______________________"}
-                                </p>
-                            </div>
-                        </div>
-                    </div>
-
-                    {/* Détails Opération */}
-                    <div className="bg-gray-50 border border-gray-200 p-6 mb-10">
-                        <span className="block text-xs font-bold text-gray-400 uppercase mb-2">Motif du décaissement</span>
-                        <p className="text-xl font-medium italic">"{operation.motif}"</p>
-                        
-                        {/* Si détails lignes (Cas d'une demande) */}
-                        {operation.lignes && operation.lignes.length > 0 && (
-                            <div className="mt-4 pt-4 border-t border-gray-200">
-                                <span className="block text-xs font-bold text-gray-400 uppercase mb-2">Détails</span>
-                                <ul className="list-disc pl-5 space-y-1 text-sm">
-                                    {operation.lignes.map((l:any, i:number) => (
-                                        <li key={i}>{l.designation} (x{l.quantite}) : {Number(l.total).toLocaleString()} F</li>
-                                    ))}
-                                </ul>
-                            </div>
-                        )}
-                    </div>
-
-                    {/* Zone Signatures (Le plus important) */}
-                    <div className="grid grid-cols-2 gap-12 mt-16">
-                        <div className="border-2 border-gray-300 h-40 relative">
-                            <span className="absolute top-0 left-0 bg-gray-300 text-white text-xs font-bold px-3 py-1">POUR ACQUIT (Bénéficiaire)</span>
-                            <div className="absolute bottom-2 left-0 w-full text-center text-xs text-gray-400">Date et Signature</div>
-                        </div>
-                        <div className="border-2 border-gray-300 h-40 relative">
-                            <span className="absolute top-0 left-0 bg-gray-300 text-white text-xs font-bold px-3 py-1">LE CAISSIER</span>
-                            <div className="absolute bottom-2 left-0 w-full text-center text-xs text-gray-400">Cachet et Signature</div>
-                        </div>
-                    </div>
-
-                    <div className="mt-12 text-center text-xs text-gray-400 uppercase">
-                        Document généré par ORBIS CAISSE - {new Date().toLocaleString()} - ID: {operation.id}
                     </div>
 
                 </div>
+
+                {/* FOOTER */}
+                <div className="absolute bottom-4 left-0 w-full text-center">
+                    <p className="text-[10px] text-gray-400">Ce document doit être signé pour valoir justificatif comptable. - Généré le {new Date().toLocaleDateString()}</p>
+                </div>
+
             </div>
         </div>
     );

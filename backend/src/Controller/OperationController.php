@@ -5,19 +5,21 @@ namespace App\Controller;
 use App\Entity\Operation;
 use App\Entity\Justificatif; 
 use App\Entity\ModePaiement;
+use App\Entity\SessionCaisse; // Import manquant corrigé
+use App\Entity\Demande;       // Import manquant corrigé
+use App\Entity\Societe;
 use App\Repository\ModePaiementRepository;
 use App\Repository\OperationRepository;
 use App\Repository\SessionCaisseRepository;
 use App\Repository\CompteComptableRepository;
+use App\Repository\UtilisateurRepository;
+use App\Repository\DemandeRepository;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\Routing\Annotation\Route;
-use App\Entity\Notification;
-use App\Repository\UtilisateurRepository;
-use App\Repository\DemandeRepository;
-use App\Entity\Demande;
+use Symfony\Component\Uid\Uuid; // Pour la validation des ID
 
 #[Route('/api/operations', name: 'api_operations_')]
 class OperationController extends AbstractController
@@ -30,10 +32,8 @@ class OperationController extends AbstractController
     ): JsonResponse
     {
         $user = $this->getUser();
-        
-        // Récupération des paramètres d'URL
         $page = $request->query->getInt('page', 1);
-        $limit = $request->query->getInt('limit', 30); // 30 par défaut pour la page dédiée, 10 pour le dashboard
+        $limit = $request->query->getInt('limit', 30);
         
         $filters = [
             'type' => $request->query->get('type'),         
@@ -44,32 +44,24 @@ class OperationController extends AbstractController
             'compte' => $request->query->get('compte'),
         ];  
 
-        // Sécurité : Caisse restreinte ou non
         $caisseRestrict = null;
         if (!$this->isGranted('ROLE_MANAGER')) {
             $caisseRestrict = $caisseRepo->findOneBy(['employeAssigne' => $user]);
             if (!$caisseRestrict) return $this->json([]);
         }
 
-        // Appel au Repository
         $paginator = $operationRepository->findWithFilters($filters, $page, $limit, $caisseRestrict);
-        
-        // On calcule le total pour savoir combien de pages afficher
         $totalItems = count($paginator);
         $totalPages = ceil($totalItems / $limit);
 
         $data = [];
         foreach ($paginator as $op) {
-            // ... (Ici, garde ton code de mapping existant : $justifData, etc.) ...
-            // COPIE-COLLE TA BOUCLE FOREACH EXISTANTE ICI
              $sessionCaisse = $op->getSessionCaisse();
              $caisse = $sessionCaisse ? $sessionCaisse->getCaisse() : null;
              $nomCaisse = $caisse ? $caisse->getNom() : 'N/A';
              
-             // ... logique justificatif ...
-
              $data[] = [
-                'id' => $op->getId(),
+                'id' => (string) $op->getId(), // Cast explicite
                 'type' => $op->getType(),
                 'montant' => (float) $op->getMontant(),
                 'date' => $op->getDate()->format('d/m/Y H:i'),
@@ -79,7 +71,7 @@ class OperationController extends AbstractController
                 'motif' => $op->getMotif() ?? 'Non précisé',
                 'caisse' => $nomCaisse,
                 'estDemandeAnnulation' => $op->isEstDemandeAnnulation(),
-                
+                'beneficiaire' => $op->getBeneficiaire(),
              ];
         }
 
@@ -94,7 +86,6 @@ class OperationController extends AbstractController
         ]);
     }
 
-    // AJOUT : Route pour attacher un justificatif après coup
     #[Route('/{id}/attach-justificatif', name: 'attach_justificatif', methods: ['POST'])]
     public function attachJustificatif(
         Operation $operation,
@@ -102,12 +93,10 @@ class OperationController extends AbstractController
         EntityManagerInterface $em
     ): JsonResponse
     {
-        // 1. Vérifier si un justificatif existe déjà
         if ($operation->getJustificatif()) {
             return $this->json(['error' => 'Cette opération possède déjà un justificatif.'], 400);
         }
 
-        // 2. Récupérer les données (Base64)
         $data = json_decode($request->getContent(), true);
 
         if (empty($data['fichier_data']) || empty($data['fichier_nom'])) {
@@ -115,13 +104,9 @@ class OperationController extends AbstractController
         }
 
         try {
-            // 3. Réutiliser la logique de création (ou la refaire ici pour isoler)
             $this->processJustificatif($operation, $data, $em);
-            
-            $em->flush(); // Important : On sauvegarde en base
-
+            $em->flush();
             return $this->json(['message' => 'Justificatif ajouté avec succès !']);
-
         } catch (\Exception $e) {
             return $this->json(['error' => $e->getMessage()], 500);
         }
@@ -135,9 +120,10 @@ class OperationController extends AbstractController
         SessionCaisseRepository $sessionRepo
     ): JsonResponse
     {
-
         $user = $this->getUser();
-        $session = $sessionRepo->findSessionActive($user);
+        
+        // On cherche une session active (via string ou constante si importée)
+        $session = $sessionRepo->findOneBy(['caissier' => $user, 'statut' => 'OUVERTE']);
         
         if (!$session) {
             return $this->json(['error' => 'Aucune session de caisse ouverte.'], 403);
@@ -147,7 +133,6 @@ class OperationController extends AbstractController
         $compteCaisse = $caisse->getCompteComptable();
         $numeroCompte = $compteCaisse ? $compteCaisse->getNumero() : '530';
         
-
         $data = json_decode($request->getContent(), true);
 
         if (!isset($data['montant']) || $data['montant'] <= 0) {
@@ -164,29 +149,24 @@ class OperationController extends AbstractController
         $op->setStatut(Operation::STATUT_VALIDEE);
         $op->setCompteComptable($numeroCompte);
         $op->setMotif($data['motif'] ?? 'Encaissement divers');
-        
         $op->setUtilisateur($user);
         $op->setModePaiement($mode);
         $op->setSessionCaisse($session);
 
         $em->persist($op);
-
-        // --- GESTION DU JUSTIFICATIF (AJOUT) ---
         $this->processJustificatif($op, $data, $em);
-        // ---------------------------------------
 
-        // --- MISE A JOUR SOLDE ---
         $caisse = $session->getCaisse();
         $nouveauSolde = (float)$caisse->getSolde() + (float)$data['montant'];
         $caisse->setSolde((string)$nouveauSolde);
         $em->persist($caisse);
-        // -------------------------
 
         $em->flush();
 
         return $this->json([
             'message' => 'Encaissement enregistré !',
-            'nouveau_solde' => $nouveauSolde
+            'nouveau_solde' => $nouveauSolde,
+            'id' => (string) $op->getId() // Retourne l'ID pour impression éventuelle
         ], 201);
     }
 
@@ -195,15 +175,13 @@ class OperationController extends AbstractController
         Request $request, 
         EntityManagerInterface $em, 
         ModePaiementRepository $modeRepo,
-        OperationRepository $opRepo,
         SessionCaisseRepository $sessionRepo,
         CompteComptableRepository $compteRepo, 
-        UtilisateurRepository $userRepo,
-        DemandeRepository $demandeRepo // <--- AJOUT ICI
+        DemandeRepository $demandeRepo
     ): JsonResponse
     {
         $user = $this->getUser();
-        $session = $sessionRepo->findSessionActive($user);
+        $session = $sessionRepo->findOneBy(['caissier' => $user, 'statut' => 'OUVERTE']);
 
         if (!$session) {
             return $this->json(['error' => 'Aucune session de caisse ouverte.'], 403);
@@ -214,40 +192,47 @@ class OperationController extends AbstractController
 
         if ($montant <= 0) return $this->json(['error' => 'Montant invalide'], 400);
 
-        // --- GESTION DU LIEN AVEC LA DEMANDE ---
+        // --- GESTION DEMANDE & BENEFICIAIRE ---
         $demande = null;
+        $beneficiaireFinal = "Inconnu";
+
         if (!empty($data['demande_id'])) {
             $demande = $demandeRepo->find($data['demande_id']);
             
             if ($demande) {
-                // SÉCURITÉ 1 : On ne peut payer que ce qui est validé
-                if ($demande->getStatut() !== Demande::STATUT_VALIDEE) {
-                    return $this->json(['error' => 'Cette demande n\'est pas au statut "Validée à Payer". Statut actuel : ' . $demande->getStatut()], 400);
+                // Vérif statut (chaine pour éviter erreur constante)
+                if ($demande->getStatut() !== 'VALIDEE_A_PAYER') {
+                    return $this->json(['error' => 'Cette demande n\'est pas au statut "VALIDEE_A_PAYER".'], 400);
                 }
-                
-                // SÉCURITÉ 2 : On vérifie que le montant correspond (Optionnel mais recommandé)
-                // Ici on autorise une marge ou on force le montant exact ? 
-                // Pour l'instant on fait confiance au caissier, mais on pourrait bloquer si écart trop grand.
-            }
-        }
-        // ---------------------------------------
 
-        // --- VERIFICATION SOLDE REEL (CAISSE) ---
+                // Récupération intelligente du bénéficiaire
+                if (method_exists($demande, 'getBeneficiaireAutre') && $demande->getBeneficiaireAutre()) {
+                    $beneficiaireFinal = $demande->getBeneficiaireAutre();
+                } elseif ($demande->getBeneficiaire()) {
+                    $beneficiaireFinal = $demande->getBeneficiaire()->getNom();
+                } else {
+                    $beneficiaireFinal = $demande->getDemandeur()->getNom();
+                }
+            }
+        } else {
+            // Décaissement direct
+            $beneficiaireFinal = $data['beneficiaire'] ?? 'Porteur';
+        }
+
+        // --- VERIFICATION SOLDE ---
         $caisse = $session->getCaisse();
         $soldeReel = (float)$caisse->getSolde();
 
         if ($montant > $soldeReel) {
             return $this->json([
-                'error' => 'Solde insuffisant en caisse (' . number_format($soldeReel, 0, ',', ' ') . ' F) pour ce décaissement.',
+                'error' => 'Solde insuffisant (' . number_format($soldeReel, 0, ',', ' ') . ' F).',
                 'solde_disponible' => $soldeReel
             ], 400);
         }
 
-        // Gestion Compte Comptable
-        $compteId = $data['compte_id'] ?? null;
         $numeroCompte = '606'; 
-        if ($compteId) {
-            $compte = $compteRepo->find($compteId);
+        if (!empty($data['compte_id'])) {
+            $compte = $compteRepo->find($data['compte_id']);
             if ($compte) $numeroCompte = $compte->getNumero();
         }
         
@@ -261,309 +246,206 @@ class OperationController extends AbstractController
         $op->setCompteComptable($numeroCompte);
         $op->setUtilisateur($user);
         $op->setModePaiement($mode);
-        $op->setMotif($data['motif'] ?? 'Décaissement divers');
         $op->setSessionCaisse($session);
+        $op->setBeneficiaire($beneficiaireFinal); 
+        
+        if ($demande) {
+            $op->setMotif("Règlement Demande " . $demande->getNumeroReference());
+            $op->setDemande($demande); // Liaison explicite
+        } else {
+            $op->setMotif($data['motif'] ?? 'Décaissement divers');
+        }
 
-        // Validation Seuil Manager
+        // Validation Seuil
         $seuilCaisse = (float) ($caisse->getSeuilDecaissement() ?? 50000);
         $isManager = in_array('ROLE_MANAGER', $user->getRoles());
-
-        // Si c'est lié à une demande validée, on force la validation (car le circuit a déjà été respecté)
         $isDemandeValidee = ($demande !== null);
 
         if ($isManager || $isDemandeValidee || $montant <= $seuilCaisse) {
             $op->setStatut(Operation::STATUT_VALIDEE);
             $msg = "Décaissement validé.";
             
-            // DÉBIT IMMÉDIAT DU SOLDE
+            // DÉBIT IMMEDIAT
             $caisse->setSolde((string)($soldeReel - $montant));
             $em->persist($caisse);
 
-            // --- CLÔTURE DE LA DEMANDE ---
+            // CLOTURE DEMANDE
             if ($demande) {
-                $demande->setStatut(Demande::STATUT_PAYEE);
-                $demande->setOperation($op); // On lie l'opération à la demande
+                $demande->setStatut('PAYEE');
+                $demande->setOperation($op);
                 $demande->setCaissierTraitant($user);
                 $em->persist($demande);
-                $msg = "Demande payée et clôturée avec succès.";
             }
-            // -----------------------------
-
         } else {
             $op->setStatut(Operation::STATUT_EN_ATTENTE);
             $msg = "En attente de validation (Montant > " . $seuilCaisse . ")";
-            // Logique de notification ici...
         }
 
         $em->persist($op);
         $this->processJustificatif($op, $data, $em);
         $em->flush();
 
-        return $this->json(['message' => $msg, 'statut' => $op->getStatut(), 'id' => $op->getId()], 201);
+        // ICI : On retourne l'ID en string pour éviter le bug "undefined"
+        return $this->json([
+            'message' => $msg, 
+            'statut' => $op->getStatut(), 
+            'id' => (string) $op->getId()
+        ], 201);
+    }
+
+    #[Route('/{id}/print-data', name: 'print_data', methods: ['GET'])]
+    public function getPrintData(string $id, OperationRepository $repo, EntityManagerInterface $em): JsonResponse
+    {
+        // AJOUT DE SECURITE : Si l'ID est "undefined" ou invalide, on coupe court.
+        if (!Uuid::isValid($id)) {
+            return $this->json(['error' => 'ID Opération invalide'], 400);
+        }
+
+        $op = $repo->find($id);
+        if (!$op) return $this->json(['error' => 'Opération introuvable'], 404);
+
+        $societe = $em->getRepository(Societe::class)->findOneBy([]);
+
+        $demandeInfo = null;
+        if ($op->getDemande()) {
+            $demandeInfo = [
+                'reference' => $op->getDemande()->getNumeroReference(),
+                'titre' => $op->getDemande()->getTitre()
+            ];
+        }
+
+        return $this->json([
+            'operation' => [
+                'id' => (string) $op->getId(),
+                'numero' => 'OP-' . str_pad((string)$op->getId(), 6, '0', STR_PAD_LEFT), // Juste pour l'affichage
+                'date' => $op->getDate()->format('d/m/Y H:i'),
+                'montant' => $op->getMontant(),
+                'motif' => $op->getMotif(),
+                'beneficiaire' => $op->getBeneficiaire(),
+                'mode' => $op->getModePaiement() ? $op->getModePaiement()->getLibelle() : 'Espèces',
+                'caissier' => $op->getUtilisateur()->getNom(),
+            ],
+            'demande' => $demandeInfo,
+            'societe' => $societe ? [
+                'nom' => $societe->getNom(),
+                'adresse' => $societe->getAdresse(),
+                'telephone' => $societe->getTelephone(),
+            ] : null
+        ]);
     }
 
     #[Route('/me', name: 'my_operations', methods: ['GET'])]
     public function myOperations(OperationRepository $opRepo): JsonResponse
     {
-        /** @var Utilisateur $user */
         $user = $this->getUser();
-        
-        // On récupère les 10 dernières opérations effectuées par l'utilisateur connecté
         $operations = $opRepo->findBy(
             ['utilisateur' => $user],
             ['date' => 'DESC'],
-            10 // Limite
+            10
         );
 
         $data = [];
         foreach ($operations as $op) {
             $data[] = [
-                'id' => $op->getId(),
+                'id' => (string)$op->getId(),
                 'type' => $op->getType(),
                 'montant' => (float)$op->getMontant(),
                 'date' => $op->getDate()->format('Y-m-d H:i:s'),
                 'motif' => $op->getMotif(),
-                'statut' => $op->getStatut()
+                'statut' => $op->getStatut(),
+                'beneficiaire' => $op->getBeneficiaire()
             ];
         }
-
         return $this->json($data);
     }
 
-    // 1. Récupérer les opérations en attente
     #[Route('/to-validate', name: 'list_to_validate', methods: ['GET'])]
     public function listToValidate(OperationRepository $opRepo): JsonResponse
     {
-        // Sécurité : Seul un manager peut voir ça
         $this->denyAccessUnlessGranted('ROLE_MANAGER');
-
-        // On cherche toutes les opérations "EN_ATTENTE"
-        // Idéalement, triées par date (les plus anciennes en premier ou l'inverse)
-        $operations = $opRepo->findBy(
-            ['statut' => Operation::STATUT_EN_ATTENTE], 
-            ['date' => 'DESC']
-        );
+        $operations = $opRepo->findBy(['statut' => Operation::STATUT_EN_ATTENTE], ['date' => 'DESC']);
 
         $data = [];
         foreach ($operations as $op) {
             $user = $op->getUtilisateur();
             $data[] = [
-                'id' => $op->getId(),
+                'id' => (string)$op->getId(),
                 'type' => $op->getType(),
                 'montant' => (float)$op->getMontant(),
                 'motif' => $op->getMotif(),
                 'date' => $op->getDate()->format('d/m/Y H:i'),
                 'caissier' => $user ? $user->getNom() : 'Inconnu',
-                'service' => ($user && $user->getService()) ? $user->getService()->getNom() : 'N/A',
-                // On peut ajouter le justificatif si on veut permettre au manager de vérifier la pièce
                 'has_justificatif' => $op->getJustificatif() !== null
             ];
         }
-
         return $this->json($data);
     }
 
-    // 2. Valider ou Refuser l'opération
     #[Route('/{id}/workflow', name: 'workflow', methods: ['PATCH'])]
-    public function workflow(
-        Operation $operation, 
-        Request $request, 
-        EntityManagerInterface $em
-    ): JsonResponse
+    public function workflow(Operation $operation, Request $request, EntityManagerInterface $em): JsonResponse
     {
         $this->denyAccessUnlessGranted('ROLE_MANAGER');
-
         $data = json_decode($request->getContent(), true);
         $action = $data['action'] ?? null;
 
         if ($operation->getStatut() !== Operation::STATUT_EN_ATTENTE) {
-            return $this->json(['error' => 'Cette opération n\'est pas en attente.'], 400);
+            return $this->json(['error' => 'Opération non éligible.'], 400);
         }
 
         if ($action === 'valider') {
-            // A. Changement de statut
             $operation->setStatut(Operation::STATUT_VALIDEE);
-
-            // B. IMPACT SUR LE SOLDE (CRITIQUE !)
-            // Puisque l'opération était en attente, l'argent n'avait pas encore été déduit/ajouté.
             $session = $operation->getSessionCaisse();
+            
             if ($session) {
                 $caisse = $session->getCaisse();
                 $montant = (float) $operation->getMontant();
-
                 if ($operation->getType() === 'DECAISSEMENT') {
-                    // On vérifie s'il y a assez d'argent maintenant
                     if ($caisse->getSolde() < $montant) {
-                        return $this->json(['error' => 'Solde de caisse insuffisant pour valider ce décaissement.'], 400);
+                        return $this->json(['error' => 'Solde insuffisant.'], 400);
                     }
                     $caisse->setSolde((string)($caisse->getSolde() - $montant));
                 } 
-                elseif ($operation->getType() === 'ENCAISSEMENT') {
-                    // Rare qu'un encaissement soit en attente, mais on gère le cas
-                    $caisse->setSolde((string)($caisse->getSolde() + $montant));
-                }
-                
+                // Si c'était un encaissement en attente (rare), on ajouterait ici
                 $em->persist($caisse);
             }
-
         } elseif ($action === 'refuser') {
-            // Si on refuse, on annule simplement. Pas d'impact financier car l'argent n'avait pas bougé.
-            $operation->setStatut(Operation::STATUT_ANNULEE); // ou REFUSEE selon tes constantes
-        } else {
-            return $this->json(['error' => 'Action invalide'], 400);
+            $operation->setStatut(Operation::STATUT_ANNULEE);
         }
 
         $em->flush();
-
-        return $this->json(['message' => 'Opération mise à jour', 'nouveau_statut' => $operation->getStatut()]);
+        return $this->json(['status' => $operation->getStatut()]);
     }
 
-    #[Route('/{id}/request-cancellation', name: 'request_cancellation', methods: ['POST'])]
-    public function requestCancellation(Operation $operation, Request $request, EntityManagerInterface $em): JsonResponse
-    {
-        // On ne peut pas annuler une opération déjà annulée ou contre-passée
-        if ($operation->getOperationLiee() || $operation->getStatut() === 'ANNULEE') {
-            return $this->json(['error' => 'Cette opération est déjà annulée.'], 400);
-        }
-
-        $data = json_decode($request->getContent(), true);
-        $motif = $data['motif'] ?? 'Erreur de saisie';
-
-        $operation->setEstDemandeAnnulation(true);
-        $operation->setMotifAnnulation($motif);
-
-        $em->flush();
-
-        return $this->json(['message' => 'Demande d\'annulation envoyée au manager.']);
-    }
-
-    // 2. Le Manager exécute la Contre-passation
-    #[Route('/{id}/reverse', name: 'reverse_operation', methods: ['POST'])]
-    public function reverseOperation(Operation $operation, EntityManagerInterface $em, SessionCaisseRepository $sessionRepo): JsonResponse
-    {
-        $this->denyAccessUnlessGranted('ROLE_MANAGER');
-
-        // Sécurités
-        if ($operation->getOperationLiee()) {
-            return $this->json(['error' => 'Opération déjà contre-passée.'], 400);
-        }
-
-        // On crée l'opération inverse
-        $contrePassation = new Operation();
-        $contrePassation->setDate(new \DateTimeImmutable());
-        $contrePassation->setUtilisateur($this->getUser());
-        $contrePassation->setModePaiement($operation->getModePaiement());
-        $contrePassation->setCompteComptable($operation->getCompteComptable());
-        $contrePassation->setStatut(Operation::STATUT_VALIDEE);
-        
-        // Inversion logique
-        if ($operation->getType() === 'ENCAISSEMENT') {
-            $contrePassation->setType('DECAISSEMENT');
-            $contrePassation->setMotif("Contre-passation (Annulation Encaissement #" . $operation->getId() . ")");
-        } else {
-            $contrePassation->setType('ENCAISSEMENT');
-            $contrePassation->setMotif("Contre-passation (Annulation Décaissement #" . $operation->getId() . ")");
-        }
-
-        $contrePassation->setMontant($operation->getMontant());
-        
-        // On lie les opérations entre elles (Traçabilité)
-        $contrePassation->setOperationLiee($operation); // La nouvelle pointe vers l'ancienne
-        // Optionnel : L'ancienne pointe vers la nouvelle (si tu as ajouté un champ inverseOneToOne, sinon pas grave)
-
-        // Important : On lie à la session active du MANAGER (ou celle d'origine si ouverte ?)
-        // Logique comptable : L'écriture se fait sur la caisse au moment T. 
-        // Donc on prend la session du Manager ou on rouvre temporairement ? 
-        // Simplification : On affecte à la session d'origine pour annuler comptablement dans la même session si possible,
-        // SINON, si la session est fermée, il faut l'affecter à la session active du caissier responsable ou du manager.
-        
-        // Solution robuste : On impute sur la caisse d'origine.
-        $sessionOrigine = $operation->getSessionCaisse();
-        $contrePassation->setSessionCaisse($sessionOrigine);
-
-        // MISE A JOUR DU SOLDE DE LA CAISSE
-        $caisse = $sessionOrigine->getCaisse();
-        $soldeActuel = (float)$caisse->getSolde();
-        $montant = (float)$operation->getMontant();
-
-        if ($contrePassation->getType() === 'ENCAISSEMENT') {
-            $caisse->setSolde((string)($soldeActuel + $montant));
-        } else {
-            $caisse->setSolde((string)($soldeActuel - $montant));
-        }
-
-        // Nettoyage de la demande
-        $operation->setEstDemandeAnnulation(false);
-
-        $em->persist($contrePassation);
-        $em->persist($caisse);
-        $em->flush();
-
-        return $this->json(['message' => 'Contre-passation effectuée avec succès.', 'id' => $contrePassation->getId()]);
-    }
-
-    /**
-     * Méthode privée pour gérer la création du justificatif (Bon Interne OU Fichier Externe)
-     */
     private function processJustificatif(Operation $op, array $data, EntityManagerInterface $em): void
     {
         $justificatif = new Justificatif();
         $hasJustif = false;
 
-        // CAS 1 : BON INTERNE (Signature + Détails)
         if (isset($data['is_bon_interne']) && $data['is_bon_interne'] === true) {
             $justificatif->setType('BON_INTERNE');
-            
-            if (!empty($data['details'])) {
-                $justificatif->setContenuJson($data['details']);
-            }
-            if (!empty($data['signature'])) {
-                $justificatif->setSignatureData($data['signature']);
-            }
-            // Ajout du bénéficiaire dans le JSON
+            if (!empty($data['details'])) $justificatif->setContenuJson($data['details']);
+            if (!empty($data['signature'])) $justificatif->setSignatureData($data['signature']);
             if (!empty($data['beneficiaire'])) {
                 $content = $justificatif->getContenuJson() ?? [];
                 $content['beneficiaire_nom'] = $data['beneficiaire'];
                 $justificatif->setContenuJson($content);
             }
             $hasJustif = true;
-        }
-        
-        // CAS 2 : FICHIER EXTERNE (Upload Base64)
-        elseif (!empty($data['fichier_data']) && !empty($data['fichier_nom'])) {
+        } elseif (!empty($data['fichier_data']) && !empty($data['fichier_nom'])) {
             $justificatif->setType('FICHIER');
-
-            // 1. Décoder le Base64
-            // Le format est souvent "data:image/png;base64,VBORw0KGgo..."
             $parts = explode(',', $data['fichier_data']);
-            $base64Content = count($parts) > 1 ? $parts[1] : $parts[0];
-            $fileData = base64_decode($base64Content);
-
-            if ($fileData === false) {
-                throw new \Exception("Impossible de décoder le fichier.");
-            }
-
-            // 2. Générer un nom unique sécurisé
-            $extension = pathinfo($data['fichier_nom'], PATHINFO_EXTENSION);
-            $newFilename = uniqid('justif_') . '.' . $extension;
-
-            // 3. Sauvegarder le fichier (Dossier public/uploads/justificatifs)
-            // Assure-toi que ce dossier existe et est accessible en écriture !
+            $fileData = base64_decode(count($parts) > 1 ? $parts[1] : $parts[0]);
+            
+            $newFilename = uniqid('justif_') . '.' . pathinfo($data['fichier_nom'], PATHINFO_EXTENSION);
             $targetDir = $this->getParameter('kernel.project_dir') . '/public/uploads/justificatifs';
-            if (!is_dir($targetDir)) {
-                mkdir($targetDir, 0777, true);
-            }
+            if (!is_dir($targetDir)) mkdir($targetDir, 0777, true);
             
             file_put_contents($targetDir . '/' . $newFilename, $fileData);
-
-            // 4. Mettre à jour l'entité
-            $justificatif->setFichier($data['fichier_nom']); // Nom original
-            $justificatif->setChemin('uploads/justificatifs/' . $newFilename); // Chemin relatif pour l'accès web
-            
+            $justificatif->setFichier($data['fichier_nom']);
+            $justificatif->setChemin('uploads/justificatifs/' . $newFilename);
             $hasJustif = true;
         }
 
-        // Si on a créé un justificatif, on le lie et on persiste
         if ($hasJustif) {
             $justificatif->setOperation($op);
             $em->persist($justificatif);
