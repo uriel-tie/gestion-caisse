@@ -1,8 +1,7 @@
 import React, { useEffect, useState } from 'react';
-import { Search, Filter, ArrowUpRight, ArrowDownLeft, RotateCcw, AlertTriangle,  } from 'lucide-react';
+import { Search, Filter, RotateCcw, AlertTriangle, Printer } from 'lucide-react';
 import type { UserData } from '../types';
 
-// Interface mise à jour avec les nouveaux champs
 interface Operation {
   id: string;
   type: string;
@@ -13,7 +12,7 @@ interface Operation {
   utilisateur: string;
   motif: string;
   caisse: string;
-  est_demande_annulation?: boolean; // Le champ qu'on a ajouté (via l'API, assure-toi de le renvoyer dans le JSON)
+  est_demande_annulation?: boolean;
   motif_annulation?: string;
 }
 
@@ -22,7 +21,6 @@ export default function JournalTable() {
   const [loading, setLoading] = useState(true);
   const [user, setUser] = useState<UserData | null>(null);
 
-  // Récupération user pour les droits
   useEffect(() => {
     const u = localStorage.getItem('user');
     if (u) setUser(JSON.parse(u));
@@ -32,15 +30,16 @@ export default function JournalTable() {
   const fetchOperations = async () => {
     try {
       const token = localStorage.getItem('token');
-      const response = await fetch('https://127.0.0.1:8000/api/operations?limit=10&page=1', {
+      // On récupère les opérations (page 1, limit 20 pour l'exemple)
+      const response = await fetch('https://127.0.0.1:8000/api/operations?limit=20&page=1', {
         headers: { 'Authorization': `Bearer ${token}` }
       });
       if (response.ok) {
         const json = await response.json();
-        // Mapping simple si les clés API diffèrent légèrement
+        // Mapping pour s'assurer que les champs optionnels existent
         setOperations(json.data.map((op: any) => ({
             ...op,
-            est_demande_annulation: op.estDemandeAnnulation || false // Adaptation selon ta réponse API
+            est_demande_annulation: op.estDemandeAnnulation || false
         })));
       }
     } catch (error) {
@@ -50,13 +49,19 @@ export default function JournalTable() {
     }
   };
 
+  // --- Fonction d'impression ---
+  const handlePrint = (opId: string) => {
+      // Ouvre l'onglet d'impression sécurisé
+      window.open(`/print/bon-caisse/${opId}`, '_blank');
+  };
+
   const handleReversalClick = async (op: Operation) => {
     const isManager = user?.roles.includes('ROLE_MANAGER');
     const token = localStorage.getItem('token');
 
     if (isManager) {
-        // --- ACTION MANAGER : EXECUTER ---
-        if (!confirm(`Confirmer la contre-passation de l'opération "${op.motif}" de ${op.montant} FCFA ?\nCela va créer une écriture inverse.`)) return;
+        // --- MANAGER : Exécuter la contre-passation ---
+        if (!confirm(`Confirmer la contre-passation de l'opération "${op.motif}" de ${op.montant} FCFA ?`)) return;
         
         try {
             const res = await fetch(`https://127.0.0.1:8000/api/operations/${op.id}/reverse`, {
@@ -73,9 +78,8 @@ export default function JournalTable() {
         } catch (e) {
             alert("Erreur réseau");
         }
-
     } else {
-        // --- ACTION CAISSIER : DEMANDER ---
+        // --- CAISSIER : Demander l'annulation ---
         const motif = prompt("Pourquoi souhaitez-vous annuler cette opération ?");
         if (!motif) return;
 
@@ -90,7 +94,7 @@ export default function JournalTable() {
             });
             if (res.ok) {
                 alert("Votre demande d'annulation a été envoyée au manager.");
-                fetchOperations(); // Rafraîchir pour voir le statut changer (optionnel visuellement)
+                fetchOperations();
             }
         } catch (e) {
             alert("Erreur lors de la demande");
@@ -98,9 +102,16 @@ export default function JournalTable() {
     }
   };
 
+  if (loading) return <div className="p-4 text-center text-gray-500">Chargement du journal...</div>;
+
   return (
     <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
-      {/* ... (Code du Header et Filtres identique à avant) ... */}
+      <div className="p-4 border-b border-gray-200 bg-gray-50 flex justify-between items-center">
+        <h2 className="font-bold text-gray-700 flex items-center gap-2">
+            Journal des Opérations
+        </h2>
+        <button onClick={fetchOperations} className="text-sm text-blue-600 hover:underline">Actualiser</button>
+      </div>
       
       <div className="overflow-x-auto">
         <table className="min-w-full divide-y divide-gray-200">
@@ -109,18 +120,18 @@ export default function JournalTable() {
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Date</th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Type</th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Motif</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Montant</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Actions</th>
+              <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">Montant</th>
+              <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase">Actions</th>
             </tr>
           </thead>
           <tbody className="bg-white divide-y divide-gray-200">
             {operations.map((op) => {
                 const isEncaissement = op.type === 'ENCAISSEMENT';
-                // Si l'opération est une contre-passation (souvent indiqué dans le motif), on peut la griser
+                // On détecte si c'est déjà une ligne d'annulation pour ne pas la re-annuler
                 const isReversal = op.motif.toLowerCase().includes('contre-passation');
 
                 return (
-                  <tr key={op.id} className={`hover:bg-gray-50 ${op.est_demande_annulation ? 'bg-orange-50' : ''}`}>
+                  <tr key={op.id} className={`hover:bg-gray-50 transition-colors ${op.est_demande_annulation ? 'bg-orange-50' : ''}`}>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                         {op.date}
                     </td>
@@ -139,24 +150,36 @@ export default function JournalTable() {
                             </div>
                         )}
                     </td>
-                    <td className={`px-6 py-4 whitespace-nowrap text-sm font-bold ${
+                    <td className={`px-6 py-4 whitespace-nowrap text-right text-sm font-bold ${
                         isEncaissement ? 'text-green-600' : 'text-red-600'
                     }`}>
                         {isEncaissement ? '+' : '-'}{op.montant.toLocaleString()} FCFA
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                        {/* BOUTON CONTRE-PASSATION */}
+                    <td className="px-6 py-4 whitespace-nowrap text-center text-sm font-medium flex justify-center gap-2">
+                        
+                        {/* BOUTON IMPRIMER (Seulement pour les décaissements) */}
+                        {!isEncaissement && (
+                            <button
+                                onClick={() => handlePrint(op.id)}
+                                className="p-1.5 text-gray-400 hover:text-gray-800 hover:bg-gray-100 rounded-full transition"
+                                title="Imprimer le Bon de Caisse"
+                            >
+                                <Printer size={16} />
+                            </button>
+                        )}
+
+                        {/* BOUTON ANNULATION */}
                         {!isReversal && (
                             <button
                                 onClick={() => handleReversalClick(op)}
-                                className={`p-2 rounded-full transition-colors ${
+                                className={`p-1.5 rounded-full transition ${
                                     user?.roles.includes('ROLE_MANAGER') 
-                                        ? 'text-red-600 hover:bg-red-100' // Manager : Rouge vif
-                                        : 'text-gray-400 hover:text-red-500 hover:bg-gray-100' // Caissier : Discret
+                                        ? 'text-red-600 hover:bg-red-100' 
+                                        : 'text-gray-400 hover:text-red-500 hover:bg-gray-100'
                                 }`}
-                                title={user?.roles.includes('ROLE_MANAGER') ? "Contre-passer (Annuler)" : "Demander l'annulation"}
+                                title={user?.roles.includes('ROLE_MANAGER') ? "Contre-passer" : "Demander l'annulation"}
                             >
-                                <RotateCcw className="w-4 h-4" />
+                                <RotateCcw size={16} />
                             </button>
                         )}
                     </td>

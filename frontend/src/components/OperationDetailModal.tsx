@@ -1,7 +1,6 @@
 import React, { useState, useRef } from 'react';
-import { X, FileText, User, Calendar, CreditCard, CheckCircle, Clock, AlertCircle, UploadCloud, RotateCcw, AlertTriangle, Loader, Ban, Printer } from 'lucide-react';
+import { X, FileText, User, Calendar, CreditCard, CheckCircle, Clock, AlertCircle, UploadCloud, RotateCcw, AlertTriangle, Loader, Ban } from 'lucide-react';
 import Swal from 'sweetalert2';
-import BonDeCaissePrint from './BonDeCaissePrint';
 
 interface Operation {
     id: string;
@@ -35,14 +34,9 @@ export default function OperationDetailModal({ operation, onClose, onRefresh, us
     const [isUploading, setIsUploading] = useState(false);
     const [selectedFile, setSelectedFile] = useState<File | null>(null);
     const fileInputRef = useRef<HTMLInputElement>(null);
-    const [showPrint, setShowPrint] = useState(false);
     const [actionLoading, setActionLoading] = useState(false);
 
     if (!operation) return null;
-
-    if (showPrint) {
-        return <BonDeCaissePrint operation={operation} onClose={() => setShowPrint(false)} />;
-    }
 
     const convertFileToBase64 = (file: File): Promise<string> => {
         return new Promise((resolve, reject) => {
@@ -287,16 +281,6 @@ export default function OperationDetailModal({ operation, onClose, onRefresh, us
 
                 {/* FOOTER ACTIONS (Fixe) */}
                 <div className="bg-gray-50 px-6 py-4 flex flex-col sm:flex-row justify-end gap-3 shrink-0 border-t items-center">
-                    
-                    {/* Bouton IMPRIMER (Décaissement validé uniquement) */}
-                    {operation.type === 'DECAISSEMENT' && operation.statut === 'VALIDEE' && (
-                        <button 
-                            onClick={() => setShowPrint(true)}
-                            className="flex items-center justify-center gap-2 bg-gray-800 text-white px-4 py-2 rounded-lg font-bold hover:bg-gray-900 transition shadow-sm w-full sm:w-auto"
-                        >
-                            <Printer size={18}/> Imprimer Bon
-                        </button>
-                    )}
 
                     {/* MANAGER : Contre-passer */}
                     {userRole === 'MANAGER' && operation.statut !== 'ANNULEE' && (

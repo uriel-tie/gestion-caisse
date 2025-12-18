@@ -74,6 +74,21 @@ class Operation
     #[ORM\Column(length: 255, nullable: true)]
     private ?string $beneficiaire = null;
 
+    #[ORM\Column(nullable: true)]
+    private ?array $details = null;
+
+    public function getDetails(): ?array
+    {
+        return $this->details;
+    }
+
+    public function setDetails(?array $details): static
+    {
+        $this->details = $details;
+
+        return $this;
+    }
+
     public function getBeneficiaire(): ?string
     {
         return $this->beneficiaire;

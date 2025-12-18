@@ -1,12 +1,11 @@
 import React, { useEffect, useState } from 'react';
-import { Calendar, Eye, Filter, ArrowLeft, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Calendar, Eye, Filter, ArrowLeft, ChevronLeft, ChevronRight, Printer } from 'lucide-react'; // Ajout Printer
 import { useNavigate } from 'react-router-dom';
 import OperationDetailModal from '../components/OperationDetailModal';
 
 export default function CaisseHistoryPage() {
   const navigate = useNavigate();
   
-  // Filtres Simplifiés pour le Caissier
   const [filters, setFilters] = useState({
     type: '',
     date_debut: '',
@@ -23,7 +22,6 @@ export default function CaisseHistoryPage() {
     setLoading(true);
     const token = localStorage.getItem('token');
     
-    // Le backend filtre déjà par "user" connecté si pas manager
     const params = new URLSearchParams({
         page: page.toString(),
         limit: '20',
@@ -50,16 +48,20 @@ export default function CaisseHistoryPage() {
     setPage(1);
   };
 
+  // --- FONCTION POUR IMPRIMER ---
+  const handlePrint = (opId: string) => {
+      window.open(`/print/bon-caisse/${opId}`, '_blank');
+  };
+
   return (
     <div className="min-h-screen bg-gray-50 p-6">
       
-      {/* Modale (Role Caissier) */}
       {selectedOp && (
         <OperationDetailModal 
             operation={selectedOp} 
             onClose={() => setSelectedOp(null)} 
             onRefresh={fetchOperations}
-            userRole="CAISSIER" // Active le bouton "Demander Annulation"
+            userRole="CAISSIER" 
         />
       )}
 
@@ -73,7 +75,7 @@ export default function CaisseHistoryPage() {
 
       <div className="max-w-5xl mx-auto bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
         
-        {/* Filtres Simples */}
+        {/* Filtres */}
         <div className="p-4 border-b border-gray-200 bg-gray-50 flex flex-wrap gap-4 items-end">
             <div>
                 <label className="block text-xs font-semibold text-gray-500 mb-1">Type</label>
@@ -83,14 +85,7 @@ export default function CaisseHistoryPage() {
                     <option value="DECAISSEMENT">Sorties (-)</option>
                 </select>
             </div>
-            <div>
-                <label className="block text-xs font-semibold text-gray-500 mb-1">Du</label>
-                <input type="date" name="date_debut" className="border-gray-300 rounded text-sm p-2" onChange={handleFilterChange} />
-            </div>
-            <div>
-                <label className="block text-xs font-semibold text-gray-500 mb-1">Au</label>
-                <input type="date" name="date_fin" className="border-gray-300 rounded text-sm p-2" onChange={handleFilterChange} />
-            </div>
+            {/* ... dates ... */}
         </div>
 
         {/* Liste */}
@@ -101,7 +96,7 @@ export default function CaisseHistoryPage() {
                     <th className="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase">Type</th>
                     <th className="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase">Motif</th>
                     <th className="px-6 py-3 text-right text-xs font-bold text-gray-500 uppercase">Montant</th>
-                    <th className="px-6 py-3 text-center">Détail</th>
+                    <th className="px-6 py-3 text-center text-xs font-bold text-gray-500 uppercase">Actions</th>
                 </tr>
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
@@ -119,17 +114,33 @@ export default function CaisseHistoryPage() {
                         <td className={`px-6 py-4 text-right text-sm font-bold ${op.type === 'ENCAISSEMENT' ? 'text-green-600' : 'text-red-600'}`}>
                             {Number(op.montant).toLocaleString()}
                         </td>
-                        <td className="px-6 py-4 text-center">
-                            <button onClick={() => setSelectedOp(op)} className="text-gray-400 hover:text-blue-600">
+                        <td className="px-6 py-4 text-center flex justify-center gap-2">
+                            {/* BOUTON DÉTAIL */}
+                            <button 
+                                onClick={() => setSelectedOp(op)} 
+                                className="p-2 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-full transition"
+                                title="Voir détails"
+                            >
                                 <Eye size={18} />
                             </button>
+
+                            {/* BOUTON IMPRESSION (Seulement pour Décaissement) */}
+                            {op.type === 'DECAISSEMENT' && (
+                                <button 
+                                    onClick={() => handlePrint(op.id)}
+                                    className="p-2 text-gray-400 hover:text-gray-800 hover:bg-gray-100 rounded-full transition"
+                                    title="Imprimer Bon de Caisse"
+                                >
+                                    <Printer size={18} />
+                                </button>
+                            )}
                         </td>
                     </tr>
                 ))}
             </tbody>
         </table>
 
-        {/* Pagination minimaliste */}
+        {/* ... Pagination ... */}
         <div className="p-4 border-t flex justify-between items-center bg-gray-50">
             <button disabled={page===1} onClick={() => setPage(p=>p-1)} className="p-1 disabled:opacity-30"><ChevronLeft/></button>
             <span className="text-sm text-gray-500">Page {meta.currentPage}</span>

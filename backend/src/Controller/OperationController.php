@@ -192,9 +192,10 @@ class OperationController extends AbstractController
 
         if ($montant <= 0) return $this->json(['error' => 'Montant invalide'], 400);
 
-        // --- GESTION DEMANDE & BENEFICIAIRE ---
         $demande = null;
         $beneficiaireFinal = "Inconnu";
+        $detailsLignes = null;
+
 
         if (!empty($data['demande_id'])) {
             $demande = $demandeRepo->find($data['demande_id']);
@@ -218,6 +219,10 @@ class OperationController extends AbstractController
             // Décaissement direct
             $beneficiaireFinal = $data['beneficiaire'] ?? 'Porteur';
         }
+
+        if (!empty($data['lignes']) && is_array($data['lignes'])) {
+                $detailsLignes = $data['lignes']; // On stocke le tableau JSON direct
+            }
 
         // --- VERIFICATION SOLDE ---
         $caisse = $session->getCaisse();
@@ -248,6 +253,10 @@ class OperationController extends AbstractController
         $op->setModePaiement($mode);
         $op->setSessionCaisse($session);
         $op->setBeneficiaire($beneficiaireFinal); 
+
+        if ($detailsLignes) {
+            $op->setDetails($detailsLignes);
+        }
         
         if ($demande) {
             $op->setMotif("Règlement Demande " . $demande->getNumeroReference());
@@ -293,31 +302,48 @@ class OperationController extends AbstractController
         ], 201);
     }
 
-    #[Route('/{id}/print-data', name: 'print_data', methods: ['GET'])]
+   #[Route('/{id}/print-data', name: 'print_data', methods: ['GET'])]
     public function getPrintData(string $id, OperationRepository $repo, EntityManagerInterface $em): JsonResponse
     {
-        // AJOUT DE SECURITE : Si l'ID est "undefined" ou invalide, on coupe court.
-        if (!Uuid::isValid($id)) {
-            return $this->json(['error' => 'ID Opération invalide'], 400);
-        }
+        if (!Uuid::isValid($id)) return $this->json(['error' => 'ID invalide'], 400);
 
         $op = $repo->find($id);
-        if (!$op) return $this->json(['error' => 'Opération introuvable'], 404);
+        if (!$op) return $this->json(['error' => 'Introuvable'], 404);
 
         $societe = $em->getRepository(Societe::class)->findOneBy([]);
 
-        $demandeInfo = null;
+        // --- CONSTRUCTION DES LIGNES (FAÇON FACTURE) ---
+        $lignes = [];
+
+        // Cas 1 : Lignes venant d'une Demande liée
         if ($op->getDemande()) {
-            $demandeInfo = [
-                'reference' => $op->getDemande()->getNumeroReference(),
-                'titre' => $op->getDemande()->getTitre()
+            foreach ($op->getDemande()->getLignes() as $ligne) {
+                $lignes[] = [
+                    'designation' => $ligne->getDesignation(),
+                    'quantite' => $ligne->getQuantite(),
+                    'prix' => $ligne->getPrixUnitaireEstimatif(),
+                    'total' => $ligne->getTotalLigne()
+                ];
+            }
+        }
+        // Cas 2 : Lignes stockées directement dans l'Opération (Décaissement direct)
+        elseif ($op->getDetails()) {
+            $lignes = $op->getDetails(); // On suppose que le format est déjà bon
+        }
+        // Cas 3 : Fallback (Juste le motif global)
+        else {
+            $lignes[] = [
+                'designation' => $op->getMotif(),
+                'quantite' => 1,
+                'prix' => (float)$op->getMontant(),
+                'total' => (float)$op->getMontant()
             ];
         }
 
         return $this->json([
             'operation' => [
                 'id' => (string) $op->getId(),
-                'numero' => 'OP-' . str_pad((string)$op->getId(), 6, '0', STR_PAD_LEFT), // Juste pour l'affichage
+                'numero' => 'OP-' . str_pad((string)$op->getId(), 6, '0', STR_PAD_LEFT),
                 'date' => $op->getDate()->format('d/m/Y H:i'),
                 'montant' => $op->getMontant(),
                 'motif' => $op->getMotif(),
@@ -325,7 +351,9 @@ class OperationController extends AbstractController
                 'mode' => $op->getModePaiement() ? $op->getModePaiement()->getLibelle() : 'Espèces',
                 'caissier' => $op->getUtilisateur()->getNom(),
             ],
-            'demande' => $demandeInfo,
+            // On envoie les lignes préparées
+            'lignes' => $lignes, 
+            'demande_ref' => $op->getDemande() ? $op->getDemande()->getNumeroReference() : null,
             'societe' => $societe ? [
                 'nom' => $societe->getNom(),
                 'adresse' => $societe->getAdresse(),
