@@ -35,6 +35,19 @@ export interface Societe {
     registreCommerce?: string;
     siegeSocial?: string;
     capitalSocial?: string;
-    // LE CHAMP CRITIQUE
     modeValidation: 'STANDARD' | 'DELEGATION' | 'AUTONOMIE'; 
+}
+
+export interface Transfert {
+    id: string;
+    montant: number;
+    date: string;
+    source: string;
+    emetteur: string;
+    motif: string;
+}
+
+export interface CaisseSimple {
+    id: string;
+    nom: string;
 }

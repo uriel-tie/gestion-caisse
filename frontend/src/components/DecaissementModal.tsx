@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { X, DollarSign, Printer, CheckCircle, ListPlus } from 'lucide-react';
-import { RequestLinesEditor, type RequestLine } from './RequestLinesEditor'; // Assure-toi d'avoir cet import
+import { X, DollarSign, Printer, CheckCircle, ListPlus, CreditCard } from 'lucide-react';
+import { RequestLinesEditor, type RequestLine } from './RequestLinesEditor';
 
 interface DecaissementModalProps {
     isOpen: boolean;
@@ -9,26 +9,37 @@ interface DecaissementModalProps {
     demande?: { id: string; titre: string; montant: number; beneficiaire: string };
 }
 
+interface ModePaiement {
+    id: string;
+    libelle: string;
+}
+
 export default function DecaissementModal({ isOpen, onClose, onSuccess, demande }: DecaissementModalProps) {
-    const [modeDetaille, setModeDetaille] = useState(false); // Toggle simple/détaillé
+    const [modeDetaille, setModeDetaille] = useState(false);
     const [lignes, setLignes] = useState<RequestLine[]>([
         { id: 1, designation: '', quantite: 1, prixUnitaire: 0, total: 0 }
     ]);
     
+    // Champs Formulaire
     const [montant, setMontant] = useState('');
     const [motif, setMotif] = useState('');
     const [beneficiaire, setBeneficiaire] = useState('');
+    const [selectedMode, setSelectedMode] = useState<string>('Espèces'); // Par défaut
+    
+    // Data & UI States
+    const [modes, setModes] = useState<ModePaiement[]>([]);
     const [loading, setLoading] = useState(false);
     const [lastOpId, setLastOpId] = useState<string | null>(null);
 
-    // Calcul automatique du total si mode détaillé
     const totalLignes = lignes.reduce((acc, l) => acc + l.total, 0);
 
+    // Initialisation
     useEffect(() => {
         if (isOpen) {
             setLastOpId(null);
             setModeDetaille(false);
             setLignes([{ id: 1, designation: '', quantite: 1, prixUnitaire: 0, total: 0 }]);
+            fetchModes(); // Charger les modes disponibles
             
             if (demande) {
                 setMontant(demande.montant.toString());
@@ -42,12 +53,38 @@ export default function DecaissementModal({ isOpen, onClose, onSuccess, demande 
         }
     }, [isOpen, demande]);
 
+    const fetchModes = async () => {
+        try {
+            const token = localStorage.getItem('token');
+            const res = await fetch('https://127.0.0.1:8000/api/modes', { // Assure-toi que cette route existe
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
+            if (res.ok) {
+                const data = await res.json();
+                setModes(data);
+                // Si des modes existent, on sélectionne le premier ou "Espèces" s'il existe
+                if (data.length > 0) {
+                    const espece = data.find((m: any) => m.libelle === 'Espèces');
+                    setSelectedMode(espece ? espece.libelle : data[0].libelle);
+                }
+            }
+        } catch (err) {
+            console.error("Erreur chargement modes", err);
+            // Fallback manuel si l'API échoue
+            setModes([
+                { id: '1', libelle: 'Espèces' },
+                { id: '2', libelle: 'Chèque' },
+                { id: '3', libelle: 'Virement' },
+                { id: '4', libelle: 'Mobile Money' }
+            ]);
+        }
+    };
+
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         setLoading(true);
         const token = localStorage.getItem('token');
 
-        // Si mode détaillé, on prend le total calculé, sinon le montant saisi
         const montantFinal = (!demande && modeDetaille) ? totalLignes : parseFloat(montant);
 
         if (montantFinal <= 0) {
@@ -61,16 +98,16 @@ export default function DecaissementModal({ isOpen, onClose, onSuccess, demande 
                 montant: montantFinal,
                 motif,
                 demande_id: demande?.id || null,
+                mode: selectedMode // On envoie le libellé (ex: "Espèces")
             };
             
             if (!demande?.id) {
                 payload.beneficiaire = beneficiaire;
-                // Si on a saisi des lignes, on les envoie
                 if (modeDetaille) {
                     payload.lignes = lignes.map(l => ({
                         designation: l.designation,
                         quantite: l.quantite,
-                        prix: l.prixUnitaire, // Backend attend 'prix' ou 'prixUnitaire' selon ton mapping
+                        prix: l.prixUnitaire,
                         total: l.total
                     }));
                 }
@@ -107,7 +144,6 @@ export default function DecaissementModal({ isOpen, onClose, onSuccess, demande 
         }
     };
 
-    // ... (Bloc Succès avec Impression identique à avant) ...
     if (lastOpId) {
         return (
             <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
@@ -116,13 +152,13 @@ export default function DecaissementModal({ isOpen, onClose, onSuccess, demande 
                         <CheckCircle size={32} />
                     </div>
                     <h2 className="text-2xl font-bold text-gray-800 mb-2">Décaissement Réussi !</h2>
-                    <p className="text-gray-500 mb-6">L'opération a été enregistrée.</p>
+                    <p className="text-gray-500 mb-6">Mode : <strong>{selectedMode}</strong></p>
                     <div className="flex flex-col gap-3">
                         <button
                             onClick={() => window.open(`/print/bon-caisse/${lastOpId}`, '_blank')}
                             className="w-full flex items-center justify-center gap-2 bg-blue-600 text-white py-3 rounded-lg hover:bg-blue-700 font-bold transition shadow-lg"
                         >
-                            <Printer size={20} /> IMPRIMER LE BON (FACTURE)
+                            <Printer size={20} /> IMPRIMER LE BON
                         </button>
                         <button onClick={onClose} className="w-full text-gray-500 py-2 hover:text-gray-800 font-medium">Fermer</button>
                     </div>
@@ -146,18 +182,38 @@ export default function DecaissementModal({ isOpen, onClose, onSuccess, demande 
                 <div className="p-6 overflow-y-auto custom-scrollbar">
                     <form onSubmit={handleSubmit} className="space-y-5">
                         
-                        {/* Bénéficiaire */}
-                        <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-1">Bénéficiaire</label>
-                            <input
-                                type="text"
-                                required
-                                value={beneficiaire}
-                                onChange={(e) => setBeneficiaire(e.target.value)}
-                                className={`w-full p-2.5 border border-gray-300 rounded-lg outline-none ${demande ? 'bg-gray-100 text-gray-500' : 'focus:ring-2 focus:ring-red-500'}`}
-                                placeholder="Nom du preneur..."
-                                readOnly={!!demande}
-                            />
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            {/* Bénéficiaire */}
+                            <div className="col-span-1">
+                                <label className="block text-sm font-medium text-gray-700 mb-1">Bénéficiaire</label>
+                                <input
+                                    type="text"
+                                    required
+                                    value={beneficiaire}
+                                    onChange={(e) => setBeneficiaire(e.target.value)}
+                                    className={`w-full p-2.5 border border-gray-300 rounded-lg outline-none ${demande ? 'bg-gray-100 text-gray-500' : 'focus:ring-2 focus:ring-red-500'}`}
+                                    placeholder="Nom du preneur..."
+                                    readOnly={!!demande}
+                                />
+                            </div>
+
+                            {/* SELECTEUR DE MODE DE PAIEMENT (AJOUTÉ) */}
+                            <div className="col-span-1">
+                                <label className="block text-sm font-medium text-gray-700 mb-1 flex items-center gap-2">
+                                    <CreditCard size={16} /> Mode de Paiement
+                                </label>
+                                <select
+                                    value={selectedMode}
+                                    onChange={(e) => setSelectedMode(e.target.value)}
+                                    className="w-full p-2.5 border border-gray-300 rounded-lg outline-none focus:ring-2 focus:ring-red-500 bg-white"
+                                >
+                                    {modes.map((m) => (
+                                        <option key={m.id || m.libelle} value={m.libelle}>
+                                            {m.libelle}
+                                        </option>
+                                    ))}
+                                </select>
+                            </div>
                         </div>
 
                         {/* Motif */}
@@ -225,7 +281,7 @@ export default function DecaissementModal({ isOpen, onClose, onSuccess, demande 
                                 disabled={loading}
                                 className="w-full bg-red-600 text-white py-3 rounded-lg font-bold hover:bg-red-700 transition flex justify-center items-center gap-2"
                             >
-                                {loading ? 'Traitement...' : 'VALIDER LE PAIEMENT'}
+                                {loading ? 'Traitement...' : `VALIDER (${selectedMode})`}
                             </button>
                         </div>
                     </form>
