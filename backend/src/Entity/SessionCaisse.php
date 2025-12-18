@@ -55,6 +55,9 @@ class SessionCaisse
     #[ORM\OneToMany(mappedBy: 'sessionCaisse', targetEntity: Operation::class)]
     private Collection $operations;
 
+    #[ORM\Column(nullable: true)]
+    private ?array $billetage = null;
+
     public function __construct()
     {
         $this->dateOuverture = new \DateTimeImmutable();
@@ -72,6 +75,17 @@ class SessionCaisse
 
     public function getStatut(): ?string { return $this->statut; }
     public function setStatut(string $statut): static { $this->statut = $statut; return $this; }
+
+    public function getBilletage(): ?array
+    {
+        return $this->billetage;
+    }
+
+    public function setBilletage(?array $billetage): static
+    {
+        $this->billetage = $billetage;
+        return $this;
+    }
 
     public function getOperations(): Collection { return $this->operations; }
     public function getMontantOuverture(): ?string

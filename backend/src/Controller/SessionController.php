@@ -67,7 +67,7 @@ class SessionController extends AbstractController
         ], 201);
     }
     // --- 2. FERMER UNE SESSION ---
-    #[Route('/{id}/close', name: 'api_sessions_close', methods: ['POST'])]
+   #[Route('/{id}/close', name: 'api_sessions_close', methods: ['POST'])]
     public function close(
         string $id, 
         Request $request, 
@@ -78,58 +78,54 @@ class SessionController extends AbstractController
         $session = $sessionRepo->find($id);
         if (!$session) return new JsonResponse(['message' => 'Session introuvable'], 404);
 
-        // A. Vérifier que c'est bien le propriétaire qui ferme (ou un Admin)
         if ($session->getCaissier() !== $this->getUser() && !$this->isGranted('ROLE_ADMIN')) {
-            return new JsonResponse(['message' => 'Accès interdit à cette session'], 403);
+            return new JsonResponse(['message' => 'Accès interdit'], 403);
         }
 
         if ($session->getStatut() !== SessionCaisse::STATUT_OUVERTE) {
-            return new JsonResponse(['message' => 'Cette session est déjà fermée'], 400);
+            return new JsonResponse(['message' => 'Session déjà fermée'], 400);
         }
 
-        // --- RÈGLE BLOQUANTE : JUSTIFICATIFS ---
-        
-         $operationsNonJustifiees = $opRepo->count([
-            'sessionCaisse' => $session,
-            'statut' => 'PENDING_PROOF' 
-        ]);
-
+        // --- VERIFICATIONS ---
+        $operationsNonJustifiees = $opRepo->count(['sessionCaisse' => $session, 'statut' => 'PENDING_PROOF']);
         if ($operationsNonJustifiees > 0) {
-            return new JsonResponse([
-                'message' => 'Fermeture impossible : Il manque des justificatifs.',
-                'code_erreur' => 'MISSING_PROOFS',
-                'count' => $operationsNonJustifiees
-            ], 422); // Unprocessable Entity
+            return new JsonResponse(['message' => 'Justificatifs manquants.', 'code_erreur' => 'MISSING_PROOFS'], 422);
         }
-        
 
-        // B. Récupération des données de fermeture
+        // --- TRAITEMENT DU BILLETAGE ---
         $data = json_decode($request->getContent(), true);
-        $montantPhysique = $data['montant_physique'] ?? null; // Le montant compté par le caissier
+        $billetage = $data['billetage'] ?? []; 
 
-        if ($montantPhysique === null) {
-            return new JsonResponse(['message' => 'Le montant physique est obligatoire'], 400);
+        if (empty($billetage)) {
+            return new JsonResponse(['message' => 'Le billetage est obligatoire pour fermer.'], 400);
         }
 
-        // C. Calcul du Solde Théorique (Backend)
-        // Théorique = Montant Ouverture + (Total Entrées - Total Sorties)
-        $totalEntrees = $opRepo->getSumEntreesBySession($session); // Tu devras créer cette méthode dans le Repo
-        $totalSorties = $opRepo->getSumSortiesBySession($session); // Idem
-        
-        $soldeTheorique = (float)$session->getMontantOuverture() + $totalEntrees - $totalSorties;
-        $soldePhysique = (float)$montantPhysique;
-        $ecart = $soldePhysique - $soldeTheorique;
+        // Calcul du montant physique à partir des billets déclarés
+        $montantPhysique = 0.0;
+        foreach ($billetage as $valeur => $quantite) {
+            // Sécurité : on s'assure que $valeur est un nombre valide
+            $valeurFloat = (float) $valeur;
+            $qteInt = (int) $quantite;
+            if ($valeurFloat > 0 && $qteInt > 0) {
+                $montantPhysique += $valeurFloat * $qteInt;
+            }
+        }
 
-        // D. Mise à jour de la Session
+        // Calcul du Théorique
+        $totalEntrees = $opRepo->getSumEntreesBySession($session) ?? 0;
+        $totalSorties = $opRepo->getSumSortiesBySession($session) ?? 0;
+        $soldeTheorique = (float)$session->getMontantOuverture() + $totalEntrees - $totalSorties;
+        
+        $ecart = $montantPhysique - $soldeTheorique;
+
+        // Mise à jour Session
         $session->setDateFermeture(new \DateTimeImmutable());
         $session->setMontantTheorique((string)$soldeTheorique);
-        $session->setMontantFermeture((string)$soldePhysique);
-        
-        // Gestion du statut selon l'écart
-        // On tolère un petit écart de flottant (epsilon) si besoin, sinon strict 0
-        if (abs($ecart) > 0.01) {
+        $session->setMontantFermeture((string)$montantPhysique);
+        $session->setBilletage($billetage); // On sauvegarde le détail JSON
+
+        if (abs($ecart) > 5) { // Tolérance de 5 FCFA pour les arrondis
             $session->setStatut(SessionCaisse::STATUT_ECART);
-            // TODO: Ici, tu pourrais créer automatiquement une Opération de régularisation si tu veux
         } else {
             $session->setStatut(SessionCaisse::STATUT_FERMEE);
         }
@@ -137,11 +133,10 @@ class SessionController extends AbstractController
         $this->em->flush();
 
         return new JsonResponse([
-            'message' => 'Session fermée',
+            'message' => 'Session fermée avec succès',
             'statut' => $session->getStatut(),
             'ecart' => $ecart,
-            'theorique' => $soldeTheorique,
-            'physique' => $soldePhysique
+            'physique' => $montantPhysique
         ]);
     }
 }
