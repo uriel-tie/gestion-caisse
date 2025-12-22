@@ -42,6 +42,7 @@ security:
     access_control:
         - { path: ^/api/login, roles: PUBLIC_ACCESS } # Connexion ouverte à tous
         - { path: ^/api,       roles: IS_AUTHENTICATED_FULLY } # Tout le reste de l'API nécessite d'être connecté
+        - { path: ^/api, methods: [OPTIONS], roles: PUBLIC_ACCESS }
 
 # Bloc de configuration pour les tests (ne pas toucher, c'est bien de le garder)
 when@test:

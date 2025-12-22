@@ -1,20 +1,21 @@
 import React, { useState } from 'react';
-import { Outlet, NavLink, useNavigate, useLocation } from 'react-router-dom';
-import { LogOut, Menu, Bell, X, User } from 'lucide-react';
+import { Outlet, useNavigate, useLocation } from 'react-router-dom';
+import { LogOut, Menu, Bell, User } from 'lucide-react'; // Bell n'est plus utilisé ici mais je le laisse au cas où, tu pourras l'enlever
 import { NAVIGATION } from '../config/navigation';
 import type { UserData } from '../types';
+import NotificationWidget from '../components/NotificationWidget';
 
 interface MainLayoutProps {
   user: UserData;
   onLogout: () => void;
-  children?: React.ReactNode; // On accepte les enfants
+  children?: React.ReactNode;
   title?: string;
 }
 
 export default function MainLayout({ user, onLogout, children }: MainLayoutProps) {
   const [isSidebarOpen, setSidebarOpen] = useState(true);
   const navigate = useNavigate();
-  const location = useLocation(); // Pour savoir quelle page est active
+  const location = useLocation();
 
   // Filtrage du menu selon les rôles
   const filteredNav = NAVIGATION.filter(item => {
@@ -109,10 +110,10 @@ export default function MainLayout({ user, onLogout, children }: MainLayoutProps
           </button>
 
           <div className="flex items-center gap-4">
-            <div className="relative">
-                <Bell size={20} className="text-gray-400 hover:text-gray-600 cursor-pointer transition" />
-                <span className="absolute -top-1 -right-1 w-2 h-2 bg-red-500 rounded-full"></span>
-            </div>
+            
+            {/* INTEGRATION DU WIDGET ICI */}
+            <NotificationWidget  />
+
             <div className="h-8 w-px bg-gray-200 mx-2"></div>
             <div className="flex items-center gap-2">
                 <span className="text-sm font-medium text-gray-700 bg-gray-100 px-3 py-1 rounded-full">
