@@ -1,13 +1,17 @@
 import React, { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Search, CheckCircle, AlertCircle, Banknote, ArrowRight } from 'lucide-react';
 import BonDeCaissePrint from './BonDeCaissePrint';
 
 interface PaymentTerminalProps {
     onSuccess: () => void; // Pour rafraîchir le solde après paiement
+    operation?: any;
+    onClose?: () => void;
 }
 
 
 export default function PaymentTerminal({ onSuccess }: PaymentTerminalProps) {
+    const { t } = useTranslation();
     const [code, setCode] = useState('');
     const [demande, setDemande] = useState<any>(null);
     const [loading, setLoading] = useState(false);
@@ -29,8 +33,8 @@ export default function PaymentTerminal({ onSuccess }: PaymentTerminalProps) {
                 headers: { 'Authorization': `Bearer ${token}` }
             });
 
-            if (res.status === 404) throw new Error("Aucune demande trouvée avec ce code.");
-            if (!res.ok) throw new Error("Erreur recherche.");
+            if (res.status === 404) throw new Error(t('components.payment_terminal.not_found'));
+            if (!res.ok) throw new Error(t('components.payment_terminal.search_error'));
 
             const data = await res.json();
             setDemande(data);
@@ -44,7 +48,7 @@ export default function PaymentTerminal({ onSuccess }: PaymentTerminalProps) {
     // 2. PAYER (DÉCAISSER)
     const handlePay = async () => {
         if (!demande) return;
-        if (!confirm(`Confirmer le décaissement de ${demande.montant} F pour "${demande.titre}" ?`)) return;
+        if (!confirm(t('components.payment_terminal.pay_confirm', { amount: demande.montant, title: demande.titre }))) return;
 
         setLoading(true);
         try {
@@ -57,7 +61,7 @@ export default function PaymentTerminal({ onSuccess }: PaymentTerminalProps) {
                 },
                 body: JSON.stringify({
                     montant: demande.montant,
-                    motif: `Paiement Demande ${demande.numeroReference} - ${demande.titre}`,
+                    motif: `${t('components.payment_terminal.pay_reason_prefix')} ${demande.numeroReference} - ${demande.titre}`,
                     demande_id: demande.id,
                     mode: 'Espèces'
                 })
@@ -83,10 +87,10 @@ export default function PaymentTerminal({ onSuccess }: PaymentTerminalProps) {
                 setDemande(null); // Reset recherche
                 setCode('');
             } else {
-                setError(data.error || "Erreur de paiement");
+                setError(data.error || t('components.payment_terminal.pay_error'));
             }
         } catch (e) {
-            setError("Erreur réseau");
+            setError(t('components.payment_terminal.network_error'));
         } finally {
             setLoading(false);
         }
@@ -96,7 +100,7 @@ export default function PaymentTerminal({ onSuccess }: PaymentTerminalProps) {
         <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200 mt-8">
             <h3 className="text-lg font-bold text-gray-800 mb-4 flex items-center">
                 <Banknote className="mr-2 h-5 w-5 text-purple-600" />
-                Terminal de Paiement (Demandes Validées)
+                {t('components.payment_terminal.title')}
             </h3>
 
             {/* BARRE DE RECHERCHE */}
@@ -105,7 +109,7 @@ export default function PaymentTerminal({ onSuccess }: PaymentTerminalProps) {
                     type="text" 
                     value={code}
                     onChange={(e) => setCode(e.target.value)}
-                    placeholder="Scanner ou saisir le code de la demande..."
+                    placeholder={t('components.payment_terminal.search_placeholder')}
                     className="flex-1 border rounded-lg px-4 py-2 font-mono text-gray-700 focus:ring-2 focus:ring-purple-500 outline-none"
                 />
                 <button 
@@ -134,16 +138,17 @@ export default function PaymentTerminal({ onSuccess }: PaymentTerminalProps) {
                     <div className="flex justify-between items-start mb-4">
                         <div>
                             <h4 className="font-bold text-lg text-gray-900">{demande.titre}</h4>
-                            <p className="text-sm text-gray-500">Demandeur : {demande.demandeur_nom || 'Employé'}</p>
+                            <p className="text-sm text-gray-500">{t('components.payment_terminal.requester')} : {demande.demandeur_nom || 'Employé'}</p>
                         </div>
                         <div className="text-right">
-                            <span className="block font-mono text-xl font-bold text-gray-900">{parseFloat(demande.montant).toFixed(2)} F CFA</span>
+                            <span className="block font-mono text-xl font-bold text-gray-900">{parseFloat(demande.montant).toFixed(2)} {t('common.currency')}</span>
                             <span className={`text-xs font-bold px-2 py-1 rounded ${
                                 demande.statut === 'VALIDEE_A_PAYER'  
                                 ? 'bg-green-100 text-green-800' 
                                 : 'bg-yellow-100 text-yellow-800'
                             }`}>
-                                {demande.statut}
+                                {demande.statut === 'VALIDEE_A_PAYER' ? t('components.payment_terminal.status_validated') :
+                                 demande.statut === 'PAYEE' ? t('components.payment_terminal.status_paid') : demande.statut}
                             </span>
                         </div>
                     </div>
@@ -157,7 +162,7 @@ export default function PaymentTerminal({ onSuccess }: PaymentTerminalProps) {
                             disabled={loading}
                             className="w-full bg-green-600 hover:bg-green-700 text-white font-bold py-3 rounded-lg shadow-md transition-transform active:scale-95 flex justify-center items-center"
                         >
-                            {loading ? 'Traitement...' : <>CONFIRMER LE DÉCAISSEMENT <ArrowRight className="ml-2 h-5 w-5"/></>}
+                            {loading ? t('components.payment_terminal.processing') : <>{t('components.payment_terminal.confirm_button')} <ArrowRight className="ml-2 h-5 w-5"/></>}
                         </button>
 
                     ) : demande.statut === 'PAYEE' ? (
@@ -167,14 +172,14 @@ export default function PaymentTerminal({ onSuccess }: PaymentTerminalProps) {
                                 {/* Tu peux importer CheckCircle de lucide-react si tu l'as, sinon une emoji suffit */}
                                 <span className="text-3xl">✅</span> 
                             </div>
-                            <p className="font-bold">Cette demande a déjà été réglée.</p>
-                            <p className="text-xs text-blue-600 mt-1">Impossible d'effectuer un nouveau décaissement.</p>
+                            <p className="font-bold">{t('components.payment_terminal.already_paid_title')}</p>
+                            <p className="text-xs text-blue-600 mt-1">{t('components.payment_terminal.already_paid_sub')}</p>
                         </div>
 
                     ) : (
                         /* CAS 3 : AUTRES STATUTS (Brouillon, En attente...) */
                         <div className="bg-orange-100 border border-orange-200 text-orange-800 p-3 rounded-lg text-center font-medium flex items-center justify-center gap-2">
-                            <span>⛔ Impossible de payer : Statut <b>{demande.statut}</b></span>
+                            <span>⛔ {t('components.payment_terminal.status_error')} <b>{demande.statut}</b></span>
                         </div>
                     )}
                 </div>

@@ -1,5 +1,6 @@
 import React, { useState, type FormEvent } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import { User as UserIcon, Lock, AlertCircle, ShieldCheck, ArrowRight } from 'lucide-react';
 import InputField from '../components/InputField';
 import type { LoginResponse, UserData } from '../types';
@@ -9,6 +10,7 @@ interface LoginPageProps {
 }
 
 const LoginPage: React.FC<LoginPageProps> = ({ onLoginSuccess }) => {
+  const { t } = useTranslation();
   const navigate = useNavigate();
   // Tes états existants
   const [email, setEmail] = useState<string>('manager@app.com');
@@ -43,7 +45,7 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLoginSuccess }) => {
       // --- NOUVEAU : Interception pour la 2FA ---
       if (data['2fa_required']) {
           setShow2FAInput(true);
-          setError('Veuillez entrer le code de validation.');
+          setError(t('pages.login.error_2fa'));
           setIsLoading(false);
           return; // On s'arrête là, on attend le code
       }
@@ -66,7 +68,7 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLoginSuccess }) => {
       }
 
     } catch (err: any) {
-      setError(err.message || 'Impossible de se connecter au serveur.');
+      setError(err.message || t('pages.login.error_server'));
     } finally {
       // On ne coupe le chargement que si on n'attend pas de code
       if (!show2FAInput) setIsLoading(false);
@@ -81,10 +83,10 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLoginSuccess }) => {
           <div className="px-8 py-6 text-center border-b border-gray-100 bg-purple-600">
             <h2 className="text-2xl font-bold text-white flex justify-center items-center gap-2">
                 {show2FAInput ? <ShieldCheck className="text-purple-200" /> : null}
-                ORBIS CAISSE
+                {t('pages.login.title')}
             </h2>
             <p className="text-purple-200 mt-1 text-sm">
-                {show2FAInput ? 'Double Authentification' : 'Accès sécurisé'}
+                {show2FAInput ? t('pages.login.two_fa_title') : t('pages.login.subtitle')}
             </p>
           </div>
 
@@ -105,7 +107,7 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLoginSuccess }) => {
                         <InputField
                             icon={UserIcon}
                             type="email"
-                            placeholder="Email professionnel"
+                            placeholder={t('pages.login.username')}
                             value={email}
                             onChange={(e: any) => setEmail(e.target.value)}
                         />
@@ -115,7 +117,7 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLoginSuccess }) => {
                         <InputField
                             icon={Lock}
                             type="password"
-                            placeholder="Mot de passe"
+                            placeholder={t('pages.login.password')}
                             value={password}
                             onChange={(e: any) => setPassword(e.target.value)}
                         />
@@ -127,7 +129,7 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLoginSuccess }) => {
               {show2FAInput && (
                 <div className="animate-in fade-in slide-in-from-right duration-300">
                     <label className="block text-sm font-medium text-gray-700 mb-2 text-center">
-                        Code Google Authenticator
+                        {t('pages.login.two_fa_instruction')}
                     </label>
                     <input
                         type="text"
@@ -143,7 +145,7 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLoginSuccess }) => {
                         onClick={() => { setShow2FAInput(false); setError(''); setIsLoading(false); }}
                         className="text-xs text-gray-500 mt-4 hover:text-purple-600 hover:underline w-full text-center block"
                     >
-                        Revenir à la connexion
+                        {t('pages.login.back_to_login')}
                     </button>
                 </div>
               )}
@@ -153,7 +155,7 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLoginSuccess }) => {
                 disabled={isLoading}
                 className="w-full flex justify-center items-center py-3 px-4 rounded-lg text-sm font-bold text-white bg-purple-600 hover:bg-purple-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed shadow-md"
               >
-                {isLoading ? 'Vérification...' : (show2FAInput ? 'Valider le code' : 'Se connecter')}
+                {isLoading ? t('pages.login.verify_loading') : (show2FAInput ? t('pages.login.verify_button') : t('pages.login.signin'))}
                 {!isLoading && !show2FAInput && <ArrowRight size={18} className="ml-2" />}
               </button>
             </form>
@@ -161,7 +163,7 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLoginSuccess }) => {
             {!show2FAInput && (
                 <div className="mt-6 text-center">
                 <a href="#" className="text-sm text-gray-400 hover:text-purple-600 transition-colors">
-                    Mot de passe oublié ?
+                    {t('pages.login.forgot')}
                 </a>
                 </div>
             )}
@@ -170,7 +172,7 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLoginSuccess }) => {
 
         {/* Footer */}
         <p className="text-center text-sm text-gray-400 mt-8">
-          © 2025 ORBIS CAISSE Manager. Sécurisé par Symfony & React.
+          {t('pages.login.footer')}
         </p>
       </div>
     </div>
