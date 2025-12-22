@@ -1,0 +1,32 @@
+{
+  "menu": {
+    "dashboard": "Dashboard",
+    "requests": "Requests",
+    "validations": "Validations",
+    "history": "History",
+    "profile": "My Profile",
+    "logout": "Logout"
+  },
+  "dashboard": {
+    "welcome": "Welcome",
+    "balance": "Cash Balance",
+    "pending": "Pending",
+    "my_requests": "My Recent Requests"
+  },
+  "common": {
+    "loading": "Loading...",
+    "error": "An error occurred",
+    "save": "Save",
+    "cancel": "Cancel",
+    "validate": "Validate",
+    "refuse": "Reject"
+  },
+  "manager": {
+    "validation_title": "Validation Center",
+    "validation_subtitle": "Manage requests and operations pending validation.",
+    "tabs": {
+      "rh": "HR Requests",
+      "caisse": "Cash Operations"
+    }  
+  }
+}

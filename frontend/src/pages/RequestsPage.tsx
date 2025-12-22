@@ -1,10 +1,12 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Plus, Search, Filter, Eye, Clock, CheckCircle, XCircle, FileText, ChevronRight } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 import { RequestBonViewer } from '../components/RequestBonViewer';
 
 export default function RequestsPage() {
     const navigate = useNavigate();
+    const { t } = useTranslation();
     const [demandes, setDemandes] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
     const [selectedDemande, setSelectedDemande] = useState<any>(null); // Pour la modale
@@ -58,15 +60,12 @@ export default function RequestsPage() {
             'REFUSEE': 'bg-red-100 text-red-700',
         };
         
-        const labels: any = {
-            'ATTENTE_CHEF': 'Validation Chef',
-            'ATTENTE_MANAGER': 'Validation Manager',
-            'VALIDEE_A_PAYER': 'À Payer (Caisse)',
-        };
+        const { t } = useTranslation();
+        const label = t(`pages.requests.status.${status}`);
 
         return (
             <span className={`px-2.5 py-0.5 rounded-full text-xs font-bold border border-transparent ${styles[status] || 'bg-gray-100'}`}>
-                {labels[status] || status}
+                {label || status}
             </span>
         );
     };
@@ -76,8 +75,8 @@ export default function RequestsPage() {
             {/* Header Page */}
             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-8 gap-4">
                 <div>
-                    <h1 className="text-2xl font-bold text-gray-900">Mes Demandes</h1>
-                    <p className="text-gray-500">Suivez l'état de vos bons de caisse et ordres de mission.</p>
+                    <h1 className="text-2xl font-bold text-gray-900">{t('pages.requests.title')}</h1>
+                    <p className="text-gray-500">{t('pages.requests.subtitle')}</p>
                 </div>
                 <button 
                     onClick={() => navigate('/requests/new')}
@@ -93,34 +92,34 @@ export default function RequestsPage() {
                 <div className="p-4 border-b border-gray-100 flex gap-4 bg-gray-50/50">
                     <div className="relative flex-1 max-w-sm">
                         <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={18}/>
-                        <input type="text" placeholder="Rechercher par n° ou titre..." className="pl-10 pr-4 py-2 w-full border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 outline-none" />
+                        <input type="text" placeholder={t('pages.requests.search_placeholder')} className="pl-10 pr-4 py-2 w-full border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 outline-none" />
                     </div>
                     <button className="flex items-center gap-2 px-4 py-2 border border-gray-300 rounded-lg bg-white text-sm text-gray-600 hover:bg-gray-50">
-                        <Filter size={16}/> Filtres
+                        <Filter size={16}/> {t('pages.requests.filters')}
                     </button>
                 </div>
 
                 {loading ? (
-                    <div className="p-12 text-center text-gray-400">Chargement...</div>
+                    <div className="p-12 text-center text-gray-400">{t('common.loading')}</div>
                 ) : demandes.length === 0 ? (
                     <div className="p-12 text-center">
                         <div className="bg-gray-100 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4">
                             <FileText className="text-gray-400" size={32} />
                         </div>
-                        <h3 className="text-lg font-medium text-gray-900">Aucune demande</h3>
-                        <p className="text-gray-500 mb-6">Vous n'avez pas encore créé de demande de fonds.</p>
-                        <button onClick={() => navigate('/requests/new')} className="text-blue-600 font-medium hover:underline">Créer ma première demande</button>
+                        <h3 className="text-lg font-medium text-gray-900">{t('pages.requests.empty_title')}</h3>
+                        <p className="text-gray-500 mb-6">{t('pages.requests.empty_sub')}</p>
+                        <button onClick={() => navigate('/requests/new')} className="text-blue-600 font-medium hover:underline">{t('pages.requests.create_first')}</button>
                     </div>
                 ) : (
                     <table className="w-full text-left border-collapse">
                         <thead className="bg-gray-50 text-gray-500 uppercase text-xs font-semibold">
                             <tr>
-                                <th className="px-6 py-4">Référence</th>
-                                <th className="px-6 py-4">Titre / Objet</th>
-                                <th className="px-6 py-4">Date</th>
-                                <th className="px-6 py-4">Montant</th>
-                                <th className="px-6 py-4">Statut</th>
-                                <th className="px-6 py-4 text-right">Action</th>
+                                <th className="px-6 py-4">{t('pages.requests.table.reference')}</th>
+                                <th className="px-6 py-4">{t('pages.requests.table.title')}</th>
+                                <th className="px-6 py-4">{t('pages.requests.table.date')}</th>
+                                <th className="px-6 py-4">{t('pages.requests.table.amount')}</th>
+                                <th className="px-6 py-4">{t('pages.requests.table.status')}</th>
+                                <th className="px-6 py-4 text-right">{t('pages.requests.table.action')}</th>
                             </tr>
                         </thead>
                         <tbody className="divide-y divide-gray-100">
@@ -137,7 +136,7 @@ export default function RequestsPage() {
                                         {d.date}
                                     </td>
                                     <td className="px-6 py-4 font-bold text-gray-800">
-                                        {Number(d.montant).toLocaleString()} FCFA
+                                        {Number(d.montant).toLocaleString()} {t('common.currency')}
                                     </td>
                                     <td className="px-6 py-4">
                                         <StatusBadge status={d.statut} />

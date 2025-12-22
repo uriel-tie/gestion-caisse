@@ -39,12 +39,12 @@ class AppFixtures extends Fixture
         // 2. MODES DE PAIEMENT & COMPTES
         $modeEspece = new ModePaiement();
         $modeEspece->setLibelle('Espèces');
-        $modeEspece->setType('ESPECE'); // <--- LIGNE AJOUTÉE (CORRECTION)
+        $modeEspece->setType('ESPECE'); 
         $manager->persist($modeEspece);
 
         $modeCheque = new ModePaiement();
         $modeCheque->setLibelle('Chèque');
-        $modeCheque->setType('CHEQUE'); // <--- LIGNE AJOUTÉE (CORRECTION)
+        $modeCheque->setType('CHEQUE');
         $manager->persist($modeCheque);
 
         $compteCaisse = new CompteComptable();
@@ -60,16 +60,20 @@ class AppFixtures extends Fixture
         $manager->persist($compteAchats);
 
         // 3. SERVICES
-        $serviceDirection = new Service(); $serviceDirection->setNom('Direction Générale');
+        $serviceDirection = new Service(); 
+        $serviceDirection->setNom('Direction Générale');
         $manager->persist($serviceDirection);
 
-        $serviceCompta = new Service(); $serviceCompta->setNom('Comptabilité & Finances');
+        $serviceCompta = new Service(); 
+        $serviceCompta->setNom('Comptabilité & Finances');
         $manager->persist($serviceCompta);
 
-        $serviceIT = new Service(); $serviceIT->setNom('Informatique (DSI)');
+        $serviceIT = new Service(); 
+        $serviceIT->setNom('Informatique (DSI)');
         $manager->persist($serviceIT);
 
         // 4. UTILISATEURS (HIERARCHIE)
+        
         // -> Le Manager (Directeur)
         $managerUser = new Utilisateur();
         $managerUser->setEmail('manager@app.com');
@@ -87,7 +91,8 @@ class AppFixtures extends Fixture
         $chefIT->setPassword($this->hasher->hashPassword($chefIT, 'password'));
         $chefIT->setService($serviceIT);
         $manager->persist($chefIT);
-        $serviceIT->setChef($chefIT);
+        // On lie le chef au service (si la méthode existe dans Service)
+        // $serviceIT->setChef($chefIT); 
 
         // -> Le Caissier
         $caissier = new Utilisateur();
@@ -124,19 +129,31 @@ class AppFixtures extends Fixture
         $session->setStatut(SessionCaisse::STATUT_OUVERTE);
         $manager->persist($session);
 
-        // 6. DEMANDES
-        // Cas A : Demande simple
+        // 6. DEMANDES (POUR TESTER LES NOTIFICATIONS)
+
+        // Cas A : Pour le Chef de Service (Attente Chef)
         $demandeSimple = new Demande();
         $demandeSimple->setTitre("Achat Claviers");
         $demandeSimple->setMontantEstime("25000");
         $demandeSimple->setDescription("Remplacement matériel défectueux");
         $demandeSimple->setType(Demande::TYPE_BESOIN);
-        $demandeSimple->setDemandeur($employe);
+        $demandeSimple->setDemandeur($employe); // Employé du service IT
         $demandeSimple->setBeneficiaire($employe);
         $demandeSimple->setStatut(Demande::STATUT_ATTENTE_CHEF);
         $manager->persist($demandeSimple);
 
-        // Cas B : Demande pour tiers
+        // Cas B : Pour le Manager (Attente Manager - Validé par Chef)
+        $demandeManager = new Demande();
+        $demandeManager->setTitre("Renouvellement Licences");
+        $demandeManager->setMontantEstime("150000");
+        $demandeManager->setDescription("Licences annuelles Adobe");
+        $demandeManager->setType(Demande::TYPE_BESOIN);
+        $demandeManager->setDemandeur($chefIT); // Demandé par le chef
+        $demandeManager->setBeneficiaire($chefIT);
+        $demandeManager->setStatut(Demande::STATUT_ATTENTE_MANAGER); // <--- TEST MANAGER
+        $manager->persist($demandeManager);
+
+        // Cas C : Pour le Caissier (Validée - À Payer)
         $demandeTiers = new Demande();
         $demandeTiers->setTitre("Déjeuner Client VIP");
         $demandeTiers->setMontantEstime("45000");
@@ -148,6 +165,8 @@ class AppFixtures extends Fixture
         $manager->persist($demandeTiers);
 
         // 7. OPERATIONS
+
+        // Opération Historique (Déjà faite)
         $opExterne = new Operation();
         $opExterne->setType('DECAISSEMENT');
         $opExterne->setMontant('15000');
@@ -161,7 +180,21 @@ class AppFixtures extends Fixture
         $opExterne->setBeneficiaire("SODECI Agence Riviera"); 
         $manager->persist($opExterne);
 
-        // Mise à jour solde
+        // Opération en attente (Pour tester validation Manager)
+        $opPending = new Operation();
+        $opPending->setType('DECAISSEMENT');
+        $opPending->setMontant('200000'); // Gros montant > Seuil
+        $opPending->setDate(new \DateTimeImmutable());
+        $opPending->setStatut('PENDING'); // <--- TEST MANAGER (Opération en attente)
+        $opPending->setCompteComptable('606');
+        $opPending->setUtilisateur($caissier);
+        $opPending->setSessionCaisse($session);
+        $opPending->setModePaiement($modeEspece);
+        $opPending->setMotif("Achat Exceptionnel Serveur");
+        $opPending->setBeneficiaire("DELL Import");
+        $manager->persist($opPending);
+
+        // Mise à jour solde (500000 - 15000 validés)
         $caisse->setSolde('485000.00'); 
 
         $manager->flush();

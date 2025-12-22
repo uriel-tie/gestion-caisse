@@ -3,92 +3,121 @@
 namespace App\EventSubscriber;
 
 use App\Entity\Audit;
-use App\Entity\Operation;
-use App\Entity\Demande;
-use App\Entity\SessionCaisse;
 use App\Entity\Utilisateur;
 use Doctrine\Bundle\DoctrineBundle\Attribute\AsDoctrineListener;
 use Doctrine\ORM\Events;
-use Doctrine\Persistence\Event\LifecycleEventArgs;
+use Doctrine\ORM\Event\OnFlushEventArgs;
 use Symfony\Bundle\SecurityBundle\Security;
-use Psr\Log\LoggerInterface;
+use Symfony\Component\HttpFoundation\RequestStack;
 
-// On utilise les attributs pour s'abonner aux événements (plus moderne, supprime le warning Deprecated)
-#[AsDoctrineListener(event: Events::postPersist)]
-#[AsDoctrineListener(event: Events::postUpdate)]
-#[AsDoctrineListener(event: Events::preRemove)]
+#[AsDoctrineListener(event: Events::onFlush)]
 class AuditSubscriber
 {
     public function __construct(
         private Security $security,
-        private LoggerInterface $logger
+        private RequestStack $requestStack
     ) {}
 
-    public function postPersist(LifecycleEventArgs $args): void
+    public function onFlush(OnFlushEventArgs $args): void
     {
-        $this->logChange($args, 'CREATION');
-    }
+        $em = $args->getObjectManager();
+        $uow = $em->getUnitOfWork();
 
-    public function postUpdate(LifecycleEventArgs $args): void
-    {
-        $this->logChange($args, 'MODIFICATION');
-    }
-
-    public function preRemove(LifecycleEventArgs $args): void
-    {
-        $this->logChange($args, 'SUPPRESSION');
-    }
-
-    private function logChange(LifecycleEventArgs $args, string $actionType): void
-    {
-        $entity = $args->getObject();
-
-        // 1. On filtre : On ne veut logger que ces entités
-        if (!$entity instanceof Operation && !$entity instanceof Demande && !$entity instanceof SessionCaisse) {
-            return;
+        // 1. On récupère toutes les actions en cours
+        foreach ($uow->getScheduledEntityInsertions() as $entity) {
+            $this->createAudit($em, $entity, 'CREATE');
         }
 
-        // 2. On récupère l'utilisateur
-        $user = $this->security->getUser();
+        foreach ($uow->getScheduledEntityUpdates() as $entity) {
+            $this->createAudit($em, $entity, 'UPDATE');
+        }
+
+        foreach ($uow->getScheduledEntityDeletions() as $entity) {
+            $this->createAudit($em, $entity, 'DELETE');
+        }
+    }
+
+    private function createAudit($em, $entity, string $action): void
+    {
+        // 1. Filtrage : On ne surveille pas l'Audit lui-même ni les logs techniques
+        if ($entity instanceof Audit) return;
+
+        // Liste blanche des entités à surveiller (Pour ne pas polluer avec tout)
+        $watchedEntities = [
+            \App\Entity\Demande::class,
+            \App\Entity\Operation::class,
+            \App\Entity\Caisse::class,
+            \App\Entity\Utilisateur::class,
+            \App\Entity\Transfert::class,
+            \App\Entity\SessionCaisse::class,
+        ];
         
-        // Si c'est une commande système ou pas d'user connecté, on loggue quand même avec un avertissement
-        if (!$user instanceof Utilisateur) {
-             // Optionnel : tu peux décider de return ici si tu ne veux pas d'audit système
-             // Pour le debug, on va laisser continuer mais attention si ton entité Audit exige un user non-null
-             return; 
+        $className = get_class($entity);
+        // Gestion des Proxies Doctrine (parfois la classe est Proxies\__CG__\App\Entity\...)
+        if (strpos($className, 'Proxies') !== false) {
+            $className = $em->getClassMetadata($className)->rootEntityName;
         }
 
-        try {
-            $audit = new Audit();
+        if (!in_array($className, $watchedEntities)) return;
+
+        // 2. Contexte Utilisateur & IP
+        $user = $this->security->getUser();
+        $request = $this->requestStack->getCurrentRequest();
+        $ip = $request ? $request->getClientIp() : 'CLI/System';
+        
+        // 3. Calcul du Diff (Le coeur du système)
+        $changes = null;
+        $uow = $em->getUnitOfWork();
+
+        if ($action === 'UPDATE') {
+            $changeSet = $uow->getEntityChangeSet($entity);
+            $changes = [];
+            foreach ($changeSet as $field => $values) {
+                // On ignore les champs techniques
+                if (in_array($field, ['updatedAt', 'createdAt', 'password'])) continue;
+                
+                // On formate les valeurs (Date, Objet...)
+                $old = $this->formatValue($values[0]);
+                $new = $this->formatValue($values[1]);
+
+                if ($old !== $new) {
+                    $changes[$field] = ['old' => $old, 'new' => $new];
+                }
+            }
+            if (empty($changes)) return; // Si rien d'important n'a changé, on ne loggue pas
+        }
+
+        // 4. Création de l'Audit
+        $audit = new Audit();
+        $audit->setAction($action);
+        $audit->setEntityClass((new \ReflectionClass($entity))->getShortName()); // Juste "Demande" au lieu du namespace complet
+        $audit->setEntityId((string) $entity->getId());
+        $audit->setIpAddress($ip);
+        $audit->setDate(new \DateTimeImmutable());
+        $audit->setChanges($changes);
+
+        if ($user instanceof Utilisateur) {
             $audit->setUtilisateur($user);
-            $audit->setDate(new \DateTimeImmutable());
-            
-            // Construction des détails
-            $entityName = (new \ReflectionClass($entity))->getShortName();
-            $details = "$entityName ID: " . $entity->getId();
-
-            if ($entity instanceof Operation) {
-                $details .= " | Montant: " . $entity->getMontant() . " | Type: " . $entity->getType();
-            }
-
-            $audit->setAction("$actionType - $entityName");
-            $audit->setDetails($details);
-
-            // 3. Persistance
-            $em = $args->getObjectManager();
-            
-            // Astuce : Vérifier si l'EM est ouvert pour éviter les crashs si une erreur précédente a fermé l'EM
-            if ($em->isOpen()) {
-                $em->persist($audit);
-                $em->flush(); // Nécessaire ici car postPersist est déclenché APRES le flush principal
-            }
-
-            // Log serveur pour confirmer que ça passe
-            $this->logger->info("AUDIT SUCCES : Enregistrement OK pour " . $audit->getAction());
-
-        } catch (\Exception $e) {
-            // Si ça plante, on veut le savoir dans les logs serveur
-            $this->logger->critical("AUDIT ERREUR : " . $e->getMessage());
+            $audit->setActorName($user->getNom());
+        } else {
+            $audit->setActorName('Système');
         }
+
+        // 5. Injection directe dans le flux de Doctrine (Sans refaire un flush global)
+        $em->persist($audit);
+        $auditMeta = $em->getClassMetadata(Audit::class);
+        $uow->computeChangeSet($auditMeta, $audit);
+    }
+
+    private function formatValue(mixed $value): mixed
+    {
+        if ($value instanceof \DateTimeInterface) {
+            return $value->format('d/m/Y H:i:s');
+        }
+        if (is_object($value) && method_exists($value, 'getId')) {
+            return 'Ref#' . $value->getId(); // Ex: Ref#45
+        }
+        if (is_array($value)) return 'Array(...)';
+        return $value;
     }
 }

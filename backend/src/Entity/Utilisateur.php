@@ -10,9 +10,10 @@ use Doctrine\ORM\Mapping as ORM;
 use Symfony\Component\Security\Core\User\PasswordAuthenticatedUserInterface;
 use Symfony\Component\Security\Core\User\UserInterface;
 use Symfony\Component\Uid\Uuid;
+use Scheb\TwoFactorBundle\Model\Google\TwoFactorInterface;
 
 #[ORM\Entity(repositoryClass: UtilisateurRepository::class)]
-class Utilisateur implements UserInterface, PasswordAuthenticatedUserInterface
+class Utilisateur implements UserInterface, PasswordAuthenticatedUserInterface, TwoFactorInterface
 {
     #[ORM\Id]
     #[ORM\Column(type: 'uuid', unique: true)]
@@ -73,6 +74,46 @@ class Utilisateur implements UserInterface, PasswordAuthenticatedUserInterface
     #[ORM\Column(nullable: true)]
     private ?\DateTimeImmutable $derniereModificationNom = null;
 
+    #[ORM\Column(type: 'string', nullable: true)]
+    private ?string $googleAuthenticatorSecret = null;
+
+    #[ORM\Column(type: 'boolean')]
+    private bool $is2faEnabled = false;
+
+    // --- Getters & Setters ---
+
+    public function getGoogleAuthenticatorSecret(): ?string
+    {
+        return $this->googleAuthenticatorSecret;
+    }
+
+    public function setGoogleAuthenticatorSecret(?string $googleAuthenticatorSecret): self
+    {
+        $this->googleAuthenticatorSecret = $googleAuthenticatorSecret;
+        return $this;
+    }
+
+    public function is2faEnabled(): bool
+    {
+        return $this->is2faEnabled;
+    }
+
+    public function setIs2faEnabled(bool $is2faEnabled): self
+    {
+        $this->is2faEnabled = $is2faEnabled;
+        return $this;
+    }
+
+    public function isGoogleAuthenticatorEnabled(): bool
+    {
+        return $this->is2faEnabled; // On retourne notre booléen
+    }
+
+    public function getGoogleAuthenticatorUsername(): string
+    {
+        return $this->email; // Ce qui s'affiche dans l'appli Google Auth
+    }
+
     public function isPasswordMustBeChanged(): bool
     {
         return $this->passwordMustBeChanged;
@@ -83,7 +124,6 @@ class Utilisateur implements UserInterface, PasswordAuthenticatedUserInterface
         $this->passwordMustBeChanged = $passwordMustBeChanged;
         return $this;
     }
-    // ...
 
     public function __construct()
     {

@@ -1,0 +1,32 @@
+{
+  "menu": {
+    "dashboard": "Tableau de bord",
+    "requests": "Demandes",
+    "validations": "Validations",
+    "history": "Historique",
+    "profile": "Mon Profil",
+    "logout": "Déconnexion"
+  },
+  "dashboard": {
+    "welcome": "Bienvenue",
+    "balance": "Solde Caisse",
+    "pending": "En attente",
+    "my_requests": "Mes demandes récentes"
+  },
+  "common": {
+    "loading": "Chargement...",
+    "error": "Une erreur est survenue",
+    "save": "Enregistrer",
+    "cancel": "Annuler",
+    "validate": "Valider",
+    "refuse": "Refuser"
+  },
+  "manager": {
+    "validation_title": "Centre de Validation",
+    "validation_subtitle": "Gérez les demandes et opérations en attente de validation.",
+    "tabs": {
+      "rh": "Demandes RH",
+      "caisse": "Opérations Caisse"
+    }
+  }
+}

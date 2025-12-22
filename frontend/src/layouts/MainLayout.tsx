@@ -4,6 +4,8 @@ import { LogOut, Menu, Bell, User } from 'lucide-react'; // Bell n'est plus util
 import { NAVIGATION } from '../config/navigation';
 import type { UserData } from '../types';
 import NotificationWidget from '../components/NotificationWidget';
+import LanguageSwitcher from '../components/LanguageSwitcher';
+import { useTranslation } from 'react-i18next';
 
 interface MainLayoutProps {
   user: UserData;
@@ -14,6 +16,7 @@ interface MainLayoutProps {
 
 export default function MainLayout({ user, onLogout, children }: MainLayoutProps) {
   const [isSidebarOpen, setSidebarOpen] = useState(true);
+  const { t } = useTranslation();
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -110,6 +113,9 @@ export default function MainLayout({ user, onLogout, children }: MainLayoutProps
           </button>
 
           <div className="flex items-center gap-4">
+
+            {/* AJOUT DU SWITCHER ICI */}
+            <LanguageSwitcher />
             
             {/* INTEGRATION DU WIDGET ICI */}
             <NotificationWidget  />

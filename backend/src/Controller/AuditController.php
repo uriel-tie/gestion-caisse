@@ -15,26 +15,26 @@ class AuditController extends AbstractController
     #[Route('', name: 'list', methods: ['GET'])]
     public function index(AuditRepository $auditRepository): JsonResponse
     {
+        // On récupère les 100 derniers logs
         $audits = $auditRepository->findBy([], ['date' => 'DESC'], 100);
 
         $data = [];
         foreach ($audits as $audit) {
-            $user = $audit->getUtilisateur();
-            
             $data[] = [
                 'id' => $audit->getId(),
-                'action' => $audit->getAction(),
-                'details' => $audit->getDetails(),
-                'date' => $audit->getDate()->format('d/m/Y H:i:s'),
-                'utilisateur' => $user ? [
-                    'id' => $user->getId(),
-                    'nom' => $user->getNom(),
-                    'email' => $user->getEmail(),
-                    'service' => $user->getService() ? $user->getService()->getNom() : 'N/A'
-                ] : [
-                    'nom' => 'Système / Inconnu',
-                    'email' => ''
-                ]
+                'action' => $audit->getAction(), // CREATE, UPDATE
+                'target' => $audit->getEntityClass() . ' #' . $audit->getEntityId(),
+                'changes' => $audit->getChanges(), // Le JSON complet
+                'actor' => $audit->getActorName(),
+                'ip' => $audit->getIpAddress(),
+                'date' => $audit->getDate()->format('d/m/Y H:i'),
+                // Optionnel : Couleurs pour le frontend
+                'color' => match($audit->getAction()) {
+                    'CREATE' => 'green',
+                    'UPDATE' => 'orange',
+                    'DELETE' => 'red',
+                    default => 'gray'
+                }
             ];
         }
 

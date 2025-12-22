@@ -10,7 +10,7 @@ use Doctrine\Migrations\AbstractMigration;
 /**
  * Auto-generated Migration: Please modify to your needs!
  */
-final class Version20251219132208 extends AbstractMigration
+final class Version20251222130654 extends AbstractMigration
 {
     public function getDescription(): string
     {
@@ -20,9 +20,10 @@ final class Version20251219132208 extends AbstractMigration
     public function up(Schema $schema): void
     {
         // this up() migration is auto-generated, please modify it to your needs
-        $this->addSql('CREATE TABLE audit (id BIGSERIAL NOT NULL, utilisateur_id UUID NOT NULL, action VARCHAR(255) NOT NULL, details TEXT DEFAULT NULL, date TIMESTAMP(0) WITHOUT TIME ZONE NOT NULL, PRIMARY KEY(id))');
+        $this->addSql('CREATE TABLE audit (id BIGSERIAL NOT NULL, utilisateur_id UUID DEFAULT NULL, action VARCHAR(50) NOT NULL, actor_name VARCHAR(255) NOT NULL, entity_class VARCHAR(255) NOT NULL, entity_id VARCHAR(255) NOT NULL, changes JSON DEFAULT NULL, ip_address VARCHAR(45) DEFAULT NULL, date TIMESTAMP(0) WITHOUT TIME ZONE NOT NULL, PRIMARY KEY(id))');
         $this->addSql('CREATE INDEX IDX_9218FF79FB88E14F ON audit (utilisateur_id)');
         $this->addSql('CREATE INDEX idx_audit_date ON audit (date)');
+        $this->addSql('CREATE INDEX idx_audit_entity ON audit (entity_class, entity_id)');
         $this->addSql('COMMENT ON COLUMN audit.utilisateur_id IS \'(DC2Type:uuid)\'');
         $this->addSql('COMMENT ON COLUMN audit.date IS \'(DC2Type:datetime_immutable)\'');
         $this->addSql('CREATE TABLE caisse (id UUID NOT NULL, employe_assigne_id UUID DEFAULT NULL, compte_comptable_id UUID DEFAULT NULL, nom VARCHAR(100) NOT NULL, est_ouverte BOOLEAN NOT NULL, solde NUMERIC(12, 2) DEFAULT \'0.00\' NOT NULL, seuil_decaissement NUMERIC(12, 2) DEFAULT \'50000.00\' NOT NULL, PRIMARY KEY(id))');
@@ -63,10 +64,6 @@ final class Version20251219132208 extends AbstractMigration
         $this->addSql('CREATE TABLE mode_paiement (id UUID NOT NULL, libelle VARCHAR(100) NOT NULL, type VARCHAR(50) NOT NULL, PRIMARY KEY(id))');
         $this->addSql('CREATE UNIQUE INDEX UNIQ_B2BB0E85A4D60759 ON mode_paiement (libelle)');
         $this->addSql('COMMENT ON COLUMN mode_paiement.id IS \'(DC2Type:uuid)\'');
-        $this->addSql('CREATE TABLE notification (id SERIAL NOT NULL, utilisateur_id UUID NOT NULL, message VARCHAR(255) NOT NULL, type VARCHAR(20) NOT NULL, lien VARCHAR(255) DEFAULT NULL, est_lu BOOLEAN NOT NULL, created_at TIMESTAMP(0) WITHOUT TIME ZONE NOT NULL, PRIMARY KEY(id))');
-        $this->addSql('CREATE INDEX IDX_BF5476CAFB88E14F ON notification (utilisateur_id)');
-        $this->addSql('COMMENT ON COLUMN notification.utilisateur_id IS \'(DC2Type:uuid)\'');
-        $this->addSql('COMMENT ON COLUMN notification.created_at IS \'(DC2Type:datetime_immutable)\'');
         $this->addSql('CREATE TABLE operation (id UUID NOT NULL, utilisateur_id UUID NOT NULL, mode_paiement_id UUID NOT NULL, operation_liee_id UUID DEFAULT NULL, session_caisse_id UUID NOT NULL, type VARCHAR(20) NOT NULL, montant NUMERIC(12, 2) NOT NULL, date TIMESTAMP(0) WITHOUT TIME ZONE NOT NULL, compte_comptable VARCHAR(100) DEFAULT NULL, statut VARCHAR(20) NOT NULL, motif VARCHAR(255) DEFAULT NULL, est_demande_annulation BOOLEAN DEFAULT false NOT NULL, motif_annulation VARCHAR(255) DEFAULT NULL, beneficiaire VARCHAR(255) DEFAULT NULL, details JSON DEFAULT NULL, PRIMARY KEY(id))');
         $this->addSql('CREATE INDEX IDX_1981A66DFB88E14F ON operation (utilisateur_id)');
         $this->addSql('CREATE INDEX IDX_1981A66D438F5B63 ON operation (mode_paiement_id)');
@@ -105,7 +102,7 @@ final class Version20251219132208 extends AbstractMigration
         $this->addSql('COMMENT ON COLUMN transfert.receveur_id IS \'(DC2Type:uuid)\'');
         $this->addSql('COMMENT ON COLUMN transfert.date_creation IS \'(DC2Type:datetime_immutable)\'');
         $this->addSql('COMMENT ON COLUMN transfert.date_validation IS \'(DC2Type:datetime_immutable)\'');
-        $this->addSql('CREATE TABLE utilisateur (id UUID NOT NULL, service_id UUID DEFAULT NULL, nom VARCHAR(255) NOT NULL, email VARCHAR(180) NOT NULL, roles JSON NOT NULL, password VARCHAR(255) NOT NULL, est_actif BOOLEAN NOT NULL, created_at TIMESTAMP(0) WITHOUT TIME ZONE NOT NULL, password_must_be_changed BOOLEAN DEFAULT true NOT NULL, derniere_modification_nom TIMESTAMP(0) WITHOUT TIME ZONE DEFAULT NULL, PRIMARY KEY(id))');
+        $this->addSql('CREATE TABLE utilisateur (id UUID NOT NULL, service_id UUID DEFAULT NULL, nom VARCHAR(255) NOT NULL, email VARCHAR(180) NOT NULL, roles JSON NOT NULL, password VARCHAR(255) NOT NULL, est_actif BOOLEAN NOT NULL, created_at TIMESTAMP(0) WITHOUT TIME ZONE NOT NULL, password_must_be_changed BOOLEAN DEFAULT true NOT NULL, derniere_modification_nom TIMESTAMP(0) WITHOUT TIME ZONE DEFAULT NULL, google_authenticator_secret VARCHAR(255) DEFAULT NULL, is2fa_enabled BOOLEAN NOT NULL, PRIMARY KEY(id))');
         $this->addSql('CREATE UNIQUE INDEX UNIQ_1D1C63B3E7927C74 ON utilisateur (email)');
         $this->addSql('CREATE INDEX IDX_1D1C63B3ED5CA9E6 ON utilisateur (service_id)');
         $this->addSql('COMMENT ON COLUMN utilisateur.id IS \'(DC2Type:uuid)\'');
@@ -127,7 +124,7 @@ final class Version20251219132208 extends AbstractMigration
         $$ LANGUAGE plpgsql;');
         $this->addSql('DROP TRIGGER IF EXISTS notify_trigger ON messenger_messages;');
         $this->addSql('CREATE TRIGGER notify_trigger AFTER INSERT OR UPDATE ON messenger_messages FOR EACH ROW EXECUTE PROCEDURE notify_messenger_messages();');
-        $this->addSql('ALTER TABLE audit ADD CONSTRAINT FK_9218FF79FB88E14F FOREIGN KEY (utilisateur_id) REFERENCES utilisateur (id) NOT DEFERRABLE INITIALLY IMMEDIATE');
+        $this->addSql('ALTER TABLE audit ADD CONSTRAINT FK_9218FF79FB88E14F FOREIGN KEY (utilisateur_id) REFERENCES utilisateur (id) ON DELETE SET NULL NOT DEFERRABLE INITIALLY IMMEDIATE');
         $this->addSql('ALTER TABLE caisse ADD CONSTRAINT FK_B2A353C8CB25077 FOREIGN KEY (employe_assigne_id) REFERENCES utilisateur (id) NOT DEFERRABLE INITIALLY IMMEDIATE');
         $this->addSql('ALTER TABLE caisse ADD CONSTRAINT FK_B2A353C8D678252E FOREIGN KEY (compte_comptable_id) REFERENCES compte_comptable (id) NOT DEFERRABLE INITIALLY IMMEDIATE');
         $this->addSql('ALTER TABLE cloture ADD CONSTRAINT FK_D5D0B568FB88E14F FOREIGN KEY (utilisateur_id) REFERENCES utilisateur (id) NOT DEFERRABLE INITIALLY IMMEDIATE');
@@ -137,7 +134,6 @@ final class Version20251219132208 extends AbstractMigration
         $this->addSql('ALTER TABLE demande ADD CONSTRAINT FK_2694D7A5FD005144 FOREIGN KEY (caissier_traitant_id) REFERENCES utilisateur (id) NOT DEFERRABLE INITIALLY IMMEDIATE');
         $this->addSql('ALTER TABLE justificatif ADD CONSTRAINT FK_90D3C5DC44AC3583 FOREIGN KEY (operation_id) REFERENCES operation (id) NOT DEFERRABLE INITIALLY IMMEDIATE');
         $this->addSql('ALTER TABLE ligne_demande ADD CONSTRAINT FK_B90DE99C80E95E18 FOREIGN KEY (demande_id) REFERENCES demande (id) NOT DEFERRABLE INITIALLY IMMEDIATE');
-        $this->addSql('ALTER TABLE notification ADD CONSTRAINT FK_BF5476CAFB88E14F FOREIGN KEY (utilisateur_id) REFERENCES utilisateur (id) NOT DEFERRABLE INITIALLY IMMEDIATE');
         $this->addSql('ALTER TABLE operation ADD CONSTRAINT FK_1981A66DFB88E14F FOREIGN KEY (utilisateur_id) REFERENCES utilisateur (id) NOT DEFERRABLE INITIALLY IMMEDIATE');
         $this->addSql('ALTER TABLE operation ADD CONSTRAINT FK_1981A66D438F5B63 FOREIGN KEY (mode_paiement_id) REFERENCES mode_paiement (id) NOT DEFERRABLE INITIALLY IMMEDIATE');
         $this->addSql('ALTER TABLE operation ADD CONSTRAINT FK_1981A66D996AC49E FOREIGN KEY (operation_liee_id) REFERENCES operation (id) NOT DEFERRABLE INITIALLY IMMEDIATE');
@@ -166,7 +162,6 @@ final class Version20251219132208 extends AbstractMigration
         $this->addSql('ALTER TABLE demande DROP CONSTRAINT FK_2694D7A5FD005144');
         $this->addSql('ALTER TABLE justificatif DROP CONSTRAINT FK_90D3C5DC44AC3583');
         $this->addSql('ALTER TABLE ligne_demande DROP CONSTRAINT FK_B90DE99C80E95E18');
-        $this->addSql('ALTER TABLE notification DROP CONSTRAINT FK_BF5476CAFB88E14F');
         $this->addSql('ALTER TABLE operation DROP CONSTRAINT FK_1981A66DFB88E14F');
         $this->addSql('ALTER TABLE operation DROP CONSTRAINT FK_1981A66D438F5B63');
         $this->addSql('ALTER TABLE operation DROP CONSTRAINT FK_1981A66D996AC49E');
@@ -187,7 +182,6 @@ final class Version20251219132208 extends AbstractMigration
         $this->addSql('DROP TABLE justificatif');
         $this->addSql('DROP TABLE ligne_demande');
         $this->addSql('DROP TABLE mode_paiement');
-        $this->addSql('DROP TABLE notification');
         $this->addSql('DROP TABLE operation');
         $this->addSql('DROP TABLE service');
         $this->addSql('DROP TABLE session_caisse');
