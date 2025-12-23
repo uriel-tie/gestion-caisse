@@ -333,7 +333,6 @@ export default function WorkstationPage(_props: WorkstationProps) {
                         <h4 className="font-bold text-slate-700 text-xs uppercase tracking-wider mb-4 border-b border-slate-200 pb-2">{t('pages.workstation.details_session')}</h4>
                         <div className="space-y-3 text-sm">
                             <div className="flex justify-between"><span className="text-slate-500">{t('pages.workstation.opening')}</span><span className="font-mono font-medium text-slate-800">{statusData.date_ouverture ? new Date(statusData.date_ouverture).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'}) : '--:--'}</span></div>
-                            <div className="flex justify-between"><span className="text-slate-500">{t('pages.workstation.initial_fund')}</span><span className="font-mono font-medium text-slate-800">{parseFloat(statusData.montant_ouverture).toLocaleString()} {t('common.currency')}</span></div>
                             <div className="flex justify-between"><span className="text-slate-500">{t('pages.workstation.session_id')}</span><span className="font-mono text-xs text-slate-400 truncate max-w-[100px]">{statusData.session_id}</span></div>
                         </div>
                     </div>

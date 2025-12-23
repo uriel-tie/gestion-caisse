@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, Monitor, Layers } from 'lucide-react';
+import { Plus, Monitor, Layers, Trash2 } from 'lucide-react'; // Ajout Trash2
 
 export default function AdminStructure() {
     const [services, setServices] = useState<any[]>([]);
@@ -12,7 +12,7 @@ export default function AdminStructure() {
     const [newCaisse, setNewCaisse] = useState('');
     const [newCaisseEmploye, setNewCaisseEmploye] = useState('');
     const [newCaisseCompte, setNewCaisseCompte] = useState('');
-    const [newCaisseSeuil, setNewCaisseSeuil] = useState('50000'); // Valeur par défaut
+    const [newCaisseSeuil, setNewCaisseSeuil] = useState('50000'); 
 
     const token = localStorage.getItem('token');
 
@@ -73,10 +73,28 @@ export default function AdminStructure() {
         if (res.ok) fetchData('caisses', setCaisses);
     };
 
+    // --- NOUVELLE FONCTION DELETE CAISSE ---
+    const handleDeleteCaisse = async (id: string) => {
+        if(!window.confirm("Êtes-vous sûr de vouloir supprimer cette caisse ?")) return;
+
+        const res = await fetch(`https://127.0.0.1:8000/api/caisses/${id}`, {
+            method: 'DELETE',
+            headers: { 'Authorization': `Bearer ${token}` }
+        });
+
+        if (res.ok) {
+            setCaisses(caisses.filter(c => c.id !== id));
+        } else {
+            // Ici on gère l'erreur "Solde non nul" renvoyée par le backend
+            const errorData = await res.json();
+            alert(`Erreur : ${errorData.error || "Impossible de supprimer la caisse"}`);
+        }
+    };
+
     return (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
             
-            {/* GESTION DES SERVICES */}
+            {/* GESTION DES SERVICES (Inchangé) */}
             <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200 h-fit">
                 <div className="flex items-center mb-4 text-blue-600">
                     <Layers className="mr-2" />
@@ -113,7 +131,7 @@ export default function AdminStructure() {
                     <h3 className="text-lg font-bold">Caisses Physiques</h3>
                 </div>
                 
-                {/* Formulaire Création Caisse */}
+                {/* Formulaire Création (Inchangé) */}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mb-4">
                     <input 
                         type="text" 
@@ -122,8 +140,6 @@ export default function AdminStructure() {
                         placeholder="Nom de la caisse"
                         className="border rounded-lg px-3 py-2"
                     />
-                    
-                    {/* CHAMP SEUIL */}
                     <div className="relative">
                         <input 
                             type="number" 
@@ -134,7 +150,6 @@ export default function AdminStructure() {
                         />
                         <span className="absolute right-3 top-2 text-gray-400 text-sm">FCFA</span>
                     </div>
-
                     <select
                         value={newCaisseEmploye}
                         onChange={(e) => setNewCaisseEmploye(e.target.value)}
@@ -145,7 +160,6 @@ export default function AdminStructure() {
                             <option key={c.id} value={c.id}>{c.nom}</option>
                         ))}
                     </select>
-
                     <select
                         value={newCaisseCompte}
                         onChange={(e) => setNewCaisseCompte(e.target.value)}
@@ -161,20 +175,10 @@ export default function AdminStructure() {
                 <button 
                     onClick={() => handleCreate(
                         'caisses',
-                        { 
-                            nom: newCaisse, 
-                            employe_id: newCaisseEmploye || null,
-                            compte_id: newCaisseCompte || null,
-                            seuil: newCaisseSeuil // Envoi du seuil
-                        },
+                        { nom: newCaisse, employe_id: newCaisseEmploye || null, compte_id: newCaisseCompte || null, seuil: newCaisseSeuil },
                         'caisses',
                         setCaisses,
-                        () => {
-                            setNewCaisse('');
-                            setNewCaisseSeuil('50000');
-                            setNewCaisseEmploye('');
-                            setNewCaisseCompte('');
-                        }
+                        () => { setNewCaisse(''); setNewCaisseSeuil('50000'); setNewCaisseEmploye(''); setNewCaisseCompte(''); }
                     )}
                     className="w-full bg-green-600 text-white py-2 rounded-lg hover:bg-green-700 mb-6 disabled:opacity-50 font-medium"
                     disabled={!newCaisse}
@@ -185,10 +189,19 @@ export default function AdminStructure() {
                 {/* Liste des Caisses */}
                 <ul className="space-y-4">
                     {caisses.map((c) => (
-                        <li key={c.id} className="bg-gray-50 p-4 rounded-lg border border-gray-100 hover:shadow-md transition-shadow">
+                        <li key={c.id} className="bg-gray-50 p-4 rounded-lg border border-gray-100 hover:shadow-md transition-shadow relative">
                             
-                            {/* En-tête de la carte */}
-                            <div className="flex items-center justify-between mb-3 border-b pb-2">
+                            {/* BOUTON SUPPRIMER CAISSE */}
+                            <button 
+                                onClick={() => handleDeleteCaisse(c.id)}
+                                className="absolute top-4 right-4 text-gray-400 hover:text-red-600 transition-colors"
+                                title="Supprimer la caisse (si solde nul)"
+                            >
+                                <Trash2 size={16} />
+                            </button>
+
+                            {/* En-tête */}
+                            <div className="flex items-center justify-between mb-3 border-b pb-2 pr-8">
                                 <div>
                                     <p className="font-bold text-gray-800">{c.nom}</p>
                                     <p className="text-xs text-gray-400 font-mono">ID: {c.id.substring(0,8)}...</p>
@@ -198,10 +211,8 @@ export default function AdminStructure() {
                                 </span>
                             </div>
 
-                            {/* Corps de la carte */}
+                            {/* Corps (Inchangé) */}
                             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                                
-                                {/* Colonne Gauche : Affectation */}
                                 <div className="space-y-3">
                                     <div>
                                         <label className="block text-xs font-semibold text-gray-500 mb-1">Employé assigné</label>
@@ -232,16 +243,14 @@ export default function AdminStructure() {
                                         </select>
                                     </div>
                                 </div>
-
-                                {/* Colonne Droite : Paramètres */}
                                 <div>
-                                    <label className="block text-xs font-semibold text-gray-500 mb-1">Plafond Décaissement (FCFA)</label>
+                                    <label className="block text-xs font-semibold text-gray-500 mb-1">Plafond Décaissement</label>
                                     <div className="relative">
                                         <input 
                                             type="number"
                                             defaultValue={c.seuilDecaissement}
                                             onBlur={(e) => handleUpdateCaisse(c.id, { seuil: e.target.value })}
-                                            className="w-full border border-gray-300 rounded px-2 py-1 text-sm text-right pr-10 focus:ring-green-500 focus:border-green-500"
+                                            className="w-full border border-gray-300 rounded px-2 py-1 text-sm text-right pr-10"
                                         />
                                         <span className="absolute right-2 top-1.5 text-xs text-gray-400">F</span>
                                     </div>

@@ -65,21 +65,37 @@ class UserController extends AbstractController
         ]);
     }
 
-    #[Route('', name: 'list', methods: ['GET'])]
+   #[Route('', name: 'list', methods: ['GET'])]
     public function list(UtilisateurRepository $repo): JsonResponse
     {
-        // TODO: Filtrer selon le rôle (un Chef ne voit que son service)
-        // Pour l'instant, le Manager voit tout
-        $this->denyAccessUnlessGranted('ROLE_MANAGER');
+        /** @var Utilisateur $currentUser */
+        $currentUser = $this->getUser();
 
-        $users = $repo->findAll();
+        // On autorise Manager OU Chef de Service
+        if (!$this->isGranted('ROLE_MANAGER') && !$this->isGranted('ROLE_CHEF_SERVICE')) {
+             throw $this->createAccessDeniedException('Accès refusé.');
+        }
+
+        $criteria = ['isDeleted' => false];
+
+        // SI C'EST UN CHEF DE SERVICE (et pas un manager) : On ne montre que SON service
+        if ($this->isGranted('ROLE_CHEF_SERVICE') && !$this->isGranted('ROLE_MANAGER')) {
+            $service = $currentUser->getService();
+            if (!$service) {
+                return $this->json([]); // Si le chef n'a pas de service, il ne voit personne
+            }
+            $criteria['service'] = $service;
+        }
+
+        $users = $repo->findBy($criteria);
+        
         $data = [];
         foreach ($users as $u) {
             $data[] = [
                 'id' => $u->getId(),
                 'nom' => $u->getNom(),
                 'email' => $u->getEmail(),
-                'role' => $u->getRoles()[0], // On prend le rôle principal
+                'role' => $u->getRoles()[0], 
                 'service' => $u->getService() ? $u->getService()->getNom() : 'Aucun',
                 'actif' => $u->isEstActif()
             ];
@@ -221,5 +237,81 @@ class UserController extends AbstractController
         $em->flush();
 
         return $this->json(['message' => 'Mot de passe modifié. Compte sécurisé.']);
+    }
+
+   #[Route('/{id}/toggle-status', name: 'toggle_status', methods: ['PATCH'])]
+    public function toggleStatus(Utilisateur $user, EntityManagerInterface $em): JsonResponse
+    {
+        $this->checkDroitModification($user); // Vérif sécu (voir fonction privée en bas)
+
+        $nouvelEtat = !$user->isEstActif();
+        $user->setEstActif($nouvelEtat);
+        $em->flush();
+
+        return $this->json([
+            'message' => $nouvelEtat ? 'Utilisateur réactivé.' : 'Utilisateur suspendu.',
+            'actif' => $nouvelEtat
+        ]);
+    }
+
+    #[Route('/{id}', name: 'delete', methods: ['DELETE'])]
+    public function delete(Utilisateur $user, EntityManagerInterface $em): JsonResponse
+    {
+        $this->denyAccessUnlessGranted('ROLE_MANAGER');
+
+        // On ne supprime pas physiquement, on archive
+        $user->setIsDeleted(true);
+        $user->setEstActif(false); // On coupe aussi l'accès immédiatement
+        
+        // Optionnel : On peut ajouter un suffixe à l'email pour libérer l'adresse
+        // $user->setEmail($user->getEmail() . '_deleted_' . uniqid());
+
+        $em->flush();
+
+        return $this->json(['message' => 'Utilisateur supprimé avec succès.']);
+    }
+    // DANS src/Controller/UserController.php
+
+   #[Route('/{id}/reset-password', name: 'reset_password', methods: ['PATCH'])]
+    public function resetPassword(Utilisateur $user, EntityManagerInterface $em, UserPasswordHasherInterface $hasher): JsonResponse
+    {
+        $this->checkDroitModification($user); // Vérif sécu
+
+        $tempPassword = 'ChangeMoi123!';
+        $user->setPassword($hasher->hashPassword($user, $tempPassword));
+        $user->setPasswordMustBeChanged(true);
+        $user->setEstActif(true); // On réactive si besoin
+
+        $em->flush();
+
+        return $this->json([
+            'message' => 'Mot de passe réinitialisé.',
+            'temp_password' => $tempPassword
+        ]);
+    }
+
+    private function checkDroitModification(Utilisateur $cible): void
+    {
+        /** @var Utilisateur $me */
+        $me = $this->getUser();
+
+        if ($this->isGranted('ROLE_MANAGER')) {
+            return; // Le manager a tous les droits
+        }
+
+        if ($this->isGranted('ROLE_CHEF_SERVICE')) {
+            // 1. Vérif Service
+            if ($cible->getService() !== $me->getService()) {
+                throw $this->createAccessDeniedException("Cet employé n'est pas dans votre service.");
+            }
+            // 2. Vérif Hiérarchie (Un chef ne touche pas à un autre chef ou manager)
+            $rolesCible = $cible->getRoles();
+            if (in_array('ROLE_MANAGER', $rolesCible) || in_array('ROLE_CHEF_SERVICE', $rolesCible)) {
+                throw $this->createAccessDeniedException("Action non autorisée sur ce supérieur.");
+            }
+            return;
+        }
+
+        throw $this->createAccessDeniedException();
     }
 }

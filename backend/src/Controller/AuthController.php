@@ -38,13 +38,28 @@ class AuthController extends AbstractController
             return $this->json(['message' => 'Utilisateur introuvable'], 401);
         }
 
+        // --- AJOUT SÉCURITÉ : VÉRIFICATION DU STATUT ---
+        
+        // A. Vérifier si le compte est supprimé (Archivé)
+        // On utilise method_exists au cas où le champ n'est pas encore partout, mais tu l'as ajouté.
+        if (method_exists($user, 'isDeleted') && $user->isDeleted()) {
+            return $this->json(['message' => 'Ce compte a été supprimé.'], 403);
+        }
+
+        // B. Vérifier si le compte est suspendu / inactif
+        if (!$user->isEstActif()) {
+            return $this->json(['message' => 'Ce compte est désactivé. Contactez l\'administrateur.'], 403);
+        }
+
+        // ------------------------------------------------
+
         // 2. Vérifier le mot de passe
         if (!$this->hasher->isPasswordValid($user, $password)) {
             return $this->json(['message' => 'Mot de passe incorrect'], 401);
         }
 
         // 3. GESTION 2FA
-        if ($user->isGoogleAuthenticatorEnabled()) { // On utilise la méthode de l'interface
+        if ($user->isGoogleAuthenticatorEnabled()) { 
             if (!$code2fa) {
                 return $this->json([
                     '2fa_required' => true, 

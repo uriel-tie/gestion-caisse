@@ -21,7 +21,7 @@ class CaisseController extends AbstractController
     #[Route('', name: 'list', methods: ['GET'])]
     public function list(CaisseRepository $repo): JsonResponse
     {
-        $caisses = $repo->findAll();
+        $caisses = $repo->findBy(['isDeleted' => false]);
         $data = [];
         foreach ($caisses as $c) {
             $employe = $c->getEmployeAssigne();
@@ -229,4 +229,33 @@ class CaisseController extends AbstractController
             $em->persist($existing);
         }
     }
+#[Route('/{id}', name: 'delete', methods: ['DELETE'])]
+    public function delete(Caisse $caisse, EntityManagerInterface $em): JsonResponse
+    {
+        $this->denyAccessUnlessGranted('ROLE_MANAGER');
+
+        // 1. VÉRIFICATION DU SOLDE
+        // On s'assure que le solde est strictement égal à 0
+        if ((float)$caisse->getSolde() != 0) {
+            return $this->json([
+                'error' => 'Impossible de supprimer une caisse qui contient encore de l\'argent. Veuillez faire un transfert ou un décaissement pour vider la caisse d\'abord.'
+            ], 400); // 400 Bad Request
+        }
+
+        // 2. VÉRIFICATION SESSION OUVERTE (Optionnel mais conseillé)
+        if ($caisse->isEstOuverte()) {
+            return $this->json([
+                'error' => 'Impossible de supprimer une caisse en cours d\'utilisation (ouverte).'
+            ], 400);
+        }
+
+        // 3. SOFT DELETE
+        $caisse->setIsDeleted(true);
+        // On désassigne l'employé pour éviter les conflits futurs
+        $caisse->setEmployeAssigne(null); 
+        
+        $em->flush();
+
+        return $this->json(['message' => 'Caisse supprimée avec succès.']);
+    } 
 }

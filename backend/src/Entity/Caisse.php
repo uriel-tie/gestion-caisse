@@ -33,12 +33,22 @@ class Caisse
     #[ORM\JoinColumn(nullable: true)] // Nullable au début pour ne pas casser l'existant
     private ?CompteComptable $compteComptable = null;
 
-    // ... propriétés existantes
-
     #[ORM\Column(type: 'decimal', precision: 12, scale: 2, options: ['default' => '50000.00'])]
     private ?string $seuilDecaissement = '50000.00'; // Valeur par défaut si non précisée
 
-    // ... getters et setters
+    #[ORM\Column(type: 'boolean', options: ['default' => false])]
+    private bool $isDeleted = false;
+
+    public function isDeleted(): bool
+    {
+        return $this->isDeleted;
+    }
+
+    public function setIsDeleted(bool $isDeleted): static
+    {
+        $this->isDeleted = $isDeleted;
+        return $this;
+    }
 
     public function getSeuilDecaissement(): ?string
     {

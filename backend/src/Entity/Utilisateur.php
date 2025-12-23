@@ -80,7 +80,19 @@ class Utilisateur implements UserInterface, PasswordAuthenticatedUserInterface, 
     #[ORM\Column(type: 'boolean')]
     private bool $is2faEnabled = false;
 
-    // --- Getters & Setters ---
+    #[ORM\Column(type: 'boolean', options: ['default' => false])]
+    private bool $isDeleted = false;
+
+    public function isDeleted(): bool
+    {
+        return $this->isDeleted;
+    }
+
+    public function setIsDeleted(bool $isDeleted): static
+    {
+        $this->isDeleted = $isDeleted;
+        return $this;
+    }
 
     public function getGoogleAuthenticatorSecret(): ?string
     {

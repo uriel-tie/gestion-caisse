@@ -114,10 +114,27 @@ class AuditSubscriber
         if ($value instanceof \DateTimeInterface) {
             return $value->format('d/m/Y H:i:s');
         }
-        if (is_object($value) && method_exists($value, 'getId')) {
-            return 'Ref#' . $value->getId(); // Ex: Ref#45
+
+        // 1. Si c'est un Utilisateur, on retourne son nom
+        if ($value instanceof \App\Entity\Utilisateur) {
+            // Vous pouvez concaténer prénom et nom si nécessaire : 
+            // return $value->getPrenom() . ' ' . $value->getNom();
+            return $value->getNom(); 
         }
+
+        // 2. Si c'est une Caisse, on retourne son nom
+        if ($value instanceof \App\Entity\Caisse) {
+            return $value->getNom();
+        }
+
+
+        if (is_object($value) && method_exists($value, 'getId')) {
+            // Fallback : Si c'est une autre entité qu'on a oublié de gérer spécifiquement
+            return 'Ref#' . $value->getId(); 
+        }
+
         if (is_array($value)) return 'Array(...)';
+        
         return $value;
     }
 }

@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Monitor, User, Lock, Unlock, Coins, Wallet, Activity, AlertCircle, FileText, Banknote, ShieldCheck, ArrowRight } from 'lucide-react';
+import { Monitor, User, Lock, Unlock, Activity, AlertCircle, FileText, Banknote, ShieldCheck, ArrowRight, Wallet } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
 interface CaisseDetail {
@@ -60,13 +60,26 @@ export default function CaissesLiveView() {
     const nbOuvertes = caisses.filter(c => c.estOuverte).length;
     const nbFermees = caisses.length - nbOuvertes;
 
-    // --- GRILLE DYNAMIQUE CAISSES ---
+    // --- GRILLE DYNAMIQUE CAISSES (MODIFIÉE) ---
     const getCaisseGridClass = () => {
         const count = caisses.length;
         if (count === 0) return "";
-        if (count === 1) return "grid-cols-1 max-w-2xl mx-auto"; 
-        if (count === 2) return "grid-cols-1 md:grid-cols-2 max-w-5xl mx-auto";
-        return "grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4"; 
+
+        // Logique : Occuper toute la largeur, diviser équitablement jusqu'à 5.
+        // Au-delà de 5, on reste sur une grille de 5 et les éléments suivants passent à la ligne.
+        switch (count) {
+            case 1:
+                return "grid-cols-1"; 
+            case 2:
+                return "grid-cols-1 md:grid-cols-2";
+            case 3:
+                return "grid-cols-1 md:grid-cols-3";
+            case 4:
+                return "grid-cols-1 md:grid-cols-4";
+            default:
+                // Pour 5 ou plus : 5 colonnes par ligne
+                return "grid-cols-1 md:grid-cols-5";
+        }
     };
 
     if (loading) return (
@@ -186,7 +199,7 @@ export default function CaissesLiveView() {
                 )}
             </div>
 
-            {/* 3. SECTION BASSE : PILOTAGE & ALERTES (Pour combler le vide utilement) */}
+            {/* 3. SECTION BASSE : PILOTAGE & ALERTES */}
             <div className="pt-4 border-t border-gray-100">
                 <h3 className="text-lg font-bold text-gray-700 mb-4 flex items-center">
                     <Activity className="mr-2 h-5 w-5 text-gray-400"/>
@@ -218,7 +231,7 @@ export default function CaissesLiveView() {
 
                     {/* Carte Opérations Caisse */}
                     <div 
-                        onClick={() => navigate('/manager/validations')} // Ou une autre route si tu as séparé
+                        onClick={() => navigate('/manager/validations')} 
                         className="bg-white p-5 rounded-xl border border-gray-200 shadow-sm hover:shadow-md hover:border-orange-300 transition-all cursor-pointer group"
                     >
                         <div className="flex justify-between items-start mb-2">

@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Users, UserPlus, Mail, Shield } from 'lucide-react';
+import { Users, UserPlus, Mail, Ban, CheckCircle, KeyRound } from 'lucide-react';
 import Swal from 'sweetalert2';
 
 export default function MyTeamPage() {
@@ -10,29 +10,20 @@ export default function MyTeamPage() {
     // Form state
     const [nom, setNom] = useState('');
     const [email, setEmail] = useState('');
+    
+    const token = localStorage.getItem('token');
 
     const fetchTeam = async () => {
-        // NOTE: Pour l'instant, ton UserController::list renvoie tout le monde si Manager.
-        // Il faudrait idéalement une route /api/users/my-team pour le chef.
-        // Ici on suppose que le backend filtre ou on le fait ici temporairement si l'API renvoie tout.
-        // Comme on n'a pas modifié la route "list" pour le chef, on va tricher un peu ou demander au backend.
-        // SOLUTION RAPIDE : Utilisons la route list, mais le chef risque d'avoir un 403.
-        // RECOMMANDATION : Utilise le composant AdminUsers mais en lecture seule ? 
-        // Non, faisons une liste simple. Si l'API bloque, il faudra ajuster le UserController::list.
-        
-        // Pour cet exemple, je vais simuler que l'API /api/users renvoie les bonnes données filtrées si on est chef.
-        // (Nécessite d'ajuster UserController::list si ce n'est pas le cas)
-        
         try {
-            const token = localStorage.getItem('token');
+            // Le backend filtre maintenant automatiquement selon le rôle du chef
             const res = await fetch('https://127.0.0.1:8000/api/users', {
                 headers: { 'Authorization': `Bearer ${token}` }
             });
             if (res.ok) {
                 const allUsers = await res.json();
-                // Filtrage côté front si l'API renvoie tout le monde (pas sécurisé mais temporaire)
-                // Idéalement : Le backend ne doit renvoyer que le service du chef.
                 setUsers(allUsers); 
+            } else {
+                console.error("Erreur 403 probable si backend non mis à jour");
             }
         } catch (e) { console.error(e); } 
         finally { setLoading(false); }
@@ -40,10 +31,10 @@ export default function MyTeamPage() {
 
     useEffect(() => { fetchTeam(); }, []);
 
+    // --- ACTIONS ---
+
     const handleCreateUser = async (e: React.FormEvent) => {
         e.preventDefault();
-        const token = localStorage.getItem('token');
-
         try {
             const res = await fetch('https://127.0.0.1:8000/api/users', {
                 method: 'POST',
@@ -51,7 +42,7 @@ export default function MyTeamPage() {
                     'Authorization': `Bearer ${token}`,
                     'Content-Type': 'application/json'
                 },
-                body: JSON.stringify({ nom, email }) // Pas besoin de role/service, le backend gère pour le chef
+                body: JSON.stringify({ nom, email }) 
             });
 
             const data = await res.json();
@@ -62,7 +53,7 @@ export default function MyTeamPage() {
                 Swal.fire({
                     icon: 'success',
                     title: 'Compte créé !',
-                    html: `Mot de passe temporaire : <b>${data.temp_password}</b><br/>Notez-le bien !`
+                    html: `Mot de passe temporaire : <b>${data.temp_password}</b>`
                 });
                 fetchTeam();
             } else {
@@ -70,6 +61,62 @@ export default function MyTeamPage() {
             }
         } catch (e) {
             Swal.fire('Erreur', 'Erreur réseau', 'error');
+        }
+    };
+
+    const handleToggleStatus = async (user: any) => {
+        const action = user.actif ? 'suspendre' : 'réactiver';
+        const result = await Swal.fire({
+            title: `Voulez-vous ${action} ${user.nom} ?`,
+            text: user.actif ? "Il ne pourra plus se connecter." : "Il retrouvera ses accès.",
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonText: 'Oui, confirmer',
+            cancelButtonText: 'Annuler'
+        });
+
+        if (result.isConfirmed) {
+            try {
+                const res = await fetch(`https://127.0.0.1:8000/api/users/${user.id}/toggle-status`, {
+                    method: 'PATCH',
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+                if (res.ok) {
+                    fetchTeam();
+                    Swal.fire('Succès', `Utilisateur ${action === 'suspendre' ? 'suspendu' : 'réactivé'}`, 'success');
+                }
+            } catch (error) {
+                Swal.fire('Erreur', 'Impossible de changer le statut', 'error');
+            }
+        }
+    };
+
+    const handleResetPassword = async (user: any) => {
+        const result = await Swal.fire({
+            title: 'Réinitialiser le mot de passe ?',
+            text: `Le mot de passe de ${user.nom} deviendra "ChangeMoi123!".`,
+            icon: 'question',
+            showCancelButton: true,
+            confirmButtonText: 'Oui, réinitialiser'
+        });
+
+        if (result.isConfirmed) {
+            try {
+                const res = await fetch(`https://127.0.0.1:8000/api/users/${user.id}/reset-password`, {
+                    method: 'PATCH',
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+                if (res.ok) {
+                    const data = await res.json();
+                    Swal.fire({
+                        title: 'Succès',
+                        html: `Nouveau mot de passe : <b>${data.temp_password}</b>`,
+                        icon: 'success'
+                    });
+                }
+            } catch (error) {
+                Swal.fire('Erreur', 'Échec de la réinitialisation', 'error');
+            }
         }
     };
 
@@ -94,14 +141,15 @@ export default function MyTeamPage() {
                             <th className="px-6 py-4">Collaborateur</th>
                             <th className="px-6 py-4">Rôle</th>
                             <th className="px-6 py-4 text-center">Statut</th>
+                            <th className="px-6 py-4 text-right">Actions</th>
                         </tr>
                     </thead>
                     <tbody className="divide-y divide-gray-100">
                         {users.map((u) => (
-                            <tr key={u.id} className="hover:bg-gray-50">
+                            <tr key={u.id} className={`hover:bg-gray-50 ${!u.actif ? 'bg-red-50' : ''}`}>
                                 <td className="px-6 py-4">
                                     <div className="flex items-center">
-                                        <div className="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 font-bold mr-3">
+                                        <div className={`w-10 h-10 rounded-full flex items-center justify-center font-bold mr-3 ${u.actif ? 'bg-blue-100 text-blue-600' : 'bg-gray-200 text-gray-500'}`}>
                                             {u.nom.charAt(0)}
                                         </div>
                                         <div>
@@ -119,10 +167,33 @@ export default function MyTeamPage() {
                                 </td>
                                 <td className="px-6 py-4 text-center">
                                     {u.actif ? (
-                                        <span className="inline-block w-3 h-3 bg-green-500 rounded-full"></span>
+                                        <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-green-100 text-green-800">
+                                            <CheckCircle className="w-3 h-3 mr-1"/> Actif
+                                        </span>
                                     ) : (
-                                        <span className="inline-block w-3 h-3 bg-red-400 rounded-full"></span>
+                                        <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-red-100 text-red-800">
+                                            <Ban className="w-3 h-3 mr-1"/> Suspendu
+                                        </span>
                                     )}
+                                </td>
+                                <td className="px-6 py-4 text-right space-x-2">
+                                    {/* BOUTON SUSPENDRE */}
+                                    <button 
+                                        onClick={() => handleToggleStatus(u)}
+                                        className={`p-1.5 rounded transition ${u.actif ? 'text-orange-500 hover:bg-orange-50' : 'text-green-600 hover:bg-green-50'}`}
+                                        title={u.actif ? "Suspendre" : "Réactiver"}
+                                    >
+                                        {u.actif ? <Ban size={18}/> : <CheckCircle size={18}/>}
+                                    </button>
+
+                                    {/* BOUTON RESET */}
+                                    <button 
+                                        onClick={() => handleResetPassword(u)}
+                                        className="p-1.5 rounded text-blue-600 hover:bg-blue-50 transition"
+                                        title="Réinitialiser mot de passe"
+                                    >
+                                        <KeyRound size={18}/>
+                                    </button>
                                 </td>
                             </tr>
                         ))}
@@ -130,12 +201,13 @@ export default function MyTeamPage() {
                 </table>
             </div>
 
-            {/* Modal Ajout Rapide */}
+            {/* Modal Ajout (Inchangé) */}
             {showModal && (
                 <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center">
                     <div className="bg-white rounded-lg p-6 w-full max-w-md shadow-2xl">
                         <h2 className="text-xl font-bold mb-4">Nouveau Membre</h2>
                         <form onSubmit={handleCreateUser}>
+                            {/* ... champs ... */}
                             <div className="mb-4">
                                 <label className="block text-sm font-medium mb-1">Nom complet</label>
                                 <input type="text" required className="w-full border p-2 rounded" value={nom} onChange={e=>setNom(e.target.value)} />

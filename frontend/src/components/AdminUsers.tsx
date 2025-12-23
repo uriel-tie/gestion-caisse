@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { UserPlus, User, Copy } from 'lucide-react';
+import { UserPlus, User, Copy, Ban, CheckCircle, Trash2, AlertTriangle, KeyRound } from 'lucide-react';
 
 export default function AdminUsers() {
     const [users, setUsers] = useState<any[]>([]);
@@ -34,15 +34,68 @@ export default function AdminUsers() {
         
         if (res.ok) {
             const data = await res.json();
-            setTempPassword(data.temp_password); // BINGO ! On affiche le mot de passe
+            setTempPassword(data.temp_password); 
             fetchUsers();
-            setFormData({ ...formData, nom: '', email: '' }); // Reset partiel
+            setFormData({ ...formData, nom: '', email: '' }); 
+        }
+    };
+
+    // --- NOUVELLES FONCTIONS ---
+
+    const handleToggleStatus = async (user: any) => {
+        if(!window.confirm(`Voulez-vous vraiment ${user.actif ? 'suspendre' : 'réactiver'} ${user.nom} ?`)) return;
+
+        try {
+            const res = await fetch(`https://127.0.0.1:8000/api/users/${user.id}/toggle-status`, {
+                method: 'PATCH',
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
+            if (res.ok) fetchUsers(); // On rafraîchit la liste
+        } catch (error) {
+            alert("Erreur lors du changement de statut");
+        }
+    };
+
+    const handleResetPassword = async (user: any) => {
+        if(!window.confirm(`Réinitialiser le mot de passe de ${user.nom} ?\nIl deviendra "ChangeMoi123!" et l'utilisateur devra le changer.`)) return;
+
+        try {
+            const res = await fetch(`https://127.0.0.1:8000/api/users/${user.id}/reset-password`, {
+                method: 'PATCH',
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
+            
+            if (res.ok) {
+                const data = await res.json();
+                alert(`Succès !\nNouveau mot de passe temporaire : ${data.temp_password}`);
+            } else {
+                alert("Erreur lors de la réinitialisation.");
+            }
+        } catch (error) {
+            console.error(error);
+            alert("Erreur technique.");
+        }
+    };
+
+    const handleDelete = async (id: string) => {
+        if(!window.confirm("ATTENTION : Cette suppression est définitive (archivage). Continuer ?")) return;
+
+        try {
+            const res = await fetch(`https://127.0.0.1:8000/api/users/${id}`, {
+                method: 'DELETE',
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
+            if (res.ok) {
+                setUsers(users.filter(u => u.id !== id)); // Mise à jour locale rapide
+            }
+        } catch (error) {
+            alert("Impossible de supprimer cet utilisateur.");
         }
     };
 
     return (
         <div className="space-y-8">
-            {/* FORMULAIRE CRÉATION */}
+            {/* FORMULAIRE CRÉATION (Inchangé mais inclus pour cohérence) */}
             <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200">
                 <h3 className="text-lg font-bold mb-4 flex items-center"><UserPlus className="mr-2"/> Nouvel Employé</h3>
                 
@@ -93,24 +146,60 @@ export default function AdminUsers() {
                 </form>
             </div>
 
-            {/* LISTE PERSONNEL */}
+            {/* LISTE PERSONNEL MISE À JOUR */}
             <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
                 <table className="min-w-full divide-y divide-gray-200">
                     <thead className="bg-gray-50">
                         <tr>
+                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">État</th>
                             <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Nom</th>
                             <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Email</th>
                             <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Rôle</th>
                             <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Service</th>
+                            <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">Actions</th>
                         </tr>
                     </thead>
                     <tbody className="divide-y divide-gray-200">
                         {users.map((u) => (
-                            <tr key={u.id}>
+                            <tr key={u.id} className={!u.actif ? "bg-red-50" : ""}>
+                                <td className="px-6 py-4">
+                                    {u.actif 
+                                        ? <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-green-100 text-green-800"><CheckCircle className="w-3 h-3 mr-1"/> Actif</span>
+                                        : <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-red-100 text-red-800"><Ban className="w-3 h-3 mr-1"/> Suspendu</span>
+                                    }
+                                </td>
                                 <td className="px-6 py-4 text-sm font-medium text-gray-900">{u.nom}</td>
                                 <td className="px-6 py-4 text-sm text-gray-500">{u.email}</td>
                                 <td className="px-6 py-4 text-sm"><span className="px-2 py-1 bg-gray-100 rounded-full text-xs">{u.role}</span></td>
                                 <td className="px-6 py-4 text-sm text-gray-500">{u.service}</td>
+                                <td className="px-6 py-4 text-right text-sm font-medium space-x-2">
+                                    {/* BOUTON SUSPENDRE / ACTIVER */}
+                                    <button 
+                                        onClick={() => handleToggleStatus(u)}
+                                        className={`p-1 rounded hover:bg-gray-200 ${u.actif ? 'text-orange-500' : 'text-green-600'}`}
+                                        title={u.actif ? "Suspendre l'accès" : "Réactiver l'accès"}
+                                    >
+                                        {u.actif ? <Ban size={18}/> : <CheckCircle size={18}/>}
+                                    </button>
+                                    
+                                    {/* BOUTON SUPPRIMER */}
+                                    <button 
+                                        onClick={() => handleDelete(u.id)}
+                                        className="p-1 rounded hover:bg-red-100 text-red-600"
+                                        title="Supprimer définitivement"
+                                    >
+                                        <Trash2 size={18}/>
+                                    </button>
+
+                                    {/* BOUTON RESET PASSWORD */}
+                                    <button 
+                                        onClick={() => handleResetPassword(u)}
+                                        className="p-1 rounded hover:bg-blue-100 text-blue-600"
+                                        title="Réinitialiser le mot de passe"
+                                    >
+                                        <KeyRound size={18}/>
+                                    </button>
+                                </td>
                             </tr>
                         ))}
                     </tbody>
