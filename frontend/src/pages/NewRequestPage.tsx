@@ -48,7 +48,7 @@ export default function NewRequestPage() {
 
             // 2. Charger la liste des utilisateurs
             try {
-                const res = await fetch('https://127.0.0.1:8000/api/users', {
+                const res = await fetch('https://127.0.0.1:8000/api/users?all=true', {
                     headers: { 'Authorization': `Bearer ${token}` }
                 });
                 if (res.ok) setUsers(await res.json());

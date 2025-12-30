@@ -76,7 +76,7 @@ export default function AdminCompta() {
     };
 
     return (
-        <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200 max-w-4xl">
+        <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200">
             <div className="flex items-center mb-6 text-orange-600">
                 <BookOpen className="mr-2 h-6 w-6" />
                 <h3 className="text-xl font-bold">Plan Comptable</h3>

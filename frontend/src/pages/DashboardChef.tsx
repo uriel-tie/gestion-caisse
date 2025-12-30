@@ -1,4 +1,6 @@
-import React, { useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
+import { useTranslation } from 'react-i18next';
+import Swal from 'sweetalert2';
 import { Check, X, Clock, LogOut } from 'lucide-react';
 import type { UserData } from '../types';
 
@@ -20,6 +22,7 @@ interface DemandeToValidate {
 const DashboardChef: React.FC<DashboardChefProps> = ({ user, onLogout }) => {
     const [demandes, setDemandes] = useState<DemandeToValidate[]>([]);
     const [loading, setLoading] = useState(true);
+    const { t, i18n } = useTranslation();
 
     const fetchDemandes = async () => {
         try {
@@ -43,17 +46,41 @@ const DashboardChef: React.FC<DashboardChefProps> = ({ user, onLogout }) => {
     }, []);
 
     const handleAction = async (id: string, action: 'valider' | 'refuser') => {
-        const token = localStorage.getItem('token');
-        await fetch(`https://127.0.0.1:8000/api/demandes/${id}/workflow`, {
-            method: 'PATCH',
-            headers: {
-                'Authorization': `Bearer ${token}`,
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({ action })
+        const actionLabel = t(`pages.dashboardChef.actions.${action}`);
+        const result = await Swal.fire({
+            title: t('pages.dashboardChef.confirm_title'),
+            text: t('pages.dashboardChef.confirm_text', { action: actionLabel }),
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonText: t('common.yes'),
+            cancelButtonText: t('common.no')
         });
-        // Rafraichir la liste
-        fetchDemandes();
+        if (!result.isConfirmed) return;
+
+        const token = localStorage.getItem('token');
+        try {
+            const res = await fetch(`https://127.0.0.1:8000/api/demandes/${id}/workflow`, {
+                method: 'PATCH',
+                headers: {
+                    'Authorization': `Bearer ${token}`,
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ action })
+            });
+
+            if (res.ok) {
+                Swal.fire(t('common.ok'), t('pages.dashboardChef.action_success'), 'success');
+            } else {
+                const data = await res.json();
+                Swal.fire(t('common.error'), data.error || t('pages.dashboardChef.action_error'), 'error');
+            }
+        } catch (err) {
+            console.error(err);
+            Swal.fire(t('common.error'), t('common.error'), 'error');
+        } finally {
+            // Rafraichir la liste
+            fetchDemandes();
+        }
     };
 
     return (
@@ -61,7 +88,7 @@ const DashboardChef: React.FC<DashboardChefProps> = ({ user, onLogout }) => {
             {/* Navbar */}
             <nav className="bg-blue-800 text-white p-4 shadow-lg">
                 <div className="max-w-7xl mx-auto flex justify-between items-center">
-                    <h1 className="text-xl font-bold">Espace Chef de Service</h1>
+                    <h1 className="text-xl font-bold">{t('pages.dashboardChef.title')}</h1>
                     <div className="flex items-center gap-4">
                         <span> {user.nom}</span>
                         <button onClick={onLogout} className="p-2 hover:bg-blue-700 rounded-full">
@@ -73,14 +100,14 @@ const DashboardChef: React.FC<DashboardChefProps> = ({ user, onLogout }) => {
 
             <div className="max-w-7xl mx-auto p-6">
                 <h2 className="text-2xl font-bold mb-6 text-gray-800 flex items-center">
-                    <Clock className="mr-2" /> Demandes en attente de validation
+                    <Clock className="mr-2" /> {t('pages.dashboardChef.header')}
                 </h2>
 
                 {loading ? (
-                    <p>Chargement...</p>
+                    <p>{t('common.loading')}</p>
                 ) : demandes.length === 0 ? (
                     <div className="bg-white p-8 rounded-lg shadow text-center text-gray-500">
-                        Aucune demande en attente pour votre service.
+                        {t('pages.dashboardChef.empty')}
                     </div>
                 ) : (
                     <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
@@ -97,24 +124,26 @@ const DashboardChef: React.FC<DashboardChefProps> = ({ user, onLogout }) => {
                                 </div>
                                 
                                 <p className="text-gray-600 mb-4 text-sm bg-gray-50 p-2 rounded">
-                                    {demande.motif || "Pas de description"}
+                                    {demande.motif || t('pages.dashboardChef.no_description')}
                                 </p>
 
                                 <div className="flex justify-between items-center mt-4 border-t pt-4">
-                                    <span className="text-xl font-bold text-gray-800">{demande.montant} FCFA</span>
+                                    <span className="text-xl font-bold text-gray-800">{Number(demande.montant).toLocaleString(i18n.language)} {t('common.currency')}</span>
                                     
                                     <div className="flex gap-2">
                                         <button 
                                             onClick={() => handleAction(demande.id, 'refuser')}
                                             className="p-2 text-red-600 hover:bg-red-50 rounded-full transition"
-                                            title="Refuser"
+                                            title={t('pages.dashboardChef.refuse_button')}
+                                            aria-label={t('pages.dashboardChef.refuse_button')}
                                         >
                                             <X size={24} />
                                         </button>
                                         <button 
                                             onClick={() => handleAction(demande.id, 'valider')}
                                             className="p-2 bg-green-600 text-white rounded-full hover:bg-green-700 shadow-md transition"
-                                            title="Valider et envoyer au Manager"
+                                            title={t('pages.dashboardChef.validate_button')}
+                                            aria-label={t('pages.dashboardChef.validate_button')}
                                         >
                                             <Check size={24} />
                                         </button>

@@ -53,7 +53,7 @@ export default function LandingPage() {
             
             <div className="flex flex-col sm:flex-row justify-center gap-4">
               <button 
-                onClick={() => navigate('/login')}
+                onClick={() => navigate('/Register')}
                 className="px-8 py-4 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-bold text-lg shadow-xl shadow-blue-600/30 transition-transform hover:-translate-y-1"
               >
                 Commencer maintenant
@@ -79,7 +79,7 @@ export default function LandingPage() {
                 <div className="w-12 h-12 bg-green-100 rounded-xl flex items-center justify-center mb-6 text-green-600">
                   <Activity size={24} />
                 </div>
-                <h3 className="text-xl font-bold text-gray-900 mb-3">Station Caissier</h3>
+                <h3 className="text-xl font-bold text-gray-900 mb-3">Interface Caissier</h3>
                 <p className="text-gray-500 leading-relaxed">
                   Une interface dédiée pour des encaissements et décaissements rapides. Contrôle de solde en temps réel et journal automatisé.
                 </p>
@@ -92,7 +92,7 @@ export default function LandingPage() {
                 </div>
                 <h3 className="text-xl font-bold text-gray-900 mb-3">Workflow de Validation</h3>
                 <p className="text-gray-500 leading-relaxed">
-                  Fini le papier. Les demandes suivent un circuit d'approbation numérique : Employé ➝ Chef ➝ Manager ➝ Caisse.
+                  Fini le papier. Les demandes suivent un circuit d'approbation numérique : Employé ➝ Chef de service ➝ Manager ➝ Caisse.
                 </p>
               </div>
 
@@ -114,7 +114,7 @@ export default function LandingPage() {
         <section id="security" className="py-24 bg-white">
             <div className="max-w-7xl mx-auto px-6 grid md:grid-cols-2 gap-12 items-center">
                 <div>
-                    <h2 className="text-3xl font-bold text-gray-900 mb-6">Sécurité Bancaire</h2>
+                    <h2 className="text-3xl font-bold text-gray-900 mb-6">Sécurité</h2>
                     <div className="space-y-4">
                         {[
                             "Chiffrement des données sensibles",

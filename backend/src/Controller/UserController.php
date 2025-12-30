@@ -16,6 +16,45 @@ use Symfony\Component\Security\Http\Attribute\CurrentUser;
 #[Route('/api/users', name: 'api_users_')]
 class UserController extends AbstractController
 {
+     #[Route('/register', name: 'create', methods: ['POST'])]
+    public function register(
+        Request $request,
+        EntityManagerInterface $em,
+        UserPasswordHasherInterface $hasher
+    ): JsonResponse
+    {
+        $data = json_decode($request->getContent(), true);
+
+        if (empty($data['email']) || empty($data['nom'])) {
+            return $this->json(['error' => 'Données incomplètes'], 400);
+        }
+
+        // Création de l'utilisateur
+        $user = new Utilisateur();
+        $user->setEmail($data['email']);
+        $user->setNom($data['nom']);
+        $user->setRoles(['ROLE_MANAGER']); // Tous les comptes créés sont manager
+        $user->setEstActif(false);        // Inactif par défaut
+        $user->setPasswordMustBeChanged(true);
+
+        // Génération mot de passe temporaire
+        $emailParts = explode('@', $data['email']);
+        $prefix = ucfirst($emailParts[0]);
+        $tempPassword = $prefix . '@2025!';
+
+        $hashedPassword = $hasher->hashPassword($user, $tempPassword);
+        $user->setPassword($hashedPassword);
+
+        $em->persist($user);
+        $em->flush();
+
+        return $this->json([
+            'message' => 'Compte créé avec succès. Il est inactif pour l’instant.',
+            'temp_password' => $tempPassword,
+            'id' => $user->getId(),
+        ], 201);
+    }
+
    #[Route('/{id}', name: 'api_users_show', methods: ['GET'])]
     public function show(string $id, UtilisateurRepository $utilisateurRepository): JsonResponse
     {
@@ -65,28 +104,46 @@ class UserController extends AbstractController
         ]);
     }
 
-   #[Route('', name: 'list', methods: ['GET'])]
-    public function list(UtilisateurRepository $repo): JsonResponse
+    #[Route('', name: 'list', methods: ['GET'])]
+    public function list(UtilisateurRepository $repo, Request $request): JsonResponse
     {
         /** @var Utilisateur $currentUser */
         $currentUser = $this->getUser();
 
-        // On autorise Manager OU Chef de Service
-        if (!$this->isGranted('ROLE_MANAGER') && !$this->isGranted('ROLE_CHEF_SERVICE')) {
-             throw $this->createAccessDeniedException('Accès refusé.');
+        if (!$currentUser) {
+            return $this->json(['message' => 'Non authentifié'], 401);
         }
 
         $criteria = ['isDeleted' => false];
 
-        // SI C'EST UN CHEF DE SERVICE (et pas un manager) : On ne montre que SON service
-        if ($this->isGranted('ROLE_CHEF_SERVICE') && !$this->isGranted('ROLE_MANAGER')) {
+        // On récupère le paramètre "all" dans l'URL (ex: /api/users?all=true)
+        $requestAll = $request->query->get('all') === 'true';
+
+        // LOGIQUE DE FILTRAGE :
+        // On applique le filtre par service SI :
+        // 1. L'utilisateur n'est PAS Manager
+        // 2. ET qu'on n'a pas explicitement demandé tout le monde (?all=true)
+        if (!$this->isGranted('ROLE_MANAGER') && !$requestAll) {
             $service = $currentUser->getService();
+            
+            // Si pas de service et pas de demande "all", on renvoie vide ou juste soi-même
             if (!$service) {
-                return $this->json([]); // Si le chef n'a pas de service, il ne voit personne
+                 return $this->json([
+                    [
+                        'id' => $currentUser->getId(),
+                        'nom' => $currentUser->getNom(),
+                        'email' => $currentUser->getEmail(),
+                        'role' => $currentUser->getRoles()[0],
+                        'service' => 'Aucun',
+                        'actif' => $currentUser->isEstActif()
+                    ]
+                ]);
             }
+            
             $criteria['service'] = $service;
         }
 
+        // Si c'est un Manager OU si "all=true" a été envoyé, on récupère tout le monde (filtré par isDeleted=false uniquement)
         $users = $repo->findBy($criteria);
         
         $data = [];
@@ -100,6 +157,7 @@ class UserController extends AbstractController
                 'actif' => $u->isEstActif()
             ];
         }
+        
         return $this->json($data);
     }
 
@@ -313,5 +371,38 @@ class UserController extends AbstractController
         }
 
         throw $this->createAccessDeniedException();
+    }
+
+    #[Route('/{id}/activate', name: 'activate', methods: ['PATCH'])]
+    public function activate(
+        #[CurrentUser] ?Utilisateur $currentUser,
+        Utilisateur $userToActivate,
+        EntityManagerInterface $em
+    ): JsonResponse
+    {
+        if (!$currentUser) {
+            return $this->json(['error' => 'Non authentifié'], 401);
+        }
+
+        // Seul un manager actif peut activer un compte
+        if (!in_array('ROLE_MANAGER', $currentUser->getRoles()) || !$currentUser->isEstActif()) {
+            return $this->json(['error' => 'Accès interdit'], 403);
+        }
+
+        // On ne peut activer que des comptes manager
+        if (!in_array('ROLE_MANAGER', $userToActivate->getRoles())) {
+            return $this->json(['error' => 'Seuls les comptes manager peuvent être activés'], 403);
+        }
+
+        // Activation
+        $userToActivate->setEstActif(true);
+        $em->flush();
+
+        return $this->json([
+            'message' => 'Compte activé avec succès.',
+            'id' => $userToActivate->getId(),
+            'email' => $userToActivate->getEmail(),
+            'actif' => $userToActivate->isEstActif()
+        ]);
     }
 }

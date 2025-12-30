@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Plus, Search, Filter, Eye, Clock, CheckCircle, XCircle, FileText, ChevronRight } from 'lucide-react';
+import { Plus, Search, Filter, Eye, Clock, CheckCircle, Copy, FileText, ChevronRight } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { RequestBonViewer } from '../components/RequestBonViewer';
 
@@ -70,6 +70,15 @@ export default function RequestsPage() {
         );
     };
 
+    const copyToClipboard = async (value: string) => {
+    try {
+        await navigator.clipboard.writeText(value);
+    } catch (e) {
+        console.error('Erreur copie', e);
+    }
+};
+
+
     return (
         <div className="max-w-6xl mx-auto">
             {/* Header Page */}
@@ -126,8 +135,23 @@ export default function RequestsPage() {
                             {demandes.map((d) => (
                                 <tr key={d.id} className="hover:bg-blue-50/50 transition-colors group cursor-pointer" onClick={() => openDetail(d.id)}>
                                     <td className="px-6 py-4 font-mono text-sm text-gray-600 font-medium">
-                                        {d.numeroReference || '---'}
-                                    </td>
+    <div className="flex items-center gap-2 group">
+        <span>{d.numeroReference || '---'}</span>
+
+        {d.numeroReference && (
+            <button
+                onClick={(e) => {
+                    e.stopPropagation();
+                    copyToClipboard(d.numeroReference);
+                }}
+                className="opacity-0 group-hover:opacity-100 transition text-gray-400 hover:text-blue-600"
+                title={t('common.copy')}
+            >
+                <Copy size={14} />
+            </button>
+        )}
+    </div>
+</td>
                                     <td className="px-6 py-4">
                                         <div className="font-medium text-gray-900">{d.titre}</div>
                                         <div className="text-xs text-gray-500">{d.type}</div>

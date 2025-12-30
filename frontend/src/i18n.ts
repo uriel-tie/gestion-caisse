@@ -1,9 +1,9 @@
 import i18n from 'i18next';
 import { initReactI18next } from 'react-i18next';
-import LanguageDetector from 'i18next-browser-languagedetector';
+import LanguageDetector from 'i18next-browser-languagedetector'; // detect language
 
 // --- TRADUCTIONS INTÉGRÉES (Plus sûr) ---
-const resources = {
+const resources: any = {
   fr: {
     translation: {
       "common": {
@@ -91,6 +91,18 @@ const resources = {
           "finance_sub": "Historique global et comptabilité.",
           "admin": "Admin",
           "admin_sub": "Paramétrage système."
+        },
+        "admin": {
+          "title": "Administration",
+          "subtitle": "Configuration globale du système. Certaines actions sensibles sont enregistrées dans l'audit.",
+          "tabs": {
+            "soc": "Société",
+            "users": "Personnel",
+            "structure": "Services",
+            "caisse": "Caisses",
+            "compta": "Plan Comptable",
+            "modes": "Modes Paiement"
+          }
         },
         "requests": {
           "title": "Mes Demandes",
@@ -220,6 +232,25 @@ const resources = {
           "cancel": "Annuler",
           "create_account": "Créer le compte"
         },
+        "chefValidation": {
+          "title": "Validation des demandes (Service)",
+          "empty_title": "Tout est à jour !",
+          "empty_sub": "Aucune demande en attente de validation pour votre service.",
+          "view_request": "Voir le bon",
+          "validate_button": "Valider",
+          "refuse_button": "Refuser",
+          "modal_validate": "Valider la demande",
+          "confirm_title": "Confirmation",
+          "confirm_text": "Voulez-vous vraiment {{action}} cette demande ?",
+          "actions": {
+            "valider": "valider",
+            "refuser": "refuser"
+          },
+          "load_error": "Impossible de charger le détail",
+          "load_error_title": "Erreur",
+          "action_success": "Action effectuée avec succès.",
+          "action_error": "Impossible d'exécuter l'action"
+        },
         "history": {
           "title": "Historique Complet",
           "subtitle": "Consultez, filtrez et exportez toutes les opérations.",
@@ -246,13 +277,43 @@ const resources = {
           "no_results": "Aucun résultat.",
           "page_info": "Page <strong>{{current}}</strong> sur <strong>{{total}}</strong> — {{items}} opérations"
         },
+        "caisseHistory": {
+          "back": "Retour Caisse",
+          "title": "Mes Opérations",
+          "filters": {
+            "type": "Type",
+            "all": "Tout",
+            "entry": "Entrées (+)",
+            "exit": "Sorties (-)"
+          },
+          "table": {
+            "headers": {
+              "hour": "Heure",
+              "type": "Type",
+              "reason": "Motif",
+              "amount": "Montant",
+              "actions": "Actions"
+            }
+          },
+          "type": {
+            "entry": "ENTRÉE",
+            "exit": "SORTIE"
+          },
+          "view_details": "Voir détails",
+          "print_receipt": "Imprimer Bon de Caisse",
+          "page": "Page {{current}}"
+        },
         "audit": {
+          "title": "Journal d'Audit & Sécurité",
+          "refresh": "Actualiser",
+          "search_placeholder": "Rechercher par acteur, action ou cible...",
           "date_ip": "Date & IP",
           "actor": "Acteur",
           "action": "Action",
           "target": "Cible",
           "loading": "Chargement des données de sécurité...",
           "empty": "Aucun événement trouvé.",
+          "details_title": "Détails des modifications",
           "no_details": "Aucun détail technique disponible pour cette action (Création simple ou action système)."
         },
         "forceChangePassword": {
@@ -263,7 +324,10 @@ const resources = {
           "saving": "Enregistrement..."
         },
         "construction": {
-          "title": "Espace en construction"
+          "title": "Espace en construction",
+          "hello": "Bonjour",
+          "dev_for": "Votre tableau de bord ({{roles}}) est en cours de développement.",
+          "logout": "Se déconnecter"
         },
         "dashboard": {
           "admin": "Compte Administrateur",
@@ -279,6 +343,78 @@ const resources = {
           "history_financial": "Historique Financier",
           "administration": "Administration",
           "welcome_private": "Bienvenue sur votre espace personnel. Que souhaitez-vous faire aujourd'hui ?"
+        },
+        "dashboardCaissier": {
+          "title": "Espace Caisse",
+          "no_cash": { "title": "Aucune caisse assignée", "sub": "Contactez votre manager pour qu'il vous attribue un poste." },
+          "state": { "label": "État", "closed": "FERMÉE", "ready_to_open": "Prête à l'ouverture" },
+          "actions": { "open_session": "OUVRIR MA SESSION", "close_session": "Fermer la caisse", "encaisser": "ENCAISSER", "decaisser": "DÉCAISSER" },
+          "open_title": "Ouverture de Caisse",
+          "open_label": "Montant du fond de caisse initial",
+          "open_placeholder": "Ex: 0 ou 5000",
+          "open_confirm": "Ouvrir la session",
+          "open_input_error": "Le montant doit être positif ou nul !",
+          "open_error": "Impossible d'ouvrir la caisse",
+          "open_network_error": "Erreur réseau lors de l'ouverture",
+          "open_success_title": "Session Ouverte",
+          "open_success_text": "Bonne journée de travail !",
+          "cancel_recount": "Annuler, je recompte",
+          "close_diff_title": "⚠️ ÉCART DE CAISSE DÉTECTÉ",
+          "close_diff_html": "<div class=\"text-left bg-red-50 p-4 rounded-lg border border-red-200\"><p class=\"mb-2 text-gray-700\">Attention, le montant compté ne correspond pas au solde théorique du logiciel.</p><ul class=\"text-sm space-y-1\"><li>Solde Théorique : <strong>{{theorique}}</strong></li><li>Solde Physique : <strong>{{physique}}</strong></li><li class=\"text-red-600 font-bold text-lg mt-2 pt-2 border-t border-red-200\">Écart : {{ecart}}</li></ul><p class=\"mt-4 text-xs text-red-500 font-semibold uppercase\">Confirmer la fermeture enregistrera cet écart comptable.</p></div>",
+          "close_ok_html": "<div class=\"text-center\"><p class=\"text-green-600 font-bold text-xl mb-2\">Aucun écart constaté ! ✅</p><p class=\"text-gray-600\">Solde de clôture : <strong>{{physique}}</strong></p><p class=\"text-sm text-gray-500 mt-4\">Voulez-vous terminer votre session ?</p></div>",
+          "close_with_diff_confirm": "Oui, fermer avec écart",
+          "close_confirm_title": "Confirmation de clôture",
+          "close_confirm": "Oui, clôturer la caisse",
+          "close_success_title": "Session Clôturée",
+          "close_success_text": "La caisse est fermée.",
+          "close_success_with_diff": "La caisse est fermée. Un écart de {{ecart}} a été enregistré.",
+          "close_unknown_error": "Erreur inconnue lors de la fermeture",
+          "close_blocked_title": "Clôture Bloquée",
+          "close_blocked_html": "<p>Vous ne pouvez pas fermer la caisse.</p><p class=\"font-bold text-red-600 mt-2\">{{message}}</p><p class=\"text-sm mt-2\">Veuillez justifier les opérations en attente.</p>",
+          "close_network_error": "Problème de connexion au serveur",
+          "session_active": "SESSION ACTIVE",
+          "poste": "Poste :",
+          "close_placeholder": "Solde compté ?",
+          "verify": "VÉRIFIER",
+          "journal_title": "Journal de Session"
+        },
+        "dashboardChef": {
+          "title": "Espace Chef de Service",
+          "header": "Demandes en attente de validation",
+          "empty": "Aucune demande en attente pour votre service.",
+          "no_description": "Pas de description",
+          "refuse_button": "Refuser",
+          "validate_button": "Valider et envoyer au Manager",
+          "confirm_title": "Confirmation",
+          "confirm_text": "Voulez-vous vraiment {{action}} cette demande ?",
+          "actions": { "valider": "valider", "refuser": "refuser" },
+          "action_success": "Action effectuée avec succès.",
+          "action_error": "Impossible d'exécuter l'action"
+        },
+        "dashboardEmploye": {
+          "greeting": "Bonjour, {{name}}",
+          "subtitle": "Bienvenue sur votre espace personnel. Que souhaitez-vous faire aujourd'hui ?",
+          "actions": { "new_request": "Nouvelle Demande" },
+          "recent_requests": "Vos demandes récentes",
+          "view_all": "Voir tout",
+          "validation_flow": {
+            "title": "Circuit de validation",
+            "step1": { "title": "Validation Chef de Service", "desc": "Votre responsable direct approuve le besoin." },
+            "step2": { "title": "Validation Manager", "desc": "Contrôle final et autorisation de décaissement." },
+            "step3": { "title": "Paiement Caisse", "desc": "Présentez-vous à la caisse avec votre numéro de demande." }
+          },
+          "help": { "title": "Besoin d'aide ?", "text": "Pour tout problème technique ou question sur une procédure, contactez le support IT.", "email": "support@entreprise.com" }
+        },
+        "dashboardManager": {
+          "title": "Supervision Globale",
+          "subtitle": "Vue d'ensemble de la trésorerie et des opérations en cours.",
+          "kpi": { "state_label": "État Système", "operational": "Opérationnel" },
+          "actions_title": "Actions & Gestion",
+          "cards": {
+            "validations": { "title": "Validations", "desc": "Traiter les demandes d'achats, ordres de mission et décaissements exceptionnels." },
+            "history": { "title": "Historique Financier", "desc": "Consulter le journal global des mouvements et exporter les données comptables." },
+            "admin": { "title": "Administration", "desc": "Gérer les utilisateurs, configurer les services et les caisses physiques." }
+          }
         }
       },
       "components": {
@@ -394,6 +530,18 @@ const resources = {
           "finance_sub": "Global history and accounting.",
           "admin": "Admin",
           "admin_sub": "System settings."
+        },
+        "admin": {
+          "title": "Administration",
+          "subtitle": "Global system configuration. Sensitive actions are recorded in the audit.",
+          "tabs": {
+            "soc": "Company",
+            "users": "Personnel",
+            "structure": "Services",
+            "caisse": "Cash Desks",
+            "compta": "Chart of Accounts",
+            "modes": "Payment Methods"
+          }
         },
         "requests": {
           "title": "My Requests",
@@ -524,6 +672,36 @@ const resources = {
           "cancel": "Cancel",
           "create_account": "Create account"
         },
+        "chefValidation": {
+          "title": "Request Validation (Service)",
+          "empty_title": "All set!",
+          "empty_sub": "No requests pending validation for your service.",
+          "view_request": "View request",
+          "validate_button": "Validate",
+          "refuse_button": "Reject",
+          "modal_validate": "Validate request",
+          "confirm_title": "Confirmation",
+          "confirm_text": "Do you really want to {{action}} this request?",
+          "actions": {
+            "valider": "validate",
+            "refuser": "reject"
+          },
+          "load_error": "Unable to load details",
+          "load_error_title": "Error",
+          "action_success": "Action completed successfully.",
+          "action_error": "Unable to perform the action"
+        },
+        "dashboardManager": {
+          "title": "Global Supervision",
+          "subtitle": "Overview of treasury and ongoing operations.",
+          "kpi": { "state_label": "System Status", "operational": "Operational" },
+          "actions_title": "Actions & Management",
+          "cards": {
+            "validations": { "title": "Validations", "desc": "Process purchase requests, mission orders and exceptional disbursements." },
+            "history": { "title": "Financial History", "desc": "Review the global transactions log and export accounting data." },
+            "admin": { "title": "Administration", "desc": "Manage users, configure services and physical cash desks." }
+          }
+        },
         "history": {
           "title": "Full History",
           "subtitle": "Browse, filter and export all operations.",
@@ -550,13 +728,43 @@ const resources = {
           "no_results": "No results.",
           "page_info": "Page <strong>{{current}}</strong> of <strong>{{total}}</strong> — {{items}} operations"
         },
+        "caisseHistory": {
+          "back": "Back to Cash",
+          "title": "My Operations",
+          "filters": {
+            "type": "Type",
+            "all": "All",
+            "entry": "Entries (+)",
+            "exit": "Exits (-)"
+          },
+          "table": {
+            "headers": {
+              "hour": "Hour",
+              "type": "Type",
+              "reason": "Reason",
+              "amount": "Amount",
+              "actions": "Actions"
+            }
+          },
+          "type": {
+            "entry": "IN",
+            "exit": "OUT"
+          },
+          "view_details": "View details",
+          "print_receipt": "Print receipt",
+          "page": "Page {{current}}"
+        },
         "audit": {
+          "title": "Audit & Security Log",
+          "refresh": "Refresh",
+          "search_placeholder": "Search by actor, action or target...",
           "date_ip": "Date & IP",
           "actor": "Actor",
           "action": "Action",
           "target": "Target",
           "loading": "Loading security data...",
           "empty": "No events found.",
+          "details_title": "Change details",
           "no_details": "No technical details available for this action (Simple creation or system action)."
         },
         "forceChangePassword": {
@@ -567,7 +775,10 @@ const resources = {
           "saving": "Saving..."
         },
         "construction": {
-          "title": "Area under construction"
+          "title": "Area under construction",
+          "hello": "Hello",
+          "dev_for": "Your dashboard ({{roles}}) is under development.",
+          "logout": "Sign out"
         },
         "dashboard": {
           "admin": "Admin Account",
@@ -583,6 +794,68 @@ const resources = {
           "history_financial": "Financial History",
           "administration": "Administration",
           "welcome_private": "Welcome to your personal space. What would you like to do today?"
+        },
+        "dashboardCaissier": {
+          "title": "Cash Station",
+          "no_cash": { "title": "No cash assigned", "sub": "Please contact your manager to assign you a station." },
+          "state": { "label": "State", "closed": "CLOSED", "ready_to_open": "Ready to open" },
+          "actions": { "open_session": "OPEN MY SESSION", "close_session": "Close cash", "encaisser": "CASH IN", "decaisser": "CASH OUT" },
+
+          "open_title": "Open Cash",
+          "open_label": "Initial cash fund amount",
+          "open_placeholder": "Ex: 0 or 5000",
+          "open_confirm": "Open session",
+          "open_input_error": "Amount must be positive or zero!",
+          "open_error": "Unable to open cash",
+          "open_network_error": "Network error while opening",
+          "open_success_title": "Session Opened",
+          "open_success_text": "Have a good day at work!",
+          "cancel_recount": "Cancel, I will recount",
+          "close_diff_title": "⚠️ DIFFERENCE DETECTED",
+          "close_diff_html": "<div class=\"text-left bg-red-50 p-4 rounded-lg border border-red-200\"><p class=\"mb-2 text-gray-700\">Attention, the counted amount does not match the system's theoretical balance.</p><ul class=\"text-sm space-y-1\"><li>Theoretical balance: <strong>{{theorique}}</strong></li><li>Physical balance: <strong>{{physique}}</strong></li><li class=\"text-red-600 font-bold text-lg mt-2 pt-2 border-t border-red-200\">Difference: {{ecart}}</li></ul><p class=\"mt-4 text-xs text-red-500 font-semibold uppercase\">Confirming closure will record this accounting difference.</p></div>",
+          "close_ok_html": "<div class=\"text-center\"><p class=\"text-green-600 font-bold text-xl mb-2\">No difference detected! ✅</p><p class=\"text-gray-600\">Closing balance: <strong>{{physique}}</strong></p><p class=\"text-sm text-gray-500 mt-4\">Do you want to finish your session?</p></div>",
+          "close_with_diff_confirm": "Yes, close with difference",
+          "close_confirm_title": "Close confirmation",
+          "close_confirm": "Yes, close the cash",
+          "close_success_title": "Session Closed",
+          "close_success_text": "The cash has been closed.",
+          "close_success_with_diff": "The cash has been closed. A difference of {{ecart}} has been recorded.",
+          "close_unknown_error": "Unknown error while closing",
+          "close_blocked_title": "Closure Blocked",
+          "close_blocked_html": "<p>You cannot close the cash.</p><p class=\"font-bold text-red-600 mt-2\">{{message}}</p><p class=\"text-sm mt-2\">Please justify pending operations.</p>",
+          "close_network_error": "Server connection issue",
+          "session_active": "ACTIVE SESSION",
+          "poste": "Station:",
+          "close_placeholder": "Counted balance?",
+          "verify": "VERIFY",
+          "journal_title": "Session Journal"
+        },
+        "dashboardEmploye": {
+          "greeting": "Hello, {{name}}",
+          "subtitle": "Welcome to your personal space. What would you like to do today?",
+          "actions": { "new_request": "New Request" },
+          "recent_requests": "Your recent requests",
+          "view_all": "View all",
+          "validation_flow": {
+            "title": "Validation flow",
+            "step1": { "title": "Service Manager Validation", "desc": "Your direct manager approves the need." },
+            "step2": { "title": "Manager Validation", "desc": "Final check and disbursement authorization." },
+            "step3": { "title": "Cash Payment", "desc": "Present yourself to the cash desk with your request number." }
+          },
+          "help": { "title": "Need help?", "text": "For technical issues or questions about a procedure, contact IT support.", "email": "support@company.com" }
+        },
+        "dashboardChef": {
+          "title": "Service Manager Area",
+          "header": "Requests awaiting validation",
+          "empty": "No requests pending for your service.",
+          "no_description": "No description",
+          "refuse_button": "Reject",
+          "validate_button": "Validate and send to Manager",
+          "confirm_title": "Confirmation",
+          "confirm_text": "Do you really want to {{action}} this request?",
+          "actions": { "valider": "validate", "refuser": "reject" },
+          "action_success": "Action completed successfully.",
+          "action_error": "Unable to perform the action"
         }
       },
       "components": {
@@ -614,20 +887,14 @@ const resources = {
 };
 
 i18n
-  // Plus besoin de Backend ici
   .use(LanguageDetector)
   .use(initReactI18next)
   .init({
-    resources, // <--- ON CHARGE LES RESSOURCES DÉFINIES AU-DESSUS
+    resources,
     fallbackLng: 'fr',
     debug: false,
-    interpolation: {
-      escapeValue: false, 
-    },
-    detection: {
-        order: ['localStorage', 'navigator'],
-        caches: ['localStorage'],
-    }
+    interpolation: { escapeValue: false },
+    detection: { order: ['localStorage', 'navigator'], caches: ['localStorage'] },
   });
 
 export default i18n;

@@ -181,9 +181,10 @@ export default function PaymentTerminal({ onSuccess }: PaymentTerminalProps) {
             )}        
 
             {/* MODALE D'IMPRESSION (S'affiche si operationToPrint existe) */}
+            {/* MODALE D'IMPRESSION */}
             {operationToPrint && (
                 <BonDeCaissePrint 
-                    operation={operationToPrint} 
+                    operationId={operationToPrint.id} // <--- C'EST ICI LA CLÉ : on passe l'ID, pas tout l'objet
                     onClose={() => setOperationToPrint(null)} 
                 />
             )}

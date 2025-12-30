@@ -1,4 +1,5 @@
-import React, { useEffect, useState } from 'react';
+import { useEffect, useState, Fragment } from 'react';
+import { useTranslation } from 'react-i18next';
 import { 
   ShieldAlert, 
   RefreshCw, 
@@ -33,6 +34,7 @@ export default function AuditTable() {
   
   // Gestion de l'ouverture des lignes
   const [expandedRows, setExpandedRows] = useState<string[]>([]);
+  const { t } = useTranslation();
 
   const fetchAudits = async () => {
     setLoading(true);
@@ -116,9 +118,9 @@ export default function AuditTable() {
       <div className="px-6 py-4 border-b border-gray-200 flex justify-between items-center bg-gray-50">
         <h3 className="font-bold text-gray-700 flex items-center">
           <ShieldAlert className="h-5 w-5 mr-2 text-indigo-600" />
-          Journal d'Audit & Sécurité
+          {t('pages.audit.title')}
         </h3>
-        <button onClick={fetchAudits} className="p-2 hover:bg-gray-200 rounded-full transition" title="Actualiser">
+        <button onClick={fetchAudits} className="p-2 hover:bg-gray-200 rounded-full transition" title={t('pages.audit.refresh')}>
           <RefreshCw className={`h-4 w-4 text-gray-500 ${loading ? 'animate-spin' : ''}`} />
         </button>
       </div>
@@ -129,7 +131,7 @@ export default function AuditTable() {
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
             <input 
                 type="text" 
-                placeholder="Rechercher par acteur, action ou cible..." 
+                placeholder={t('pages.audit.search_placeholder')} 
                 className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 outline-none transition-shadow"
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
@@ -143,23 +145,23 @@ export default function AuditTable() {
           <thead className="bg-gray-50 sticky top-0 z-10 shadow-sm">
             <tr>
               <th className="w-10"></th>
-              <th className="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Date & IP</th>
-              <th className="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Acteur</th>
-              <th className="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Action</th>
-              <th className="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Cible (Entité)</th>
+              <th className="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">{t('pages.audit.date_ip')}</th>
+              <th className="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">{t('pages.audit.actor')}</th>
+              <th className="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">{t('pages.audit.action')}</th>
+              <th className="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">{t('pages.audit.target')}</th>
             </tr>
           </thead>
           <tbody className="bg-white divide-y divide-gray-200">
             {loading ? (
-              <tr><td colSpan={5} className="text-center py-12 text-gray-400">Chargement des données de sécurité...</td></tr>
+              <tr><td colSpan={5} className="text-center py-12 text-gray-400">{t('pages.audit.loading')}</td></tr>
             ) : filteredLogs.length === 0 ? (
-              <tr><td colSpan={5} className="text-center py-12 text-gray-400">Aucun événement trouvé.</td></tr>
+              <tr><td colSpan={5} className="text-center py-12 text-gray-400">{t('pages.audit.empty')}</td></tr>
             ) : (
               filteredLogs.map((log) => {
                 const targetStyle = getTargetBadge(log.target_type);
 
                 return (
-                <React.Fragment key={log.id}>
+                <Fragment key={log.id}>
                   {/* Ligne Principale */}
                   <tr 
                     onClick={() => toggleRow(log.id)} 
@@ -216,7 +218,7 @@ export default function AuditTable() {
                         <td colSpan={5} className="px-6 py-4">
                             <div className="bg-white border border-gray-200 rounded-lg p-4 shadow-sm">
                                 <h4 className="text-xs font-bold text-gray-500 uppercase mb-3 border-b border-gray-100 pb-2">
-                                    Détails des modifications
+                                    {t('pages.audit.details_title')}
                                 </h4>
                                 {log.changes ? (
                                     <div className="space-y-2">
@@ -240,14 +242,14 @@ export default function AuditTable() {
                                 ) : (
                                     <p className="text-sm text-gray-400 italic flex items-center">
                                         <Layers size={14} className="mr-2"/>
-                                        Aucun détail technique disponible pour cette action.
+                                        {t('pages.audit.no_details')}
                                     </p>
                                 )}
                             </div>
                         </td>
                     </tr>
                   )}
-                </React.Fragment>
+                </Fragment>
               )})
             )}
           </tbody>

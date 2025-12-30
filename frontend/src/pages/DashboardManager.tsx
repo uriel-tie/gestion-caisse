@@ -1,4 +1,4 @@
-import React from 'react';
+import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { ArrowRight, FileText, Shield, Users, TrendingUp, Settings } from 'lucide-react'; 
 import type { UserData } from '../types';
@@ -12,6 +12,7 @@ interface DashboardProps {
 
 export default function DashboardManager({ user }: DashboardProps) {
   const navigate = useNavigate();
+  const { t } = useTranslation();
 
   return (
     <div className="max-w-7xl mx-auto">
@@ -19,8 +20,8 @@ export default function DashboardManager({ user }: DashboardProps) {
         {/* Header simple avec Bienvenue */}
         <div className="flex justify-between items-end mb-8">
             <div>
-                <h1 className="text-3xl font-bold text-gray-900">Supervision Globale</h1>
-                <p className="text-gray-500 mt-1">Vue d'ensemble de la trésorerie et des opérations en cours.</p>
+                <h1 className="text-3xl font-bold text-gray-900">{t('pages.dashboardManager.title')}</h1>
+                <p className="text-gray-500 mt-1">{t('pages.dashboardManager.subtitle')}</p>
             </div>
             {/* Widget KPI rapide (Optionnel) */}
             <div className="bg-white px-4 py-2 rounded-lg border border-gray-200 shadow-sm flex items-center gap-3">
@@ -28,8 +29,8 @@ export default function DashboardManager({ user }: DashboardProps) {
                     <TrendingUp size={20} className="text-green-600"/>
                 </div>
                 <div>
-                    <span className="block text-xs text-gray-500 uppercase font-bold">État Système</span>
-                    <span className="block text-sm font-bold text-green-600">Opérationnel</span>
+                    <span className="block text-xs text-gray-500 uppercase font-bold">{t('pages.dashboardManager.kpi.state_label')}</span>
+                    <span className="block text-sm font-bold text-green-600">{t('pages.dashboardManager.kpi.operational')}</span> 
                 </div>
             </div>
         </div>
@@ -41,7 +42,7 @@ export default function DashboardManager({ user }: DashboardProps) {
         </section>
 
         {/* ACTIONS RAPIDES (Cartes) */}
-        <h2 className="text-xl font-bold text-gray-800 mb-6">Actions & Gestion</h2>
+        <h2 className="text-xl font-bold text-gray-800 mb-6">{t('pages.dashboardManager.actions_title')}</h2>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             
             {/* Carte Validations */}
@@ -53,9 +54,9 @@ export default function DashboardManager({ user }: DashboardProps) {
                     </div>
                     <ArrowRight className="text-gray-300 group-hover:text-blue-600 transition"/>
                 </div>
-                <h3 className="font-bold text-gray-800 text-lg mb-2">Validations</h3>
+                <h3 className="font-bold text-gray-800 text-lg mb-2">{t('pages.dashboardManager.cards.validations.title')}</h3>
                 <p className="text-sm text-gray-500">
-                    Traiter les demandes d'achats, ordres de mission et décaissements exceptionnels.
+                    {t('pages.dashboardManager.cards.validations.desc')}
                 </p>
             </div>
 
@@ -68,9 +69,9 @@ export default function DashboardManager({ user }: DashboardProps) {
                     </div>
                     <ArrowRight className="text-gray-300 group-hover:text-purple-600 transition"/>
                 </div>
-                <h3 className="font-bold text-gray-800 text-lg mb-2">Historique Financier</h3>
+                <h3 className="font-bold text-gray-800 text-lg mb-2">{t('pages.dashboardManager.cards.history.title')}</h3>
                 <p className="text-sm text-gray-500">
-                    Consulter le journal global des mouvements et exporter les données comptables.
+                    {t('pages.dashboardManager.cards.history.desc')}
                 </p>
             </div>
 
@@ -83,9 +84,9 @@ export default function DashboardManager({ user }: DashboardProps) {
                     </div>
                     <ArrowRight className="text-gray-300 group-hover:text-gray-600 transition"/>
                 </div>
-                <h3 className="font-bold text-gray-800 text-lg mb-2">Administration</h3>
+                <h3 className="font-bold text-gray-800 text-lg mb-2">{t('pages.dashboardManager.cards.admin.title')}</h3>
                 <p className="text-sm text-gray-500">
-                    Gérer les utilisateurs, configurer les services et les caisses physiques.
+                    {t('pages.dashboardManager.cards.admin.desc')}
                 </p>
             </div>
         </div>

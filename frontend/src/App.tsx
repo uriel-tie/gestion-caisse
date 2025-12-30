@@ -22,6 +22,7 @@ import AuditPage from './pages/AuditPage';
 import LandingPage from './pages/LandingPage';
 import BonDeCaissePrint from './components/BonDeCaissePrint';
 import HomePage from './pages/HomePage';
+import RegisterPage from './pages/RegisterPage';
 
 import type { UserData } from './types';
 import MainLayout from './layouts/MainLayout';
@@ -103,6 +104,12 @@ function App() {
                     path="/login" 
                     element={!isAuthenticated ? <LoginPage onLoginSuccess={handleLoginSuccess} /> : <Navigate to="/dashboard" replace />} 
                 />
+                {/* REGISTER */}
+                <Route 
+                    path="/register" 
+                    element={!isAuthenticated ? <RegisterPage /> : <Navigate to="/dashboard" replace />} 
+                />
+
 
                 {/* CHANGEMENT MDP OBLIGATOIRE */}
                 <Route 

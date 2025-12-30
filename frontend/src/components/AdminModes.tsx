@@ -60,7 +60,7 @@ export default function AdminModes() {
     };
 
     return (
-        <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200 max-w-4xl">
+        <div>
             <div className="flex items-center mb-6 text-indigo-600">
                 <CreditCard className="mr-2 h-6 w-6" />
                 <h3 className="text-xl font-bold">Modes de Paiement</h3>
