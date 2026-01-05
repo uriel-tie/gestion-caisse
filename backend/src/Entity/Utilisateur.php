@@ -83,6 +83,22 @@ class Utilisateur implements UserInterface, PasswordAuthenticatedUserInterface, 
     #[ORM\Column(type: 'boolean', options: ['default' => false])]
     private bool $isDeleted = false;
 
+   #[ORM\ManyToOne(targetEntity: Societe::class, inversedBy: 'utilisateurs')]
+    #[ORM\JoinColumn(nullable: true)]
+    private ?Societe $societe = null;
+
+    public function getSociete(): ?Societe
+    {
+        return $this->societe;
+    }
+
+    public function setSociete(?Societe $societe): static
+    {
+        $this->societe = $societe;
+
+        return $this;
+    }
+
     public function isDeleted(): bool
     {
         return $this->isDeleted;

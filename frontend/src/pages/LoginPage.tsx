@@ -11,10 +11,10 @@ import InputField from '../components/InputField';
 import type { UserData } from '../types';
 
 interface LoginPageProps {
-  onLoginSuccess: (token: string, user: UserData) => void;
+  onLogin: (user: UserData) => void;
 }
 
-const LoginPage: React.FC<LoginPageProps> = ({ onLoginSuccess }) => {
+const LoginPage: React.FC<LoginPageProps> = ({ onLogin }) => {
   const navigate = useNavigate();
 
   const [email, setEmail] = useState<string>('manager@app.com');
@@ -55,7 +55,7 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLoginSuccess }) => {
       if (data.token && data.user) {
         localStorage.setItem('token', data.token);
         localStorage.setItem('user', JSON.stringify(data.user));
-        onLoginSuccess(data.token, data.user);
+        onLogin(data.user);
 
         if (data.user.password_must_be_changed) {
           navigate('/change-password-required');

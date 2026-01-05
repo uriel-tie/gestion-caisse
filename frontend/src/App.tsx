@@ -1,12 +1,16 @@
 import React, { useState, useEffect } from 'react';
-import { BrowserRouter as Router, Routes, Route, Navigate, useLocation } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, Navigate, useLocation, Outlet } from 'react-router-dom';
 
 // IMPORTS PAGES
 import LoginPage from './pages/LoginPage';
-// import HomePage from './pages/HomePage'; // <-- On remplace ça
-import DashboardPage from './pages/DashboardPage'; // <-- PAR ÇA (Ton dashboard multi-rôles)
+import DashboardPage from './pages/DashboardPage';
+import RegisterPage from './pages/RegisterPage';
+import LandingPage from './pages/LandingPage';
+import BonDeCaissePrint from './components/BonDeCaissePrint';
 
+// Pages Protégées
 import AdminPage from './pages/AdminPage';
+import SuperAdminPage from './pages/SuperAdminPage';
 import ForceChangePasswordPage from './pages/ForceChangePasswordPage';
 import ManagerValidationPage from './pages/ManagerValidationPage';
 import ProfilePage from './pages/ProfilePage';
@@ -19,152 +23,120 @@ import MyTeamPage from './pages/MyTeamPage';
 import WorkstationPage from './pages/WorkstationPage';
 import CaissesLiveView from './components/CaissesLiveView';
 import AuditPage from './pages/AuditPage';
-import LandingPage from './pages/LandingPage';
-import BonDeCaissePrint from './components/BonDeCaissePrint';
 import HomePage from './pages/HomePage';
-import RegisterPage from './pages/RegisterPage';
 
 import type { UserData } from './types';
 import MainLayout from './layouts/MainLayout';
 
-// --- AUTH GUARD CORRIGÉ (Plus de boucle infinie !) ---
-const AuthGuard = ({ 
-    children, 
-    user,
-    setUser, 
-    onLogout 
-}: { 
-    children: React.ReactNode, 
-    user: UserData | null,
-    setUser: (u: UserData) => void, 
-    onLogout: () => void 
-}) => {
+// --- AUTH GUARD (Layout Version) ---
+const AuthLayout = ({ user }: { user: UserData | null }) => {
     const location = useLocation();
-    
-    // On vérifie juste si les infos sont là.
-    // Si le token est expiré, les requêtes API dans les pages échoueront (401) 
-    // et c'est là qu'on gérera la déconnexion, pas ici brutalement.
-    const token = localStorage.getItem('token');
-    const storedUserString = localStorage.getItem('user');
 
-    if (!token || !storedUserString) {
-        // Pas connecté -> Hop, dehors
+    // 1. Pas d'utilisateur -> Login
+    if (!user) {
         return <Navigate to="/login" state={{ from: location }} replace />;
     }
 
-    // --- SÉCURITÉ MOT DE PASSE ---
-    if (user?.password_must_be_changed) {
-        if (location.pathname !== '/change-password-required') {
-            return <Navigate to="/change-password-required" replace />;
-        }
-        return <>{children}</>; 
+    // 2. Mot de passe expiré -> Correction ici : password_must_be_changed
+    if (user.password_must_be_changed && location.pathname !== '/force-change-password') {
+        return <Navigate to="/force-change-password" replace />;
     }
 
-    if (!user?.password_must_be_changed && location.pathname === '/change-password-required') {
-        return <Navigate to="/dashboard" replace />;
-    }
-
-    // --- AFFICHAGE STANDARD ---
-    return <MainLayout user={user!} onLogout={onLogout}>{children}</MainLayout>;
+    // 3. Tout est OK -> On rend les routes enfants
+    return <Outlet />;
 };
 
-// --- APP ---
 function App() {
-    // Initialisation simple
-    const [user, setUser] = useState<UserData | null>(() => {
-        try {
-            const saved = localStorage.getItem('user');
-            return saved ? JSON.parse(saved) : null;
-        } catch { return null; }
-    });
+    const [user, setUser] = useState<UserData | null>(null);
+    const [loading, setLoading] = useState(true);
 
-    // Vérification basique de présence du token
-    const isAuthenticated = !!user && !!localStorage.getItem('token');
+    useEffect(() => {
+        const storedUser = localStorage.getItem('user');
+        if (storedUser) {
+            try {
+                setUser(JSON.parse(storedUser));
+            } catch (e) {
+                console.error("Erreur parsing user", e);
+                localStorage.removeItem('user');
+            }
+        }
+        setLoading(false);
+    }, []);
 
-    const handleLoginSuccess = (token: string, userData: UserData) => {
-        localStorage.setItem('token', token);
-        localStorage.setItem('user', JSON.stringify(userData));
+    const handleLogin = (userData: UserData) => {
         setUser(userData);
+        localStorage.setItem('user', JSON.stringify(userData));
     };
 
     const handleLogout = () => {
-        localStorage.clear();
+        localStorage.removeItem('token');
+        localStorage.removeItem('user');
         setUser(null);
-        // Optionnel : Forcer un reload ou redirection vers login via le router
-        window.location.href = '/login';
     };
+
+    if (loading) return <div className="flex justify-center items-center h-screen">Chargement...</div>;
 
     return (
         <Router>
             <Routes>
+                {/* --- ROUTES PUBLIQUES --- */}
                 <Route path="/" element={<LandingPage />} />
-                
-                {/* LOGIN */}
-                <Route 
-                    path="/login" 
-                    element={!isAuthenticated ? <LoginPage onLoginSuccess={handleLoginSuccess} /> : <Navigate to="/dashboard" replace />} 
-                />
-                {/* REGISTER */}
-                <Route 
-                    path="/register" 
-                    element={!isAuthenticated ? <RegisterPage /> : <Navigate to="/dashboard" replace />} 
-                />
+                <Route path="/login" element={<LoginPage onLogin={handleLogin} />} />
+                <Route path="/register" element={<RegisterPage />} />
+                <Route path="/print/bon/:id" element={<BonDeCaissePrint />} />
 
+                {/* --- ROUTES PROTÉGÉES --- */}
+                <Route element={<AuthLayout user={user} />}>
+                    
+                    {/* Force Change Password */}
+                    <Route path="/force-change-password" element={<ForceChangePasswordPage user={user!} onLogout={handleLogout} />} />
 
-                {/* CHANGEMENT MDP OBLIGATOIRE */}
-                <Route 
-                    path="/change-password-required" 
-                    element={
-                        isAuthenticated ? (
-                            <AuthGuard user={user} setUser={setUser} onLogout={handleLogout}>
-                                <ForceChangePasswordPage />
-                            </AuthGuard>
-                        ) : <Navigate to="/login" replace />
-                    } 
-                />
+                    {/* Layout Principal */}
+                    <Route element={<MainLayout user={user!} onLogout={handleLogout} />}>
+                        
+                        {/* Correction : Ajout de onLogout manquant */}
+                        <Route path="/dashboard" element={<DashboardPage user={user!} onLogout={handleLogout} />} />
+                        
+                        {/* Correction : Ajout de user manquant */}
+                        <Route path="/home" element={<HomePage user={user!} />} />
+                        
+                        {/* Correction : Ajout de user manquant (si demandé par ProfilePage) */}
+                        <Route path="/profile" element={<ProfilePage user={user!} />} />
+                        
+                        {/* Modules */}
+                        <Route path="/requests" element={<RequestsPage />} />
+                        <Route path="/requests/new" element={<NewRequestPage />} />
+                        
+                        {/* Caissier - Correction : Ajout de user manquant */}
+                        <Route path="/caisse/workstation" element={<WorkstationPage user={user!} />} />
+                        <Route path="/caisse/history" element={<CaisseHistoryPage />} />
 
-                {isAuthenticated && (
-                    <Route path="/print/bon-caisse/:id" element={<BonDeCaissePrint />} />
-                )}
+                        {/* Chef */}
+                        <Route path="/chef/validations" element={<ChefValidationPage />} />
+                        <Route path="/chef/team" element={<MyTeamPage />} />
 
-                {/* ROUTES PROTÉGÉES */}
-                {isAuthenticated ? (
-                    <Route path="*" element={
-                        <AuthGuard user={user} setUser={setUser} onLogout={handleLogout}>
-                            <Routes>
-                                {/* --- ICI : ON UTILISE LE DASHBOARD MULTI-ROLE --- */}
-                                <Route path="/dashboard" element={<HomePage user={user!} />} />
-                                
-                                {/* COMMUNS */}
-                                <Route path="/requests" element={<RequestsPage />} />
-                                <Route path="/requests/new" element={<NewRequestPage />} />
-                                <Route path="/profile" element={<ProfilePage />} />
+                        {/* Manager */}
+                        <Route path="/manager/supervision" element={<CaissesLiveView />} />
+                        <Route path="/manager/validations" element={<ManagerValidationPage />} />
+                        <Route path="/manager/history" element={<HistoriquePage />} />
+                        <Route path="/manager/audit" element={<AuditPage />} />
 
-                                {/* CAISSIER */}
-                                <Route path="/workstation" element={<WorkstationPage user={user!} />} />
-                                <Route path="/caisse/history" element={<CaisseHistoryPage />} />
+                        {/* Admin Société (Note le /* pour les sous-routes) */}
+                        <Route path="/admin/*" element={<AdminPage user={user!} onLogout={handleLogout} />} />
 
-                                {/* CHEF */}
-                                <Route path="/chef/validations" element={<ChefValidationPage />} />
-                                <Route path="/chef/team" element={<MyTeamPage />} />
+                        {/* Super Admin */}
+                        <Route 
+                            path="/super-admin" 
+                            element={
+                                user?.roles?.includes('ROLE_SUPER_ADMIN') 
+                                    ? <SuperAdminPage user={user!} onLogout={handleLogout} />
+                                    : <Navigate to="/dashboard" />
+                            } 
+                        />
+                    </Route>
+                </Route>
 
-                                {/* MANAGER */}
-                                <Route path="/manager/supervision" element={<CaissesLiveView />} />
-                                <Route path="/manager/validations" element={<ManagerValidationPage />} />
-                                <Route path="/manager/history" element={<HistoriquePage />} />
-                                <Route path="/manager/audit" element={<AuditPage />} />
-
-                                {/* ADMIN */}
-                                <Route path="/admin/*" element={<AdminPage user={user!} onLogout={handleLogout} />} />
-
-                                {/* DÉFAUT */}
-                                <Route path="*" element={<Navigate to="/dashboard" replace />} />
-                            </Routes>
-                        </AuthGuard>
-                    } />
-                ) : (
-                    <Route path="*" element={<Navigate to="/login" />} />
-                )}
+                <Route path="*" element={<Navigate to="/dashboard" replace />} />
             </Routes>
         </Router>
     );

@@ -3,6 +3,7 @@
 namespace App\Entity;
 
 use App\Repository\ServiceRepository;
+use App\Entity\Societe;
 use Doctrine\Common\Collections\ArrayCollection;
 use Doctrine\Common\Collections\Collection;
 use Doctrine\ORM\Mapping as ORM;
@@ -28,6 +29,10 @@ class Service
     // Les employés du service
     #[ORM\OneToMany(mappedBy: 'service', targetEntity: Utilisateur::class)]
     private Collection $employes;
+
+    #[ORM\ManyToOne(targetEntity: Societe::class)]
+    #[ORM\JoinColumn(nullable: false)]
+    private ?Societe $societe = null;
 
     public function __construct()
     {
@@ -96,4 +101,16 @@ class Service
 
         return $this;
     }
+
+    public function getSociete(): ?Societe
+    {
+        return $this->societe;
+    }
+
+    public function setSociete(?Societe $societe): static
+    {
+        $this->societe = $societe;
+        return $this;
+    }
 }
+

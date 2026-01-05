@@ -3,6 +3,7 @@
 namespace App\Entity;
 
 use App\Repository\AuditRepository;
+use App\Entity\Societe;
 use Doctrine\DBAL\Types\Types;
 use Doctrine\ORM\Mapping as ORM;
 
@@ -42,9 +43,24 @@ class Audit
     #[ORM\JoinColumn(nullable: true, onDelete: 'SET NULL')]
     private ?Utilisateur $utilisateur = null;
 
+    #[ORM\ManyToOne(targetEntity: Societe::class)]
+    #[ORM\JoinColumn(nullable: true)] 
+    private ?Societe $societe = null;
+
     public function __construct()
     {
         $this->date = new \DateTimeImmutable();
+    }
+
+    public function getSociete(): ?Societe
+    {
+        return $this->societe;
+    }
+
+    public function setSociete(?Societe $societe): static
+    {
+        $this->societe = $societe;
+        return $this;
     }
 
     // --- Getters & Setters ---

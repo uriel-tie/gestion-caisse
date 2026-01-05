@@ -3,6 +3,7 @@
 namespace App\Entity;
 
 use App\Repository\DemandeRepository;
+use App\Entity\Societe;
 use Doctrine\DBAL\Types\Types;
 use Doctrine\ORM\Mapping as ORM;
 use Symfony\Component\Uid\Uuid;
@@ -68,6 +69,10 @@ class Demande
 
     #[ORM\Column(length: 255, nullable: true)]
     private ?string $beneficiaireAutre = null;
+
+    #[ORM\ManyToOne(targetEntity: Societe::class)]
+    #[ORM\JoinColumn(nullable: false)] 
+    private ?Societe $societe = null;
 
     public function getBeneficiaireAutre(): ?string
     {
@@ -195,6 +200,17 @@ class Demande
         return $this;
     }
 
+    public function getSociete(): ?Societe
+    {
+        return $this->societe;
+    }
+
+    public function setSociete(?Societe $societe): static
+    {
+        $this->societe = $societe;
+        return $this;
+    }
+
     /**
      * @return Collection<int, LigneDemande>
      */
@@ -239,3 +255,4 @@ class Demande
         return $this;
     }
 }
+

@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import Swal from 'sweetalert2';
 import { Lock, Save } from 'lucide-react';
 
 export default function ForceChangePasswordPage() {
@@ -51,12 +52,22 @@ export default function ForceChangePasswordPage() {
                 const user = JSON.parse(userStr);
                 user.password_must_be_changed = false; // On update le flag localement
                 localStorage.setItem('user', JSON.stringify(user));
-                setTimeout(() => redirectToDashboard(user.roles || []), 300);
+                await Swal.fire({
+                    icon: 'success',
+                    title: 'Mot de passe modifié avec succès !',
+                    timer: 1500,
+                    showConfirmButton: false
+                });
+                redirectToDashboard(user.roles || []);
             } else {
-                setTimeout(() => redirectToDashboard(), 300);
+                await Swal.fire({
+                    icon: 'success',
+                    title: 'Mot de passe modifié avec succès !',
+                    timer: 1500,
+                    showConfirmButton: false
+                });
+                redirectToDashboard();
             }
-
-            alert("Mot de passe modifié avec succès !");
         } catch (err) {
             setError("Impossible de changer le mot de passe.");
         } finally {

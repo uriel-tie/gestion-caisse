@@ -29,6 +29,7 @@ security:
         # C'est ici que la magie opère :
         # 1. On laisse passer tout le monde sur /api/login (ton AuthController)
         - { path: ^/api/login, roles: PUBLIC_ACCESS }
+        - { path: ^/api/register, roles: PUBLIC_ACCESS }
         
         # 2. On laisse passer les requêtes OPTIONS (pour les erreurs CORS en React)
         - { path: ^/api, methods: [OPTIONS], roles: PUBLIC_ACCESS }

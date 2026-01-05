@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Outlet, useNavigate, useLocation } from 'react-router-dom';
-import { LogOut, Menu, Bell, User } from 'lucide-react'; // Bell n'est plus utilisé ici mais je le laisse au cas où, tu pourras l'enlever
+import { LogOut, Menu, Bell, User } from 'lucide-react';
 import { NAVIGATION } from '../config/navigation';
 import type { UserData } from '../types';
 import NotificationWidget from '../components/NotificationWidget';
@@ -20,9 +20,11 @@ export default function MainLayout({ user, onLogout, children }: MainLayoutProps
   const navigate = useNavigate();
   const location = useLocation();
 
-  // Filtrage du menu selon les rôles
+  // Filtrage sécurisé du menu
   const filteredNav = NAVIGATION.filter(item => {
     if (item.roles.includes('ALL')) return true;
+    // Vérification si user et user.roles existent avant d'utiliser .includes
+    if (!user?.roles) return false; 
     return item.roles.some(role => user.roles.includes(role));
   });
 
@@ -33,65 +35,61 @@ export default function MainLayout({ user, onLogout, children }: MainLayoutProps
       <aside 
         className={`${
           isSidebarOpen ? 'w-64' : 'w-20'
-        } bg-slate-900 text-white transition-all duration-300 ease-in-out flex flex-col shadow-xl z-20`}
+        } bg-slate-900 text-slate-300 transition-all duration-300 flex flex-col shadow-xl z-20`}
       >
-        {/* Logo */}
-        <div className="h-16 flex items-center justify-center border-b border-slate-800 bg-slate-950">
-            {isSidebarOpen ? (
-               <div className="flex items-center gap-2 font-bold text-xl tracking-tight">
-                   <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center text-white">OC</div>
-                   <span>ORBIS CAISSE</span>
-               </div>
-            ) : (
-               <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center text-white font-bold">OC</div>
+        <div className="h-16 flex items-center px-6 bg-slate-950 border-b border-slate-800">
+          <div className="flex items-center gap-3 overflow-hidden">
+            <div className="w-8 h-8 bg-yellow-500 rounded-lg flex items-center justify-center flex-shrink-0">
+              <span className="text-slate-900 font-bold">O</span>
+            </div>
+            {isSidebarOpen && (
+              <span className="font-bold text-lg text-white tracking-tight truncate">ORBIS CAISSE</span>
             )}
+          </div>
         </div>
 
-        {/* Navigation */}
-        <nav className="flex-1 overflow-y-auto py-6 px-3 space-y-2 custom-scrollbar">
+        <nav className="flex-1 overflow-y-auto py-6 px-3 space-y-1 custom-scrollbar">
           {filteredNav.map((item) => {
-             const isActive = location.pathname.startsWith(item.path);
-             return (
-              <div key={item.path}>
-                <button
-                  onClick={() => navigate(item.path)}
-                  className={`w-full flex items-center p-3 rounded-xl transition-all duration-200 group ${
-                    isActive
-                      ? 'bg-blue-600 text-white shadow-lg shadow-blue-900/50'
-                      : 'text-slate-400 hover:bg-slate-800 hover:text-white'
-                  }`}
-                  title={!isSidebarOpen ? item.label : ''}
-                >
-                  <item.icon size={22} className={`min-w-[22px] ${isActive ? 'text-white' : 'text-slate-400 group-hover:text-white'}`} />
-                  
-                  <span className={`ml-3 whitespace-nowrap transition-opacity duration-200 ${
-                    isSidebarOpen ? 'opacity-100' : 'opacity-0 hidden'
-                  }`}>
-                    {item.label}
-                  </span>
-                </button>
-              </div>
+            const Icon = item.icon;
+            const isActive = location.pathname === item.path;
+            
+            return (
+              <button
+                key={item.path}
+                onClick={() => navigate(item.path)}
+                className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all duration-200 group ${
+                  isActive 
+                    ? 'bg-yellow-500 text-slate-900 font-semibold shadow-lg shadow-yellow-500/20' 
+                    : 'hover:bg-slate-800 hover:text-white'
+                }`}
+              >
+                <Icon size={20} className={isActive ? 'text-slate-900' : 'text-slate-400 group-hover:text-yellow-500'} />
+                {isSidebarOpen && <span className="text-sm truncate">{t(item.title)}</span>}
+              </button>
             );
           })}
         </nav>
 
-        {/* User Footer */}
+        {/* User Footer Sécurisé */}
         <div className="p-4 border-t border-slate-800 bg-slate-950">
             <div className={`flex items-center ${isSidebarOpen ? 'justify-between' : 'justify-center'}`}>
                 {isSidebarOpen && (
                     <div className="flex items-center gap-3 overflow-hidden">
                         <div className="w-8 h-8 rounded-full bg-slate-700 flex items-center justify-center text-xs font-bold text-slate-300">
-                            {user.nom.charAt(0)}
+                            {/* Sécurité charAt */}
+                            {user?.nom?.charAt(0) || 'U'}
                         </div>
                         <div className="flex-1 min-w-0">
-                            <p className="text-sm font-medium text-white truncate">{user.nom.split(' ')[0]}</p>
-                            <p className="text-xs text-slate-500 truncate">{user.email}</p>
+                            <p className="text-sm font-medium text-white truncate">
+                              {user?.nom || 'Utilisateur'}
+                            </p>
+                            <p className="text-xs text-slate-500 truncate">{user?.email}</p>
                         </div>
                     </div>
                 )}
                 <button 
                     onClick={onLogout}
-                    className="text-slate-400 hover:text-red-400 transition p-1 rounded-md hover:bg-slate-800"
+                    className="p-2 text-slate-500 hover:text-red-400 hover:bg-slate-800 rounded-lg transition-colors"
                     title="Déconnexion"
                 >
                     <LogOut size={20} />
@@ -100,10 +98,8 @@ export default function MainLayout({ user, onLogout, children }: MainLayoutProps
         </div>
       </aside>
 
-      {/* --- MAIN CONTENT WRAPPER --- */}
+      {/* --- MAIN CONTENT --- */}
       <div className="flex-1 flex flex-col h-full overflow-hidden relative">
-        
-        {/* Header */}
         <header className="h-16 bg-white shadow-sm flex items-center justify-between px-6 z-10 border-b border-gray-100">
           <button 
             onClick={() => setSidebarOpen(!isSidebarOpen)}
@@ -113,27 +109,23 @@ export default function MainLayout({ user, onLogout, children }: MainLayoutProps
           </button>
 
           <div className="flex items-center gap-4">
-
-            {/* AJOUT DU SWITCHER ICI */}
             <LanguageSwitcher />
-            
-            {/* INTEGRATION DU WIDGET ICI */}
-            <NotificationWidget  />
-
+            <NotificationWidget />
             <div className="h-8 w-px bg-gray-200 mx-2"></div>
             <div className="flex items-center gap-2">
                 <span className="text-sm font-medium text-gray-700 bg-gray-100 px-3 py-1 rounded-full">
-                    {user.roles[0]?.replace('ROLE_', '') || 'EMPLOYE'}
+                    {/* Sécurité sur l'accès aux rôles */}
+                    {user?.roles?.[0]?.replace('ROLE_', '') || 'EMPLOYE'}
                 </span>
             </div>
           </div>
         </header>
 
-        {/* Page Content */}
-        <main className="flex-1 overflow-y-auto p-6 scroll-smooth bg-gray-50/50">
-             {children ? children : <Outlet />}
+        <main className="flex-1 overflow-y-auto p-6 bg-slate-50/50">
+          <div className="max-w-7xl mx-auto h-full">
+            {children || <Outlet />}
+          </div>
         </main>
-        
       </div>
     </div>
   );

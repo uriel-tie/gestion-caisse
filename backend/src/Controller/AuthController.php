@@ -3,6 +3,7 @@
 namespace App\Controller;
 
 use App\Entity\Utilisateur;
+use App\Entity\Societe;
 use App\Repository\UtilisateurRepository;
 use Doctrine\ORM\EntityManagerInterface;
 use Lexik\Bundle\JWTAuthenticationBundle\Services\JWTTokenManagerInterface;
@@ -10,6 +11,7 @@ use Scheb\TwoFactorBundle\Security\TwoFactor\Provider\Google\GoogleAuthenticator
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
+use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\PasswordHasher\Hasher\UserPasswordHasherInterface;
 use Symfony\Component\Routing\Annotation\Route;
 
@@ -48,7 +50,7 @@ class AuthController extends AbstractController
 
         // B. Vérifier si le compte est suspendu / inactif
         if (!$user->isEstActif()) {
-            return $this->json(['message' => 'Ce compte est désactivé. Contactez l\'administrateur.'], 403);
+            return $this->json(['message' => 'Ce compte est désactivé. Contactez votre manager ou l\'administrateur.'], 403);
         }
 
         // ------------------------------------------------
@@ -85,5 +87,55 @@ class AuthController extends AbstractController
                 'password_must_be_changed' => method_exists($user, 'isPasswordMustBeChanged') ? $user->isPasswordMustBeChanged() : false
             ]
         ]);
+    }
+
+    #[Route('/register', name: 'app_register', methods: ['POST'])]
+    public function register(Request $request, UserPasswordHasherInterface $passwordHasher, EntityManagerInterface $entityManager): JsonResponse
+    {
+        $data = json_decode($request->getContent(), true);
+
+        // Validation basique des champs obligatoires
+        if (empty($data['email']) || empty($data['password']) || empty($data['nomSociete'])) {
+            return new JsonResponse(['message' => 'Données manquantes (Email, Mot de passe ou Nom Société)'], Response::HTTP_BAD_REQUEST);
+        }
+
+        // 1. Création de la Société
+        $societe = new \App\Entity\Societe();
+        $societe->setNom($data['nomSociete']);
+        
+        // Gestion du Numéro Compte Contribuable (s'il est envoyé)
+        if (!empty($data['numeroCompteContribuable'])) {
+            $societe->setNumeroCompteContribuable($data['numeroCompteContribuable']);
+        }
+        
+        // Par défaut : Société Active, mais non supprimée
+        $societe->setIsActive(true); 
+        $societe->setIsDeleted(false);
+
+        // 2. Création du Manager (Utilisateur)
+        $user = new Utilisateur();
+        $user->setEmail($data['email']);
+        $user->setNom($data['nom'] ?? '');
+        
+        // Rôle Manager & Inactif par défaut (en attente validation Admin)
+        $user->setRoles(['ROLE_MANAGER']);
+        $user->setEstActif(false); 
+        
+        // Lien critique : Lier l'utilisateur à sa nouvelle société
+        $user->setSociete($societe);
+
+        // Hashage du mot de passe
+        $hashedPassword = $passwordHasher->hashPassword($user, $data['password']);
+        $user->setPassword($hashedPassword);
+
+        // 3. Persistance en base (Transaction)
+        // On persiste d'abord la société, puis l'utilisateur
+        $entityManager->persist($societe);
+        $entityManager->persist($user);
+        $entityManager->flush();
+
+        return new JsonResponse([
+            'message' => 'Compte entreprise créé avec succès. Votre accès est en attente de validation par l\'administrateur.'
+        ], Response::HTTP_CREATED);
     }
 }

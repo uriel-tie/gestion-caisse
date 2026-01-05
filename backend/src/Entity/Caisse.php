@@ -3,6 +3,7 @@
 namespace App\Entity;
 
 use App\Entity\Utilisateur;
+use App\Entity\Societe;
 use App\Repository\CaisseRepository;
 use Doctrine\ORM\Mapping as ORM;
 use Symfony\Component\Uid\Uuid;
@@ -38,6 +39,10 @@ class Caisse
 
     #[ORM\Column(type: 'boolean', options: ['default' => false])]
     private bool $isDeleted = false;
+
+    #[ORM\ManyToOne(targetEntity: Societe::class)]
+    #[ORM\JoinColumn(nullable: false)] 
+    private ?Societe $societe = null;
 
     public function isDeleted(): bool
     {
@@ -99,6 +104,17 @@ class Caisse
     public function setSolde(string $solde): static
     {
         $this->solde = $solde;
+        return $this;
+    }
+
+    public function getSociete(): ?Societe
+    {
+        return $this->societe;
+    }
+
+    public function setSociete(?Societe $societe): static
+    {
+        $this->societe = $societe;
         return $this;
     }
 }

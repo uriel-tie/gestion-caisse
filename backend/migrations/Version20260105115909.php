@@ -10,7 +10,7 @@ use Doctrine\Migrations\AbstractMigration;
 /**
  * Auto-generated Migration: Please modify to your needs!
  */
-final class Version20251222172307 extends AbstractMigration
+final class Version20260105115909 extends AbstractMigration
 {
     public function getDescription(): string
     {
@@ -20,15 +20,13 @@ final class Version20251222172307 extends AbstractMigration
     public function up(Schema $schema): void
     {
         // this up() migration is auto-generated, please modify it to your needs
-        $this->addSql('ALTER TABLE caisse ADD is_deleted BOOLEAN DEFAULT false NOT NULL');
-        $this->addSql('ALTER TABLE utilisateur ADD is_deleted BOOLEAN DEFAULT false NOT NULL');
+        $this->addSql('ALTER TABLE audit ALTER societe_id DROP NOT NULL');
     }
 
     public function down(Schema $schema): void
     {
         // this down() migration is auto-generated, please modify it to your needs
         $this->addSql('CREATE SCHEMA public');
-        $this->addSql('ALTER TABLE caisse DROP is_deleted');
-        $this->addSql('ALTER TABLE utilisateur DROP is_deleted');
+        $this->addSql('ALTER TABLE audit ALTER societe_id SET NOT NULL');
     }
 }

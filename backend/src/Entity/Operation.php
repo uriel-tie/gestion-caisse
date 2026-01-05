@@ -3,6 +3,7 @@
 namespace App\Entity;
 
 use App\Repository\OperationRepository;
+use App\Entity\Societe;
 use Doctrine\DBAL\Types\Types;
 use Doctrine\ORM\Mapping as ORM;
 use Symfony\Component\Uid\Uuid;
@@ -76,6 +77,10 @@ class Operation
 
     #[ORM\Column(nullable: true)]
     private ?array $details = null;
+
+    #[ORM\ManyToOne(targetEntity: Societe::class)]
+    #[ORM\JoinColumn(nullable: false)] 
+    private ?Societe $societe = null;
 
     public function getDetails(): ?array
     {
@@ -218,6 +223,17 @@ class Operation
     {
         $this->statut = $statut;
 
+        return $this;
+    }
+
+    public function getSociete(): ?Societe
+    {
+        return $this->societe;
+    }
+
+    public function setSociete(?Societe $societe): static
+    {
+        $this->societe = $societe;
         return $this;
     }
 

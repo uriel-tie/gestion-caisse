@@ -5,6 +5,8 @@ namespace App\Entity;
 use App\Repository\SocieteRepository;
 use Doctrine\ORM\Mapping as ORM;
 use Symfony\Component\Uid\Uuid;
+use Doctrine\Common\Collections\ArrayCollection;
+use Doctrine\Common\Collections\Collection;
 
 #[ORM\Entity(repositoryClass: SocieteRepository::class)]
 class Societe
@@ -41,6 +43,18 @@ class Societe
     #[ORM\Column(length: 100, nullable: true)]
     private ?string $capitalSocial = null;
 
+    #[ORM\Column(length: 100, nullable: true)]
+    private ?string $numeroCompteContribuable = null;
+
+    #[ORM\Column(type: 'boolean', options: ['default' => true])]
+    private ?bool $isActive = true;
+
+    #[ORM\Column(type: 'boolean', options: ['default' => false])]
+    private ?bool $isDeleted = false;
+
+    #[ORM\OneToMany(mappedBy: 'societe', targetEntity: Utilisateur::class)]
+    private Collection $utilisateurs;
+
     // --- CONFIGURATION DU WORKFLOW ---
     
     #[ORM\Column(length: 50, options: ['default' => self::MODE_STANDARD])]
@@ -69,6 +83,12 @@ class Societe
     public function getCapitalSocial(): ?string { return $this->capitalSocial; }
     public function setCapitalSocial(?string $capitalSocial): static { $this->capitalSocial = $capitalSocial; return $this; }
 
+    public function getNumeroCompteContribuable(): ?string { return $this->numeroCompteContribuable; }
+    public function setNumeroCompteContribuable(?string $ncc): static { 
+        $this->numeroCompteContribuable = $ncc; 
+        return $this; 
+}
+
     public function getModeValidation(): ?string { return $this->modeValidation; }
     public function setModeValidation(string $modeValidation): static { 
         // Sécurité basique pour ne pas mettre n'importe quoi
@@ -76,5 +96,41 @@ class Societe
             $this->modeValidation = $modeValidation; 
         }
         return $this; 
+    }
+     public function __construct()
+    {
+        $this->utilisateurs = new ArrayCollection();
+    }
+
+    /**
+     * @return Collection<int, Utilisateur>
+     */
+    public function getUtilisateurs(): Collection
+    {
+        return $this->utilisateurs;
+    }
+
+    public function isActive(): ?bool
+    {
+        return $this->isActive;
+    }
+
+    public function setIsActive(bool $isActive): static
+    {
+        $this->isActive = $isActive;
+
+        return $this;
+    }
+
+    public function isDeleted(): ?bool
+    {
+        return $this->isDeleted;
+    }
+
+    public function setIsDeleted(bool $isDeleted): static
+    {
+        $this->isDeleted = $isDeleted;
+
+        return $this;
     }
 }

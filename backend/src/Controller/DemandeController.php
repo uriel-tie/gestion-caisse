@@ -21,6 +21,7 @@ final class DemandeController extends AbstractController
     {
         /** @var Utilisateur $user */
         $user = $this->getUser();
+        $societe = $user->getSociete();
         $data = json_decode($request->getContent(), true);
 
         // 1. Récupération Config Société & Rôles
@@ -44,6 +45,7 @@ final class DemandeController extends AbstractController
 
         $demande->setType($data['type'] ?? 'FICHE_BESOIN');
         $demande->setDemandeur($user);
+        $demande->setSociete($societe);
 
         // Gestion Bénéficiaire
         if (!empty($data['beneficiaire_id'])) {

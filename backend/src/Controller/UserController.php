@@ -174,6 +174,11 @@ class UserController extends AbstractController
         $roles = $currentUser->getRoles();
         $isManager = in_array('ROLE_MANAGER', $roles);
         $isChef = in_array('ROLE_CHEF_SERVICE', $roles);
+        $maSociete = $currentUser->getSociete();
+
+        if (!$maSociete) {
+             return $this->json(['error' => 'Action impossible : vous n\'êtes lié à aucune société.'], 403);
+        }
 
         // Sécurité d'accès
         if (!$isManager && !$isChef) {
@@ -188,6 +193,7 @@ class UserController extends AbstractController
         $user = new Utilisateur();
         $user->setEmail($data['email']);
         $user->setNom($data['nom']);
+        $user->setSociete($maSociete);
 
         // LOGIQUE SPÉCIFIQUE PAR RÔLE
         if ($isChef) {

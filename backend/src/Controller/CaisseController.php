@@ -103,6 +103,7 @@ class CaisseController extends AbstractController
 
         $caisse = new Caisse();
         $caisse->setNom($data['nom']);
+        $caisse->setSociete($user->getSociete());
         $seuil = !empty($data['seuil']) ? (string)$data['seuil'] : '50000';
         $caisse->setSeuilDecaissement($seuil);
         $caisse->setEstOuverte(false); // Fermée par défaut à la création

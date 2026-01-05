@@ -20,6 +20,7 @@ export default function HomePage({ user }: HomePageProps) {
     if (r.includes('CAISSIER')) return 'Caissier';
     if (r.includes('CHEF')) return 'Chef de Service';
     if (r.includes('ADMIN')) return 'Administrateur';
+    if (r.includes('SUPER_ADMIN')) return 'Super Administrateur';
     return 'Collaborateur';
   };
 

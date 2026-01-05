@@ -3,6 +3,7 @@
 namespace App\Entity;
 
 use App\Repository\ClotureRepository;
+use App\Entity\Societe;
 use Doctrine\DBAL\Types\Types;
 use Doctrine\ORM\Mapping as ORM;
 use Symfony\Component\Uid\Uuid;
@@ -33,6 +34,10 @@ class Cloture
     #[ORM\ManyToOne(targetEntity: Utilisateur::class, inversedBy: 'clotures')]
     #[ORM\JoinColumn(nullable: false)]
     private ?Utilisateur $utilisateur = null;
+
+    #[ORM\ManyToOne(targetEntity: Societe::class)]
+    #[ORM\JoinColumn(nullable: false)] 
+    private ?Societe $societe = null;
 
     public function __construct()
     {
@@ -106,6 +111,17 @@ class Cloture
     {
         $this->utilisateur = $utilisateur;
 
+        return $this;
+    }
+
+    public function getSociete(): ?Societe
+    {
+        return $this->societe;
+    }
+
+    public function setSociete(?Societe $societe): static
+    {
+        $this->societe = $societe;
         return $this;
     }
 

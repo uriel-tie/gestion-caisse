@@ -4,6 +4,7 @@ import DashboardManager from './DashboardManager';
 import DashboardCaissier from './DashboardCaissier';
 import DashboardEmploye  from './DashboardEmploye';
 import DashboardChef from './DashboardChef';
+import SuperAdminPage from './SuperAdminPage';
 
 // 1. On définit ce que ce composant attend comme données (Props)
 interface DashboardPageProps {
@@ -26,14 +27,8 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout }) => {
   // --- LOGIQUE D'AFFICHAGE (ORDRE D'IMPORTANCE) ---
 
   // 1. ADMIN (Le plus haut)
-  if (hasRole('ROLE_ADMIN')) {
-      return (
-          <div className="p-6">
-              <h1>Compte Administrateur</h1>
-              <p>Veuillez accéder à la route /admin.</p>
-              <button onClick={onLogout} className="btn btn-primary">Déconnexion</button>
-          </div>
-      );
+  if (hasRole('ROLE_SUPER_ADMIN')) {
+      return (<SuperAdminPage user={user} onLogout={onLogout} />);
   }
 
   // 2. MANAGER (Avant Employé !)
@@ -56,7 +51,6 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout }) => {
   if (hasRole('ROLE_EMPLOYE') || hasRole('ROLE_USER')) { 
     return <DashboardEmploye user={user} onLogout={onLogout} />;
   }
-
   // --- FALLBACK (Si aucun rôle ne correspond) ---
   return (
     <div className="flex flex-col items-center justify-center h-screen bg-gray-100">

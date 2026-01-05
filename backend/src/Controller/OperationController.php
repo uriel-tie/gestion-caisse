@@ -152,6 +152,7 @@ class OperationController extends AbstractController
         $op->setUtilisateur($user);
         $op->setModePaiement($mode);
         $op->setSessionCaisse($session);
+        $op->setSociete($societe);
 
         $em->persist($op);
         $this->processJustificatif($op, $data, $em);
@@ -253,6 +254,7 @@ class OperationController extends AbstractController
         $op->setModePaiement($mode);
         $op->setSessionCaisse($session);
         $op->setBeneficiaire($beneficiaireFinal); 
+        $op->setSociete($societe);
 
         if ($detailsLignes) {
             $op->setDetails($detailsLignes);

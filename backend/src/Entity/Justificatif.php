@@ -45,6 +45,10 @@ class Justificatif
     #[ORM\Column(type: 'text', nullable: true)]
     private ?string $signatureData = null;
 
+    #[ORM\ManyToOne(targetEntity: Societe::class)]
+    #[ORM\JoinColumn(nullable: true)] 
+    private ?Societe $societe = null;
+
     public const TYPE_FICHIER = 'fichier';
 
     public function getType(): ?string
@@ -55,6 +59,17 @@ class Justificatif
     public function setType(string $type): static
     {
         $this->type = $type;
+        return $this;
+    }
+
+    public function getSociete(): ?Societe
+    {
+        return $this->societe;
+    }
+
+    public function setSociete(?Societe $societe): static
+    {
+        $this->societe = $societe;
         return $this;
     }
 
