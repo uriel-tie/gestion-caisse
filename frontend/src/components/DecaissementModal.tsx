@@ -155,7 +155,7 @@ export default function DecaissementModal({ isOpen, onClose, onSuccess, demande 
                     <p className="text-gray-500 mb-6">Mode : <strong>{selectedMode}</strong></p>
                     <div className="flex flex-col gap-3">
                         <button
-                            onClick={() => window.open(`/print/bon-caisse/${lastOpId}`, '_blank')}
+                            onClick={() => window.open(`/print/bon/${lastOpId}`, '_blank')}
                             className="w-full flex items-center justify-center gap-2 bg-blue-600 text-white py-3 rounded-lg hover:bg-blue-700 font-bold transition shadow-lg"
                         >
                             <Printer size={20} /> IMPRIMER LE BON

@@ -52,7 +52,7 @@ export default function CaisseHistoryPage() {
 
   // --- FONCTION POUR IMPRIMER ---
   const handlePrint = (opId: string) => {
-      window.open(`/print/bon-caisse/${opId}`, '_blank');
+      window.open(`/print/bon/${opId}`, '_blank');
   };
 
   return (
