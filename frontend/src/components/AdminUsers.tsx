@@ -74,8 +74,8 @@ export default function AdminUsers() {
         });
         if (!confirmation.isConfirmed) return;
         try {
-            const res = await fetch(`https://127.0.0.1:8000/api/users/${id}/toggle`, {
-                method: 'POST',
+            const res = await fetch(`https://127.0.0.1:8000/api/users/${id}/toggle-status`, {
+                method: 'PATCH',
                 headers: { 'Authorization': `Bearer ${token}` }
             });
             if (res.ok) {

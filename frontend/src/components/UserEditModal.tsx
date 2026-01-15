@@ -8,7 +8,7 @@ interface UserEditModalProps {
     onSuccess: () => void;
 }
 
-export default function UserEditModal({ user, onClose, onSuccess }: UserEditModalProps) {
+export default function UserEditModal({ user, services: servicesProps, onClose, onSuccess }: UserEditModalProps) {
     const [role, setRole] = useState('');
     const [serviceId, setServiceId] = useState('');
     const [services, setServices] = useState<any[]>([]);
@@ -17,19 +17,23 @@ export default function UserEditModal({ user, onClose, onSuccess }: UserEditModa
     // 1. Initialiser les données au chargement
     useEffect(() => {
         if (user) {
-            // Déduire le rôle principal
-            const roles = user.role || []; // Attention selon le format de votre API users
-            if (roles.includes('ROLE_MANAGER')) setRole('MANAGER');
-            else if (roles.includes('ROLE_CAISSIER')) setRole('CAISSIER');
-            else if (roles.includes('ROLE_CHEF_SERVICE')) setRole('CHEF_SERVICE');
+            // Déduire le rôle principal depuis la string du rôle
+            const userRole = user.role || 'EMPLOYE';
+            if (userRole.includes('MANAGER')) setRole('MANAGER');
+            else if (userRole.includes('CAISSIER')) setRole('CAISSIER');
+            else if (userRole.includes('CHEF_SERVICE')) setRole('CHEF_SERVICE');
             else setRole('EMPLOYE');
 
             // ID du service actuel
-            // Attention : Vérifiez si votre user.service est un objet {id:..., nom:...} ou juste un ID
-            setServiceId(user.service?.id || ''); 
+            setServiceId(user.service || ''); 
         }
-        fetchServices();
-    }, [user]);
+        
+        if (servicesProps && servicesProps.length > 0) {
+            setServices(servicesProps);
+        } else {
+            fetchServices();
+        }
+    }, [user, servicesProps]);
 
     // 2. Charger la liste des services pour le dropdown
     const fetchServices = async () => {
@@ -56,7 +60,7 @@ export default function UserEditModal({ user, onClose, onSuccess }: UserEditModa
                     'Authorization': `Bearer ${token}`
                 },
                 body: JSON.stringify({
-                    role: role,
+                    role: 'ROLE_' + role,
                     service_id: serviceId || null
                 })
             });

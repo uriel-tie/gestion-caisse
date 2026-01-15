@@ -40,7 +40,8 @@ class UserController extends AbstractController
         // Génération mot de passe temporaire
         $emailParts = explode('@', $data['email']);
         $prefix = ucfirst($emailParts[0]);
-        $tempPassword = $prefix . '@2025!';
+        $year = date('Y');
+        $tempPassword = $prefix . '@' . $year . '!';
 
         $hashedPassword = $hasher->hashPassword($user, $tempPassword);
         $user->setPassword($hashedPassword);
@@ -219,7 +220,8 @@ class UserController extends AbstractController
         // Génération Password et Reste du code (identique à avant)
         $emailParts = explode('@', $data['email']);
         $prefix = ucfirst($emailParts[0]);
-        $tempPassword = $prefix . '@2025!';
+        $year = date('Y');
+        $tempPassword = $prefix . '@' . $year . '!';
         
         $hashedPassword = $hasher->hashPassword($user, $tempPassword);
         $user->setPassword($hashedPassword);
@@ -419,64 +421,76 @@ class UserController extends AbstractController
 
 
     #[Route('/{id}', name: 'update', methods: ['PUT'])]
-        public function update(
-            Utilisateur $user, 
-            Request $request, 
-            ServiceRepository $serviceRepo, 
-            EntityManagerInterface $em
-        ): JsonResponse
-        {
-            // Sécurité : Seul un Manager peut faire ça
-            if (!$this->isGranted('ROLE_MANAGER')) {
-                return $this->json(['message' => 'Accès interdit'], 403);
+    public function update(Request $request, Utilisateur $user, ServiceRepository $serviceRepo, EntityManagerInterface $em): JsonResponse
+    {
+        $data = json_decode($request->getContent(), true);
+
+        // 1. Mise à jour des infos de base
+        if (isset($data['nom'])) $user->setNom($data['nom']);
+        if (isset($data['email'])) $user->setEmail($data['email']);
+
+        // 2. Mise à jour du RÔLE (Nettoyé)
+        $roleInput = $data['role'] ?? $data['roles'] ?? null;
+
+        if (!empty($roleInput)) {
+            // Si le frontend envoie un tableau, prendre le premier élément
+            if (is_array($roleInput)) {
+                $roleInput = $roleInput[0] ?? '';
             }
 
-            // Protection : On empêche de modifier un SUPER_ADMIN si on n'est pas soi-même SUPER_ADMIN
-            if (in_array('ROLE_SUPER_ADMIN', $user->getRoles()) && !$this->isGranted('ROLE_SUPER_ADMIN')) {
-                return $this->json(['message' => 'Vous ne pouvez pas modifier un Super Admin'], 403);
+            $newRoles = [];
+
+            // Normaliser l'input (accepter avec ou sans ROLE_)
+            $normalized = str_replace('ROLE_', '', strtoupper($roleInput));
+
+            // MAP les rôles valides
+            switch ($normalized) {
+                case 'MANAGER':
+                case 'ADMIN':
+                    $newRoles[] = 'ROLE_MANAGER';
+                    break;
+                case 'EMPLOYE':
+                case 'USER':
+                    $newRoles[] = 'ROLE_EMPLOYE';
+                    break;
+                case 'CAISSIER':
+                    $newRoles[] = 'ROLE_CAISSIER';
+                    break;
+                case 'CHEF_SERVICE':
+                case 'CHEF':
+                    $newRoles[] = 'ROLE_CHEF_SERVICE';
+                    break;
+                default:
+                    // Garder le rôle actuel si pas de correspondance
+                    break;
             }
 
-            $data = json_decode($request->getContent(), true);
-
-            // 1. Mise à jour du RÔLE
-            if (!empty($data['role'])) {
-                // On transforme le choix simple (ex: 'MANAGER') en rôle Symfony (ex: 'ROLE_MANAGER')
-                // On remet toujours ROLE_USER par défaut pour qu'il puisse se connecter
-                $newRoles = ['ROLE_USER']; 
-                
-                switch ($data['role']) {
-                    case 'MANAGER':
-                        $newRoles[] = 'ROLE_MANAGER';
-                        break;
-                    case 'CAISSIER':
-                        $newRoles[] = 'ROLE_CAISSIER';
-                        break;
-                    case 'CHEF_SERVICE':
-                        $newRoles[] = 'ROLE_CHEF_SERVICE';
-                        break;
-                    // Ajoutez d'autres rôles si nécessaire
-                }
-                
+            // On met à jour seulement si on a trouvé un rôle valide
+            if (!empty($newRoles)) {
                 $user->setRoles($newRoles);
             }
+        }
 
-            // 2. Mise à jour du SERVICE
-            if (array_key_exists('service_id', $data)) { // On utilise array_key_exists pour permettre la valeur null
-                $serviceId = $data['service_id'];
-                
-                if ($serviceId) {
-                    $service = $serviceRepo->find($serviceId);
-                    if ($service) {
-                        $user->setService($service);
-                    }
-                } else {
-                    // Si on envoie null, on détache l'utilisateur du service
-                    $user->setService(null);
+        // 3. Mise à jour du SERVICE
+        if (array_key_exists('service_id', $data)) {
+            $serviceId = $data['service_id'];
+
+            // Gestion propre des valeurs vides
+            if (empty($serviceId) || $serviceId === 'Aucun' || $serviceId === 'null' || $serviceId === "-- Aucun Service --") {
+                $user->setService(null);
+            } else {
+                $service = $serviceRepo->find($serviceId);
+                if ($service) {
+                    $user->setService($service);
                 }
             }
-
-            $em->flush();
-
-            return $this->json(['message' => 'Utilisateur mis à jour avec succès']);
         }
+
+        $em->flush();
+
+        return $this->json([
+            'message' => 'Utilisateur mis à jour', 
+            'role_detecte' => $roleInput ?? 'Aucun' // Petit debug pour voir ce qui est reçu
+        ]);
+    }
 }
