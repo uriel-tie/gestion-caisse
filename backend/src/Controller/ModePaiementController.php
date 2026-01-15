@@ -34,11 +34,17 @@ class ModePaiementController extends AbstractController
         $this->denyAccessUnlessGranted('ROLE_MANAGER');
         $data = json_decode($request->getContent(), true);
 
+        $user = $this->getUser();
+        if (!$user) {            
+            return $this->json(['error' => 'Utilisateur non authentifié'], 401);
+        }
+
         if (empty($data['libelle'])) return $this->json(['error' => 'Libellé obligatoire'], 400);
 
         $mode = new ModePaiement();
         $mode->setLibelle($data['libelle']);
         $mode->setType($data['type'] ?? 'AUTRE');
+        $mode->setSociete($user->getSociete());
 
         $em->persist($mode);
         $em->flush();

@@ -51,11 +51,17 @@ class Transfert
     #[ORM\ManyToOne]
     private ?Utilisateur $receveur = null;
 
+    #[ORM\ManyToOne(targetEntity: Societe::class)]
+    #[ORM\JoinColumn(nullable: false)]
+    private ?Societe $societe = null;
+
     public function __construct()
     {
         $this->dateCreation = new \DateTimeImmutable();
     }
-
+    
+    public function getSociete(): ?Societe { return $this->societe; }
+    public function setSociete(?Societe $societe): static { $this->societe = $societe; return $this; }
     public function getId(): ?Uuid { return $this->id; }
     public function getMontant(): ?string { return $this->montant; }
     public function setMontant(string $montant): static { $this->montant = $montant; return $this; }

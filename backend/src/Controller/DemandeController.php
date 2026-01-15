@@ -25,15 +25,18 @@ final class DemandeController extends AbstractController
         $data = json_decode($request->getContent(), true);
 
         // 1. Récupération Config Société & Rôles
-        $societe = $em->getRepository(Societe::class)->findOneBy([]);
         $modeValidation = $societe ? $societe->getModeValidation() : Societe::MODE_STANDARD;
         $roles = $user->getRoles();
 
         if (empty($data['titre']) || empty($data['montant'])) {
             return $this->json(['error' => 'Champs obligatoires manquants'], 400);
         }
+        if (!$societe) {
+            return $this->json(['error' => 'Vous devez être rattaché à une société pour créer une demande'], 403);
+        }
 
         $demande = new Demande();
+        $demande->setSociete($societe);
         $demande->setTitre($data['titre']);
         
         // Gestion montant

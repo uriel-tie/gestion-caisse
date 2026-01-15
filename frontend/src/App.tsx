@@ -37,12 +37,7 @@ const AuthLayout = ({ user }: { user: UserData | null }) => {
         return <Navigate to="/login" state={{ from: location }} replace />;
     }
 
-    // 2. Mot de passe expiré -> Correction ici : password_must_be_changed
-    if (user.password_must_be_changed && location.pathname !== '/force-change-password') {
-        return <Navigate to="/force-change-password" replace />;
-    }
-
-    // 3. Tout est OK -> On rend les routes enfants
+    // 2. Tout est OK -> On rend les routes enfants
     return <Outlet />;
 };
 
@@ -89,7 +84,7 @@ function App() {
                 <Route element={<AuthLayout user={user} />}>
                     
                     {/* Force Change Password */}
-                    <Route path="/force-change-password" element={<ForceChangePasswordPage user={user!} onLogout={handleLogout} />} />
+                    <Route path="/force-change-password" element={<ForceChangePasswordPage />} />
 
                     {/* Layout Principal */}
                     <Route element={<MainLayout user={user!} onLogout={handleLogout} />}>
@@ -101,7 +96,7 @@ function App() {
                         <Route path="/home" element={<HomePage user={user!} />} />
                         
                         {/* Correction : Ajout de user manquant (si demandé par ProfilePage) */}
-                        <Route path="/profile" element={<ProfilePage user={user!} />} />
+                        <Route path="/profile" element={<ProfilePage />} />
                         
                         {/* Modules */}
                         <Route path="/requests" element={<RequestsPage />} />

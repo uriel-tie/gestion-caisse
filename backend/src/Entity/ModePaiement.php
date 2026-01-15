@@ -28,6 +28,13 @@ class ModePaiement
     #[ORM\OneToMany(mappedBy: 'modePaiement', targetEntity: Operation::class)]
     private Collection $operations;
 
+    #[ORM\ManyToOne(targetEntity: Societe::class)]
+    #[ORM\JoinColumn(nullable: false)]
+    private ?Societe $societe = null;
+
+    public function getSociete(): ?Societe { return $this->societe; }
+    public function setSociete(?Societe $societe): static { $this->societe = $societe; return $this; }
+
     public function __construct()
     {
         $this->operations = new ArrayCollection();

@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Outlet, useNavigate, useLocation } from 'react-router-dom';
-import { LogOut, Menu, Bell, User } from 'lucide-react';
+import { LogOut, Menu, Bell, User, AlertTriangle, X} from 'lucide-react';
 import { NAVIGATION } from '../config/navigation';
 import type { UserData } from '../types';
 import NotificationWidget from '../components/NotificationWidget';
@@ -16,9 +16,19 @@ interface MainLayoutProps {
 
 export default function MainLayout({ user, onLogout, children }: MainLayoutProps) {
   const [isSidebarOpen, setSidebarOpen] = useState(true);
+  const [isEmailVerificationClosed, setIsEmailVerificationClosed] = useState(false);
   const { t } = useTranslation();
   const navigate = useNavigate();
   const location = useLocation();
+
+  // Debug pour vérifier la valeur de isEmailVerified
+  React.useEffect(() => {
+    console.log('=== MainLayout Render ===');
+    console.log('User object:', user);
+    console.log('isEmailVerified value:', user?.isEmailVerified);
+    console.log('Type of isEmailVerified:', typeof user?.isEmailVerified);
+    console.log('Condition result:', user && !user.isEmailVerified && !isEmailVerificationClosed);
+  }, [user, isEmailVerificationClosed]);
 
   // Filtrage sécurisé du menu
   const filteredNav = NAVIGATION.filter(item => {
@@ -40,7 +50,7 @@ export default function MainLayout({ user, onLogout, children }: MainLayoutProps
         <div className="h-16 flex items-center px-6 bg-slate-950 border-b border-slate-800">
           <div className="flex items-center gap-3 overflow-hidden">
             <div className="w-8 h-8 bg-yellow-500 rounded-lg flex items-center justify-center flex-shrink-0">
-              <span className="text-slate-900 font-bold">O</span>
+              <span className="text-slate-900 font-bold">OC</span>
             </div>
             {isSidebarOpen && (
               <span className="font-bold text-lg text-white tracking-tight truncate">ORBIS CAISSE</span>
@@ -64,7 +74,7 @@ export default function MainLayout({ user, onLogout, children }: MainLayoutProps
                 }`}
               >
                 <Icon size={20} className={isActive ? 'text-slate-900' : 'text-slate-400 group-hover:text-yellow-500'} />
-                {isSidebarOpen && <span className="text-sm truncate">{t(item.title)}</span>}
+                {isSidebarOpen && <span className="text-sm truncate">{t(item.label)}</span>}
               </button>
             );
           })}
@@ -115,15 +125,51 @@ export default function MainLayout({ user, onLogout, children }: MainLayoutProps
             <div className="flex items-center gap-2">
                 <span className="text-sm font-medium text-gray-700 bg-gray-100 px-3 py-1 rounded-full">
                     {/* Sécurité sur l'accès aux rôles */}
-                    {user?.roles?.[0]?.replace('ROLE_', '') || 'EMPLOYE'}
+                    {user?.roles?.[0]?.replace('ROLE_', '').replaceAll('_', ' DE ') || 'EMPLOYE'}
                 </span>
             </div>
           </div>
         </header>
 
-        <main className="flex-1 overflow-y-auto p-6 bg-slate-50/50">
-          <div className="max-w-7xl mx-auto h-full">
+        <main className="flex-1 overflow-y-auto bg-slate-50/50">
+          {/* Banderolette Vérification Email */}
+          {user && !user.isEmailVerified && !isEmailVerificationClosed && (
+            <div className="bg-gradient-to-r from-amber-50 to-orange-50 border-b border-amber-200 px-6 py-3 flex items-center justify-between shadow-sm animate-in fade-in slide-in-from-top-2">
+              <div className="flex items-center gap-4 flex-1">
+                <div className="flex-shrink-0">
+                  <AlertTriangle className="text-amber-500" size={20} />
+                </div>
+                <div className="flex-1">
+                  <p className="text-sm font-semibold text-amber-900">
+                    Vérifiez votre adresse email
+                  </p>
+                  <p className="text-xs text-amber-700 mt-1">
+                    Cela vous permettra de réinitialiser votre mot de passe en cas d'oubli.
+                  </p>
+                </div>
+              </div>
+              <div className="flex items-center gap-2 flex-shrink-0">
+                <button 
+                  onClick={() => navigate('/profile')}
+                  className="text-xs font-semibold bg-amber-500 hover:bg-amber-600 text-white px-4 py-2 rounded-lg transition-colors whitespace-nowrap"
+                >
+                  Vérifier maintenant
+                </button>
+                <button 
+                  onClick={() => setIsEmailVerificationClosed(true)}
+                  className="text-amber-600 hover:text-amber-700 hover:bg-amber-100 p-2 rounded-lg transition-colors"
+                  title="Masquer"
+                >
+                  <X size={18} />
+                </button>
+              </div>
+            </div>
+          )}
+
+          <div className="p-6">
+            <div className="max-w-7xl mx-auto h-full">
             {children || <Outlet />}
+            </div>
           </div>
         </main>
       </div>

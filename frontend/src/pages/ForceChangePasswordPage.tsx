@@ -9,13 +9,12 @@ export default function ForceChangePasswordPage() {
     const [error, setError] = useState<string | null>(null);
 
     const redirectToDashboard = (roles: string[] = []) => {
-        if (roles.includes('ROLE_ADMIN')) {
-            window.location.href = '/admin';
+        if (roles.includes('ROLE_SUPER_ADMIN')) {
+            window.location.href = '/dashboard';
             return;
         }
 
-        // Par défaut, tous les autres rôles passent par /dashboard
-        window.location.href = '/dashboard';
+        window.location.href = '/home';
     };
 
     const handleSubmit = async (e: React.FormEvent) => {

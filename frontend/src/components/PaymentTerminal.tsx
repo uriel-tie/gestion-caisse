@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Search, CheckCircle, AlertCircle, Banknote, ArrowRight } from 'lucide-react';
 import BonDeCaissePrint from './BonDeCaissePrint';
+import Swal from 'sweetalert2';
 
 interface PaymentTerminalProps {
     onSuccess: () => void; // Pour rafraîchir le solde après paiement
@@ -44,7 +45,16 @@ export default function PaymentTerminal({ onSuccess }: PaymentTerminalProps) {
     // 2. PAYER (DÉCAISSER)
     const handlePay = async () => {
         if (!demande) return;
-        if (!confirm(`Confirmer le décaissement de ${demande.montant} F pour "${demande.titre}" ?`)) return;
+        const confirmation = await Swal.fire({
+            title: 'Confirmer le décaissement',
+            text: `Confirmer le décaissement de ${demande.montant} F pour "${demande.titre}" ?`,
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonText: 'Oui, payer',
+            cancelButtonText: 'Annuler',
+            confirmButtonColor: '#16a34a'
+        });
+        if (!confirmation.isConfirmed) return;
 
         setLoading(true);
         try {
@@ -82,11 +92,17 @@ export default function PaymentTerminal({ onSuccess }: PaymentTerminalProps) {
                 onSuccess(); // Rafraichir le solde en arrière-plan
                 setDemande(null); // Reset recherche
                 setCode('');
+
+                Swal.fire({ title: 'Succès', text: 'Décaissement effectué avec succès.', icon: 'success' });
             } else {
-                setError(data.error || "Erreur de paiement");
+                const errMsg = data.error || "Erreur de paiement";
+                setError(errMsg);
+                Swal.fire({ title: 'Erreur', text: errMsg, icon: 'error' });
             }
         } catch (e) {
-            setError("Erreur réseau");
+            const errMsg = "Erreur réseau";
+            setError(errMsg);
+            Swal.fire({ title: 'Erreur', text: errMsg, icon: 'error' });
         } finally {
             setLoading(false);
         }

@@ -148,6 +148,11 @@ class UserController extends AbstractController
         
         $data = [];
         foreach ($users as $u) {
+            //on saute l'utilisateur connecté
+            if ($u->getId() === $currentUser->getId()) {
+                continue; 
+            }
+
             $data[] = [
                 'id' => $u->getId(),
                 'nom' => $u->getNom(),
@@ -411,4 +416,67 @@ class UserController extends AbstractController
             'actif' => $userToActivate->isEstActif()
         ]);
     }
+
+
+    #[Route('/{id}', name: 'update', methods: ['PUT'])]
+        public function update(
+            Utilisateur $user, 
+            Request $request, 
+            ServiceRepository $serviceRepo, 
+            EntityManagerInterface $em
+        ): JsonResponse
+        {
+            // Sécurité : Seul un Manager peut faire ça
+            if (!$this->isGranted('ROLE_MANAGER')) {
+                return $this->json(['message' => 'Accès interdit'], 403);
+            }
+
+            // Protection : On empêche de modifier un SUPER_ADMIN si on n'est pas soi-même SUPER_ADMIN
+            if (in_array('ROLE_SUPER_ADMIN', $user->getRoles()) && !$this->isGranted('ROLE_SUPER_ADMIN')) {
+                return $this->json(['message' => 'Vous ne pouvez pas modifier un Super Admin'], 403);
+            }
+
+            $data = json_decode($request->getContent(), true);
+
+            // 1. Mise à jour du RÔLE
+            if (!empty($data['role'])) {
+                // On transforme le choix simple (ex: 'MANAGER') en rôle Symfony (ex: 'ROLE_MANAGER')
+                // On remet toujours ROLE_USER par défaut pour qu'il puisse se connecter
+                $newRoles = ['ROLE_USER']; 
+                
+                switch ($data['role']) {
+                    case 'MANAGER':
+                        $newRoles[] = 'ROLE_MANAGER';
+                        break;
+                    case 'CAISSIER':
+                        $newRoles[] = 'ROLE_CAISSIER';
+                        break;
+                    case 'CHEF_SERVICE':
+                        $newRoles[] = 'ROLE_CHEF_SERVICE';
+                        break;
+                    // Ajoutez d'autres rôles si nécessaire
+                }
+                
+                $user->setRoles($newRoles);
+            }
+
+            // 2. Mise à jour du SERVICE
+            if (array_key_exists('service_id', $data)) { // On utilise array_key_exists pour permettre la valeur null
+                $serviceId = $data['service_id'];
+                
+                if ($serviceId) {
+                    $service = $serviceRepo->find($serviceId);
+                    if ($service) {
+                        $user->setService($service);
+                    }
+                } else {
+                    // Si on envoie null, on détache l'utilisateur du service
+                    $user->setService(null);
+                }
+            }
+
+            $em->flush();
+
+            return $this->json(['message' => 'Utilisateur mis à jour avec succès']);
+        }
 }

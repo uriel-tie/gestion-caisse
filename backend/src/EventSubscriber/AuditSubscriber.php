@@ -96,6 +96,10 @@ class AuditSubscriber
         $audit->setDate(new \DateTimeImmutable());
         $audit->setChanges($changes);
 
+        if (method_exists($entity, 'getSociete')) {
+            $audit->setSociete($entity->getSociete());
+        }
+
         if ($user instanceof Utilisateur) {
             $audit->setUtilisateur($user);
             $audit->setActorName($user->getNom());

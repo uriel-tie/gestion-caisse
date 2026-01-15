@@ -19,17 +19,27 @@ class SocieteController extends AbstractController
      * Récupère la configuration unique de l'entreprise.
      * Accessible à tous les employés connectés (pour l'affichage sur les PDF, etc.)
      */
-    #[Route('', name: 'get', methods: ['GET'])]
-    public function show(SocieteRepository $repository): JsonResponse
+   #[Route('', name: 'get', methods: ['GET'])]
+    public function show(): JsonResponse
     {
-        // On récupère la première ligne de la table
-        $societe = $repository->findOneBy([]);
+        // 1. Récupérer l'utilisateur connecté via le token JWT
+        /** @var \App\Entity\Utilisateur $user */
+        $user = $this->getUser();
 
-        if (!$societe) {
-            // Cas théoriquement impossible grâce aux fixtures, mais on gère le cas vide
-            return $this->json(['error' => 'Aucune configuration société trouvée.'], 404);
+        // Sécurité paranoïaque (si jamais la route n'est pas protégée par le firewall)
+        if (!$user) {
+            return $this->json(['message' => 'Utilisateur non authentifié'], 401);
         }
 
+        // 2. Récupérer la société liée à cet utilisateur
+        $societe = $user->getSociete();
+
+        // 3. Vérifier si l'utilisateur est bien rattaché à une société
+        if (!$societe) {
+            return $this->json(['error' => 'Votre compte n\'est rattaché à aucune société.'], 404);
+        }
+
+        // 4. Renvoyer les données de SA société
         return $this->json([
             'id' => $societe->getId(),
             'nom' => $societe->getNom(),
@@ -37,9 +47,10 @@ class SocieteController extends AbstractController
             'adresse' => $societe->getAdresse(),
             'telephone' => $societe->getTelephone(),
             'registreCommerce' => $societe->getRegistreCommerce(),
+            'numeroCompteContribuable' => $societe->getNumeroCompteContribuable(),
             'siegeSocial' => $societe->getSiegeSocial(),
             'capitalSocial' => $societe->getCapitalSocial(),
-            'modeValidation' => $societe->getModeValidation(), // LE CHAMP CRITIQUE
+            'modeValidation' => $societe->getModeValidation(),
         ]);
     }
 
@@ -71,6 +82,7 @@ class SocieteController extends AbstractController
         if (isset($data['adresse'])) $societe->setAdresse($data['adresse']);
         if (isset($data['telephone'])) $societe->setTelephone($data['telephone']);
         if (isset($data['registreCommerce'])) $societe->setRegistreCommerce($data['registreCommerce']);
+        if (isset($data['numeroCompteContribuable'])) {$societe->setNumeroCompteContribuable($data['numeroCompteContribuable']);}
         if (isset($data['siegeSocial'])) $societe->setSiegeSocial($data['siegeSocial']);
         if (isset($data['capitalSocial'])) $societe->setCapitalSocial($data['capitalSocial']);
 

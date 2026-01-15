@@ -5,7 +5,8 @@ export interface UserData {
   nom: string;
   email: string;
   roles: string[];
-  password_must_be_changed: boolean;
+  passwordMustBeChanged: boolean;
+  isEmailVerified: boolean;
 }
 
 export interface LoginResponse {
@@ -33,6 +34,7 @@ export interface Societe {
     adresse?: string;
     telephone?: string;
     registreCommerce?: string;
+    numeroCompteContribuable?: string;
     siegeSocial?: string;
     capitalSocial?: string;
     modeValidation: 'STANDARD' | 'DELEGATION' | 'AUTONOMIE'; 

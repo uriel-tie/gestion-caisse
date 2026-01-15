@@ -7,7 +7,7 @@ export const NAVIGATION = [
   // --- ÉTATS COMMUNS ---
   { 
     label: 'Accueil', 
-    path: '/dashboard', 
+    path: '/home', 
     icon: Home, 
     roles: ['ALL'] // Accessible à tous
   },
@@ -38,7 +38,7 @@ export const NAVIGATION = [
   // --- CAISSIER ---
   { 
     label: 'Station de Travail', 
-    path: '/workstation', 
+    path: '/caisse/workstation', 
     icon: Monitor, 
     roles: ['ROLE_CAISSIER'] 
   },

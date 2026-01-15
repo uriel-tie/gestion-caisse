@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { User, Lock, Save, Mail, Briefcase, ShieldCheck, Smartphone, QrCode, XCircle } from 'lucide-react';
+import { User, Lock, Save, Mail, Briefcase, ShieldCheck, Smartphone, QrCode, XCircle, AlertTriangle } from 'lucide-react';
 import Swal from 'sweetalert2';
 
 export default function ProfilePage() {
@@ -17,6 +17,11 @@ export default function ProfilePage() {
     const [qrCode, setQrCode] = useState<string | null>(null); // L'image base64 du QR
     const [twoFactorCode, setTwoFactorCode] = useState(''); // Le code 6 chiffres saisi
     const [isSetupMode, setIsSetupMode] = useState(false); // Si on est en train de configurer
+
+    // --- ÉTATS POUR VÉRIFICATION EMAIL (SI NÉCESSAIRE) ---
+    const [verifying, setVerifying] = useState(false);
+    const [showCodeInput, setShowCodeInput] = useState(false);
+    const [verificationCode, setVerificationCode] = useState('');
 
     // 1. CHANGEMENT MOT DE PASSE
     const handleUpdatePassword = async (e: React.FormEvent) => {
@@ -113,7 +118,16 @@ export default function ProfilePage() {
 
     // 4. DÉSACTIVER LA 2FA
     const disable2FA = async () => {
-        if (!confirm("Êtes-vous sûr de vouloir retirer cette sécurité ?")) return;
+        const confirmation = await Swal.fire({
+            title: 'Confirmer la désactivation',
+            text: "Êtes-vous sûr de vouloir retirer cette sécurité ?",
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonText: 'Oui, désactiver',
+            cancelButtonText: 'Annuler',
+            confirmButtonColor: '#d33'
+        });
+        if (!confirmation.isConfirmed) return;
 
         const token = localStorage.getItem('token');
         try {
@@ -131,6 +145,44 @@ export default function ProfilePage() {
             }
         } catch (e) {
             console.error(e);
+        }
+    };
+
+    // 5. Fonction pour demander l'envoi du mail
+        const handleRequestVerification = async () => {
+            setVerifying(true);
+            const res = await fetch('https://127.0.0.1:8000/api/security/request-email-verification', {
+                method: 'POST',
+                headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
+            });
+            setVerifying(false);
+            if (res.ok) {
+                setShowCodeInput(true);
+                Swal.fire('Envoyé !', 'Vérifiez votre boîte mail pour obtenir le code.', 'success');
+            } else {
+                Swal.fire('Erreur', 'Impossible d\'envoyer le mail.', 'error');
+            }
+        };
+
+        // 6. Fonction pour soumettre le code reçu
+    const handleConfirmCode = async () => {
+        const res = await fetch('https://127.0.0.1:8000/api/security/verify-email-code', {
+            method: 'POST',
+            headers: { 
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${localStorage.getItem('token')}` 
+            },
+            body: JSON.stringify({ code: verificationCode })
+        });
+
+        if (res.ok) {
+            const updatedUser = { ...user, isEmailVerified: true };
+            setUser(updatedUser);
+            localStorage.setItem('user', JSON.stringify(updatedUser));
+            setShowCodeInput(false);
+            Swal.fire('Succès', 'Votre email est désormais vérifié !', 'success');
+        } else {
+            Swal.fire('Erreur', 'Code invalide ou expiré.', 'error');
         }
     };
 
@@ -245,6 +297,81 @@ export default function ProfilePage() {
                                 </button>
                             </div>
                         )}
+                    </div>
+
+                    {/* 2. Bloc Vérification Email */}
+                    <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden mb-6">
+                        <div className="p-6 border-b border-gray-50 flex items-center justify-between">
+                            <div className="flex items-center gap-3">
+                                <div className="p-2 bg-blue-50 text-blue-600 rounded-lg">
+                                    <Mail size={20} />
+                                </div>
+                                <div>
+                                    <h2 className="font-bold text-gray-800 text-lg">Sécurité du compte</h2>
+                                    <p className="text-sm text-gray-500">Gérez la vérification de votre identité</p>
+                                </div>
+                            </div>
+                            
+                            {user.isEmailVerified ? (
+                                <span className="flex items-center gap-1.5 px-3 py-1 bg-green-100 text-green-700 rounded-full text-xs font-bold">
+                                    <ShieldCheck size={14} /> Email vérifié
+                                </span>
+                            ) : (
+                                <span className="flex items-center gap-1.5 px-3 py-1 bg-amber-100 text-amber-700 rounded-full text-xs font-bold">
+                                    <AlertTriangle size={14} /> Non vérifié
+                                </span>
+                            )}
+                        </div>
+
+                        <div className="p-6 bg-gray-50/50">
+                            {!user.isEmailVerified ? (
+                                <div className="space-y-4">
+                                    <p className="text-sm text-gray-600">
+                                        L'adresse <strong>{user.email}</strong> n'est pas encore vérifiée. 
+                                        La vérification est nécessaire pour réinitialiser votre mot de passe en cas d'oubli.
+                                    </p>
+                                    
+                                    {!showCodeInput ? (
+                                        <button 
+                                            onClick={handleRequestVerification}
+                                            disabled={verifying}
+                                            className="bg-blue-600 text-white px-4 py-2 rounded-lg font-bold text-sm hover:bg-blue-700 disabled:opacity-50 transition flex items-center gap-2"
+                                        >
+                                            {verifying ? 'Envoi...' : 'Vérifier mon adresse email'}
+                                        </button>
+                                    ) : (
+                                        <div className="flex flex-col sm:flex-row gap-3 items-end">
+                                            <div className="flex-1">
+                                                <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Code de vérification</label>
+                                                <input 
+                                                    type="text" 
+                                                    placeholder="Ex: 123456"
+                                                    value={verificationCode}
+                                                    onChange={e => setVerificationCode(e.target.value)}
+                                                    className="w-full border border-gray-300 rounded-lg p-2 outline-none focus:ring-2 focus:ring-blue-500"
+                                                />
+                                            </div>
+                                            <button 
+                                                onClick={handleConfirmCode}
+                                                className="bg-green-600 text-white px-4 py-2 rounded-lg font-bold text-sm hover:bg-green-700 transition"
+                                            >
+                                                Confirmer le code
+                                            </button>
+                                            <button 
+                                                onClick={() => setShowCodeInput(false)}
+                                                className="text-gray-500 text-sm hover:underline"
+                                            >
+                                                Annuler
+                                            </button>
+                                        </div>
+                                    )}
+                                </div>
+                            ) : (
+                                <p className="text-sm text-green-700">
+                                    Votre adresse email est vérifiée. Votre compte est sécurisé.
+                                </p>
+                            )}
+                        </div>
                     </div>
 
                     {/* 2. Bloc Changement de Mot de Passe */}

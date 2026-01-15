@@ -39,6 +39,12 @@ class CompteComptableController extends AbstractController
     {
         $this->denyAccessUnlessGranted('ROLE_MANAGER');
 
+        $user = $this->getUser();
+        if (!$user) {         
+            return $this->json(['error' => 'Utilisateur non authentifié'], 401);
+        }   
+    
+
         $data = json_decode($request->getContent(), true);
 
         if (empty($data['numero']) || empty($data['libelle'])) {
@@ -48,6 +54,7 @@ class CompteComptableController extends AbstractController
         $compte = new CompteComptable();
         $compte->setNumero($data['numero']);
         $compte->setLibelle($data['libelle']);
+        $compte->setSociete($user->getSociete());
         $compte->setType($data['type'] ?? 'CHARGE'); // Par défaut une charge
 
         $em->persist($compte);

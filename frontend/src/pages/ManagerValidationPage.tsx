@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { Check, X, Banknote, FileText, AlertCircle, RefreshCw } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
+import Swal from 'sweetalert2';
 
 interface DemandeToValidate {
     id: string;
@@ -55,7 +56,16 @@ const ManagerValidationPage: React.FC = () => {
 
     const handleDemandeAction = async (id: string, action: 'valider' | 'refuser') => {
         const actionText = action === 'valider' ? t("manager.valider") : t("manager.refuser");
-        if(!confirm(t("manager.confirmation_demande", { action: actionText }))) return;
+        const confirmation = await Swal.fire({
+            title: actionText,
+            text: t("manager.confirmation_demande", { action: actionText }),
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonText: actionText,
+            cancelButtonText: 'Annuler',
+            confirmButtonColor: action === 'valider' ? '#16a34a' : '#d33'
+        });
+        if (!confirmation.isConfirmed) return;
         
         const token = localStorage.getItem('token');
         await fetch(`https://127.0.0.1:8000/api/demandes/${id}/workflow`, {
@@ -71,7 +81,16 @@ const ManagerValidationPage: React.FC = () => {
             ? t("manager.confirmation_validation")
             : t("manager.confirmation_refus");
         
-        if(!confirm(message)) return;
+        const confirmation = await Swal.fire({
+            title: 'Confirmer',
+            text: message,
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonText: action === 'valider' ? t("manager.valider") : t("manager.refuser"),
+            cancelButtonText: 'Annuler',
+            confirmButtonColor: action === 'valider' ? '#16a34a' : '#d33'
+        });
+        if (!confirmation.isConfirmed) return;
 
         const token = localStorage.getItem('token');
         const response = await fetch(`https://127.0.0.1:8000/api/operations/${id}/workflow`, {
@@ -82,7 +101,11 @@ const ManagerValidationPage: React.FC = () => {
 
         if (!response.ok) {
             const err = await response.json();
-            alert(t("manager.erreur_operation") + ": " + (err.error || t("common.error")));
+            Swal.fire({
+                title: t("manager.erreur_operation"),
+                text: err.error || t("common.error"),
+                icon: 'error'
+            });
         } else {
             fetchData();
         }

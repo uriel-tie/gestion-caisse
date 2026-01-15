@@ -36,6 +36,7 @@ class TransfertController extends AbstractController
         /** @var Utilisateur $user */
         $user = $this->getUser();
         $data = json_decode($request->getContent(), true);
+        $societe = $user->getSociete();
 
         // 1. Vérifier session ouverte (Source)
         $sessionSource = $sessionRepo->findOneBy(['caissier' => $user, 'statut' => SessionCaisse::STATUT_OUVERTE]);
@@ -59,6 +60,7 @@ class TransfertController extends AbstractController
         $transfert->setCaisseArrivee($caisseCible);
         $transfert->setEmetteur($user);
         $transfert->setMotif($data['motif'] ?? 'Transfert de fonds');
+        $transfert->setSociete($user->getSociete());
         
         // 3. Créer l\'Opération de DEBIT sur la source (Immédiat)
         $opDebit = new Operation();

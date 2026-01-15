@@ -58,6 +58,10 @@ class SessionCaisse
     #[ORM\Column(nullable: true)]
     private ?array $billetage = null;
 
+    #[ORM\ManyToOne(targetEntity: Societe::class)]
+    #[ORM\JoinColumn(nullable: false)]
+    private ?Societe $societe = null;
+
     public function __construct()
     {
         $this->dateOuverture = new \DateTimeImmutable();
@@ -75,6 +79,9 @@ class SessionCaisse
 
     public function getStatut(): ?string { return $this->statut; }
     public function setStatut(string $statut): static { $this->statut = $statut; return $this; }
+
+    public function getSociete(): ?Societe { return $this->societe; }
+    public function setSociete(?Societe $societe): static { $this->societe = $societe; return $this; }
 
     public function getBilletage(): ?array
     {

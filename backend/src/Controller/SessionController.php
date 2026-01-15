@@ -50,12 +50,11 @@ class SessionController extends AbstractController
         $session = new SessionCaisse();
         $session->setCaissier($user);
         $session->setCaisse($caisse);
+        $session->setSociete($user->getSociete());
         $session->setMontantOuverture((string)$montantOuverture);
         $session->setStatut(SessionCaisse::STATUT_OUVERTE);
         
-        // Optionnel : Récupérer le solde de la fermeture précédente pour vérifier la continuité
-        // $lastSession = $sessionRepo->findLastClosedSession($caisse);
-        // if ($lastSession && $lastSession->getMontantFermeture() !== $montantOuverture) { Alerte... }
+        $caisse->setEstOuverte(true);
 
         $this->em->persist($session);
         $this->em->flush();
@@ -115,6 +114,11 @@ class SessionController extends AbstractController
         $totalEntrees = $opRepo->getSumEntreesBySession($session) ?? 0;
         $totalSorties = $opRepo->getSumSortiesBySession($session) ?? 0;
         $soldeTheorique = (float)$session->getMontantOuverture() + $totalEntrees - $totalSorties;
+
+        $caisse = $session->getCaisse();
+        if ($caisse) {
+            $caisse->setEstOuverte(false);
+        }
         
         $ecart = $montantPhysique - $soldeTheorique;
 

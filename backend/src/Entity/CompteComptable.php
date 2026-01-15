@@ -28,6 +28,13 @@ class CompteComptable
     #[ORM\Column(length: 50)]
     private ?string $type = null; // RECETTE, DEPENSE, ou TRESORERIE
 
+    #[ORM\ManyToOne(targetEntity: Societe::class)]
+    #[ORM\JoinColumn(nullable: false)]
+    private ?Societe $societe = null;
+
+    public function getSociete(): ?Societe { return $this->societe; }
+    public function setSociete(?Societe $societe): static { $this->societe = $societe; return $this; }
+
     public function __toString(): string
     {
         return $this->numero . ' - ' . $this->libelle;

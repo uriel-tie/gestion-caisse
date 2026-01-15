@@ -35,13 +35,19 @@ class ServiceController extends AbstractController
         $this->denyAccessUnlessGranted('ROLE_MANAGER'); // Sécurité
 
         $data = json_decode($request->getContent(), true);
-        
+
+        $user = $this->getUser();
+        if (!$user) {
+            return $this->json(['error' => 'Utilisateur non authentifié'], 401);
+        }
+
         if (empty($data['nom'])) {
             return $this->json(['error' => 'Le nom est obligatoire'], 400);
         }
 
         $service = new Service();
         $service->setNom($data['nom']);
+        $service->setSociete($user->getSociete());
 
         $em->persist($service);
         $em->flush();

@@ -5,8 +5,8 @@ namespace App\Controller;
 use App\Entity\Operation;
 use App\Entity\Justificatif; 
 use App\Entity\ModePaiement;
-use App\Entity\SessionCaisse; // Import manquant corrigé
-use App\Entity\Demande;       // Import manquant corrigé
+use App\Entity\SessionCaisse; 
+use App\Entity\Demande;       
 use App\Entity\Societe;
 use App\Repository\ModePaiementRepository;
 use App\Repository\OperationRepository;
@@ -72,6 +72,11 @@ class OperationController extends AbstractController
                 'caisse' => $nomCaisse,
                 'estDemandeAnnulation' => $op->isEstDemandeAnnulation(),
                 'beneficiaire' => $op->getBeneficiaire(),
+                'justificatif' => $op->getJustificatif() ? [
+                    'type' => $op->getJustificatif()->getType(),
+                    'url' => $op->getJustificatif()->getChemin(), 
+                    'fichier' => $op->getJustificatif()->getFichier(),
+                ] : null,
              ];
         }
 
@@ -120,7 +125,9 @@ class OperationController extends AbstractController
         SessionCaisseRepository $sessionRepo
     ): JsonResponse
     {
+       /** @var Utilisateur $user */
         $user = $this->getUser();
+        $societe = $user->getSociete();
         
         // On cherche une session active (via string ou constante si importée)
         $session = $sessionRepo->findOneBy(['caissier' => $user, 'statut' => 'OUVERTE']);
@@ -181,7 +188,11 @@ class OperationController extends AbstractController
         DemandeRepository $demandeRepo
     ): JsonResponse
     {
+        /** @var Utilisateur $user */
         $user = $this->getUser();
+        $societe = $user->getSociete();
+
+        // On cherche une session active
         $session = $sessionRepo->findOneBy(['caissier' => $user, 'statut' => 'OUVERTE']);
 
         if (!$session) {
@@ -449,6 +460,7 @@ class OperationController extends AbstractController
     private function processJustificatif(Operation $op, array $data, EntityManagerInterface $em): void
     {
         $justificatif = new Justificatif();
+        $societe = $op->getSociete();
         $hasJustif = false;
 
         if (isset($data['is_bon_interne']) && $data['is_bon_interne'] === true) {
@@ -478,6 +490,7 @@ class OperationController extends AbstractController
 
         if ($hasJustif) {
             $justificatif->setOperation($op);
+            $justificatif->setSociete($societe); 
             $em->persist($justificatif);
         }
     }

@@ -11,6 +11,7 @@ const AdminSoc: React.FC = () => {
         adresse: '',
         telephone: '',
         registreCommerce: '',
+        numeroCompteContribuable: '',
         siegeSocial: '',
         capitalSocial: '',
         modeValidation: 'STANDARD' // Valeur par défaut
@@ -35,6 +36,7 @@ const AdminSoc: React.FC = () => {
                 registreCommerce: data.registreCommerce || '',
                 siegeSocial: data.siegeSocial || '',
                 capitalSocial: data.capitalSocial || '',
+                numeroCompteContribuable: data.numeroCompteContribuable || '',
                 modeValidation: data.modeValidation || 'STANDARD'
             });
         } catch (error) {
@@ -157,9 +159,10 @@ const AdminSoc: React.FC = () => {
                     </div>
                 )}
 
-                <form onSubmit={handleSubmit}>
+                    <form onSubmit={handleSubmit}>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        {/* Ligne 1 */}
+                        
+                        {/* Ligne 1 : Identité */}
                         <div className="col-span-1">
                             <label className="block text-sm font-medium text-gray-700 mb-1">Raison Sociale</label>
                             <input 
@@ -181,32 +184,24 @@ const AdminSoc: React.FC = () => {
                             />
                         </div>
 
-                        {/* Ligne 2 */}
-                        <div className="col-span-1">
-                            <label className="block text-sm font-medium text-gray-700 mb-1">Adresse</label>
+                        {/* Ligne 2 : Adresse (PREND TOUTE LA LARGEUR POUR ÉQUILIBRER) */}
+                        <div className="col-span-1 md:col-span-2">
+                            <label className="block text-sm font-medium text-gray-700 mb-1">Adresse / Siège Social</label>
                             <input 
                                 name="adresse" 
                                 value={formData.adresse} 
                                 onChange={handleChange}
                                 className="w-full p-2 border rounded focus:ring-2 focus:ring-blue-500 outline-none"
+                                placeholder="Adresse complète"
                             />
                         </div>
+
+                        {/* Ligne 3 : Contacts & Finances */}
                         <div className="col-span-1">
                             <label className="block text-sm font-medium text-gray-700 mb-1">Téléphone</label>
                             <input 
                                 name="telephone" 
                                 value={formData.telephone} 
-                                onChange={handleChange}
-                                className="w-full p-2 border rounded focus:ring-2 focus:ring-blue-500 outline-none"
-                            />
-                        </div>
-
-                        {/* Ligne 3 */}
-                        <div className="col-span-1">
-                            <label className="block text-sm font-medium text-gray-700 mb-1">N° Registre Commerce</label>
-                            <input 
-                                name="registreCommerce" 
-                                value={formData.registreCommerce} 
                                 onChange={handleChange}
                                 className="w-full p-2 border rounded focus:ring-2 focus:ring-blue-500 outline-none"
                             />
@@ -218,6 +213,27 @@ const AdminSoc: React.FC = () => {
                                 value={formData.capitalSocial} 
                                 onChange={handleChange}
                                 className="w-full p-2 border rounded focus:ring-2 focus:ring-blue-500 outline-none"
+                            />
+                        </div>
+
+                        {/* Ligne 4 : Administratif (NCC et RCCM vont bien ensemble) */}
+                        <div className="col-span-1">
+                            <label className="block text-sm font-medium text-gray-700 mb-1">N° Registre Commerce (RCCM)</label>
+                            <input 
+                                name="registreCommerce" 
+                                value={formData.registreCommerce} 
+                                onChange={handleChange}
+                                className="w-full p-2 border rounded focus:ring-2 focus:ring-blue-500 outline-none"
+                            />
+                        </div>
+                        <div className="col-span-1">
+                            <label className="block text-sm font-medium text-gray-700 mb-1">N° Compte Contribuable (NCC)</label>
+                            <input 
+                                name="numeroCompteContribuable" 
+                                value={formData.numeroCompteContribuable} 
+                                onChange={handleChange}
+                                className="w-full p-2 border rounded focus:ring-2 focus:ring-blue-500 outline-none"
+                                placeholder="Ex: 1234567 A"
                             />
                         </div>
                     </div>

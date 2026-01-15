@@ -33,30 +33,70 @@ export default function NewRequestPage() {
     const totalGeneral = lignes.reduce((acc, curr) => acc + curr.total, 0);
 
     // Chargement initial
-    useEffect(() => {
+        useEffect(() => {
+
         const loadData = async () => {
+
             const token = localStorage.getItem('token');
-            // 1. Charger l'utilisateur courant (si stocké ou via API)
-            // On suppose ici qu'on peut le récupérer ou qu'il est stocké dans le localStorage
-            // Si tu as un endpoint /api/me c'est mieux, sinon on simule avec le localStorage
-            const storedUser = localStorage.getItem('user_data');
-            if (storedUser) {
-                const u = JSON.parse(storedUser);
-                setCurrentUser(u);
-                setBeneficiaireId(u.id); // Par défaut c'est moi
+
+            
+
+            // 1. Récupération robuste de l'utilisateur
+
+            // On vérifie les deux clés possibles : 'user_data' ou 'user'
+
+            const rawUserData = localStorage.getItem('user_data') || localStorage.getItem('user');
+
+            
+
+            if (rawUserData) {
+
+                try {
+
+                    const u = JSON.parse(rawUserData);
+
+                    setCurrentUser(u);
+
+                    setBeneficiaireId(u.id); // Par défaut c'est moi
+
+                } catch (e) {
+
+                    console.error("Erreur parsing user data", e);
+
+                }
+
             }
 
-            // 2. Charger la liste des utilisateurs
+
+
+            // 2. Charger la liste des utilisateurs (API)
+
             try {
+
                 const res = await fetch('https://127.0.0.1:8000/api/users?all=true', {
+
                     headers: { 'Authorization': `Bearer ${token}` }
+
                 });
-                if (res.ok) setUsers(await res.json());
+
+                if (res.ok) {
+
+                    const data = await res.json();
+
+                    setUsers(data);
+
+                }
+
             } catch (err) {
-                console.error("Erreur users", err);
+
+                console.error("Erreur fetch users", err);
+
             }
+
         };
+
         loadData();
+
     }, []);
 
     const handleSubmit = async (e: React.FormEvent) => {

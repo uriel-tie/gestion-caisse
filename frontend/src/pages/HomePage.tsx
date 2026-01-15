@@ -81,7 +81,7 @@ export default function HomePage({ user }: HomePageProps) {
         {role.includes('CAISSIER') && (
           <>
             <div 
-              onClick={() => navigate('/workstation')}
+              onClick={() => navigate('/caisse/workstation')}
               className="bg-white p-6 rounded-xl shadow-sm border-l-4 border-l-green-500 hover:shadow-md transition cursor-pointer group"
             >
               <div className="bg-green-50 w-12 h-12 rounded-lg flex items-center justify-center text-green-600 mb-4 group-hover:scale-110 transition">
@@ -126,6 +126,22 @@ export default function HomePage({ user }: HomePageProps) {
               </div>
               <h3 className="font-bold text-gray-900 mb-1">Mon Équipe</h3>
               <p className="text-sm text-gray-500">Gérer les membres du service.</p>
+            </div>
+          </>
+        )}
+
+        {/* --- BLOC SUPER ADMIN --- */}
+        {role.includes('ROLE_SUPER_ADMIN') && (
+          <>
+            <div 
+              onClick={() => navigate('/super-admin')}
+              className="bg-white p-6 rounded-xl shadow-sm border-l-4 border-l-blue-500 hover:shadow-md transition cursor-pointer"
+            >
+              <div className="bg-blue-50 w-12 h-12 rounded-lg flex items-center justify-center text-blue-600 mb-4">
+                <Shield size={24} />
+              </div>
+              <h3 className="font-bold text-gray-900 mb-1">Super Admin</h3>
+              <p className="text-sm text-gray-500">Accès complet au système.</p>
             </div>
           </>
         )}

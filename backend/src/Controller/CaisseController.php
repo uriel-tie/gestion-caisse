@@ -97,9 +97,16 @@ class CaisseController extends AbstractController
 
         $data = json_decode($request->getContent(), true);
 
+        $user = $this->getUser();
+
         if (empty($data['nom'])) {
             return $this->json(['error' => 'Nom de caisse obligatoire'], 400);
         }
+
+        if (!$user) {
+            return $this->json(['error' => 'Utilisateur non authentifié'], 401);
+        }
+
 
         $caisse = new Caisse();
         $caisse->setNom($data['nom']);

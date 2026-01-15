@@ -12,6 +12,8 @@ use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
+use App\Repository\SecurityRequestRepository;
+use App\Entity\SecurityRequest;
 use Symfony\Component\PasswordHasher\Hasher\UserPasswordHasherInterface;
 use Symfony\Component\Routing\Annotation\Route;
 
@@ -25,117 +27,114 @@ class AuthController extends AbstractController
         private GoogleAuthenticatorInterface $googleAuth
     ) {}
 
-    #[Route('/login', name: 'login', methods: ['POST'])]
+   #[Route('/login', name: 'login', methods: ['POST'])]
     public function login(Request $request): JsonResponse
     {
         $data = json_decode($request->getContent(), true);
-        
         $email = $data['email'] ?? ''; 
         $password = $data['password'] ?? '';
-        $code2fa = $data['code_2fa'] ?? null;
+        $code2FA = $data['code2FA'] ?? '';
 
-        // 1. Trouver l'utilisateur
         $user = $this->userRepo->findOneBy(['email' => $email]);
+
+        // 1. Vérification existence et activité
         if (!$user) {
-            return $this->json(['message' => 'Utilisateur introuvable'], 401);
+            return $this->json(['message' => 'Identifiants invalides'], 401);
         }
 
-        // --- AJOUT SÉCURITÉ : VÉRIFICATION DU STATUT ---
-        
-        // A. Vérifier si le compte est supprimé (Archivé)
-        // On utilise method_exists au cas où le champ n'est pas encore partout, mais tu l'as ajouté.
-        if (method_exists($user, 'isDeleted') && $user->isDeleted()) {
-            return $this->json(['message' => 'Ce compte a été supprimé.'], 403);
-        }
-
-        // B. Vérifier si le compte est suspendu / inactif
         if (!$user->isEstActif()) {
-            return $this->json(['message' => 'Ce compte est désactivé. Contactez votre manager ou l\'administrateur.'], 403);
+            return $this->json(['message' => 'Votre compte est inactif, veuillez contacter l\'administrateur ou votre manager.'], 403);
         }
 
-        // ------------------------------------------------
-
-        // 2. Vérifier le mot de passe
+        // 2. Vérification du mot de passe permanent uniquement
         if (!$this->hasher->isPasswordValid($user, $password)) {
-            return $this->json(['message' => 'Mot de passe incorrect'], 401);
+            return $this->json(['message' => 'Identifiants invalides'], 401);
         }
 
-        // 3. GESTION 2FA
-        if ($user->isGoogleAuthenticatorEnabled()) { 
-            if (!$code2fa) {
-                return $this->json([
-                    '2fa_required' => true, 
-                    'message' => 'Code A2F requis'
-                ]);
+        // 3. Gestion 2FA (si activée)
+        if ($user->is2faEnabled()) {
+            if (empty($code2FA)) {
+                return $this->json(['requires2fa' => true], 200);
             }
-
-            if (!$this->googleAuth->checkCode($user, $code2fa)) {
-                return $this->json(['message' => 'Code A2F invalide'], 401);
+            if (!$this->googleAuth->checkCode($user, $code2FA)) {
+                return $this->json(['message' => 'Code de sécurité invalide'], 401);
             }
         }
 
-        // 4. Génération du Token
+        // 4. Succès : Génération du Token
         $token = $this->jwtManager->create($user);
 
         return $this->json([
             'token' => $token,
             'user' => [
-                'email' => $user->getEmail(),
+                'id' => $user->getId(),
                 'nom' => $user->getNom(),
+                'email' => $user->getEmail(),
                 'roles' => $user->getRoles(),
-                'is2faEnabled' => $user->isGoogleAuthenticatorEnabled(),
-                'password_must_be_changed' => method_exists($user, 'isPasswordMustBeChanged') ? $user->isPasswordMustBeChanged() : false
+                'passwordMustBeChanged' => $user->isPasswordMustBeChanged(),
+                'isEmailVerified' => $user->isIsEmailVerified(),
             ]
         ]);
     }
 
-    #[Route('/register', name: 'app_register', methods: ['POST'])]
-    public function register(Request $request, UserPasswordHasherInterface $passwordHasher, EntityManagerInterface $entityManager): JsonResponse
+   #[Route('/register', name: 'register', methods: ['POST'])]
+    public function register(Request $request, EntityManagerInterface $entityManager, UserPasswordHasherInterface $passwordHasher): JsonResponse
     {
         $data = json_decode($request->getContent(), true);
 
-        // Validation basique des champs obligatoires
-        if (empty($data['email']) || empty($data['password']) || empty($data['nomSociete'])) {
-            return new JsonResponse(['message' => 'Données manquantes (Email, Mot de passe ou Nom Société)'], Response::HTTP_BAD_REQUEST);
+        // Vérification si l'email existe déjà
+        $existingUser = $this->userRepo->findOneBy(['email' => $data['email']]);
+        if ($existingUser) {
+            return $this->json(['error' => 'Cet email est déjà utilisé.'], 400);
         }
 
-        // 1. Création de la Société
-        $societe = new \App\Entity\Societe();
-        $societe->setNom($data['nomSociete']);
-        
-        // Gestion du Numéro Compte Contribuable (s'il est envoyé)
-        if (!empty($data['numeroCompteContribuable'])) {
-            $societe->setNumeroCompteContribuable($data['numeroCompteContribuable']);
+        $entityManager->beginTransaction();
+        try {
+            // 1. Création de la Société (Avec les infos complètes)
+            $societe = new Societe();
+            $societe->setNom($data['nomSociete']);
+            
+            if (!empty($data['forme'])) $societe->setForme($data['forme']);
+            if (!empty($data['adresse'])) $societe->setAdresse($data['adresse']);
+            if (!empty($data['telephone'])) $societe->setTelephone($data['telephone']);
+            if (!empty($data['capital'])) $societe->setCapitalSocial($data['capital']);
+            if (!empty($data['numeroCompteContribuable'])) {
+                $societe->setNumeroCompteContribuable($data['numeroCompteContribuable']);
+            }
+            if (!empty($data['registreCommerce'])) {
+                $societe->setRegistreCommerce($data['registreCommerce']);
+            }
+            
+            $societe->setIsActive(true); 
+            $societe->setIsDeleted(false);
+            $societe->setModeValidation(Societe::MODE_STANDARD); // Valeur par défaut
+
+            $entityManager->persist($societe);
+
+            // 2. Création du Manager (inchangé)
+            $user = new Utilisateur();
+            $user->setEmail($data['email']);
+            $user->setNom($data['nom'] ?? '');
+            $user->setRoles(['ROLE_MANAGER']);
+            $user->setEstActif(false); 
+            $user->setSociete($societe);
+
+            $hashedPassword = $passwordHasher->hashPassword($user, $data['password']);
+            $user->setPassword($hashedPassword);
+
+            $entityManager->persist($user);
+            $entityManager->flush();
+            
+            $entityManager->commit();
+
+            return new JsonResponse([
+                'message' => 'Compte créé avec succès. En attente de validation.',
+                'userId' => $user->getId()
+            ], 201);
+
+        } catch (\Exception $e) {
+            $entityManager->rollback();
+            return $this->json(['error' => 'Erreur lors de l\'inscription: ' . $e->getMessage()], 500);
         }
-        
-        // Par défaut : Société Active, mais non supprimée
-        $societe->setIsActive(true); 
-        $societe->setIsDeleted(false);
-
-        // 2. Création du Manager (Utilisateur)
-        $user = new Utilisateur();
-        $user->setEmail($data['email']);
-        $user->setNom($data['nom'] ?? '');
-        
-        // Rôle Manager & Inactif par défaut (en attente validation Admin)
-        $user->setRoles(['ROLE_MANAGER']);
-        $user->setEstActif(false); 
-        
-        // Lien critique : Lier l'utilisateur à sa nouvelle société
-        $user->setSociete($societe);
-
-        // Hashage du mot de passe
-        $hashedPassword = $passwordHasher->hashPassword($user, $data['password']);
-        $user->setPassword($hashedPassword);
-
-        // 3. Persistance en base (Transaction)
-        // On persiste d'abord la société, puis l'utilisateur
-        $entityManager->persist($societe);
-        $entityManager->persist($user);
-        $entityManager->flush();
-
-        return new JsonResponse([
-            'message' => 'Compte entreprise créé avec succès. Votre accès est en attente de validation par l\'administrateur.'
-        ], Response::HTTP_CREATED);
     }
 }

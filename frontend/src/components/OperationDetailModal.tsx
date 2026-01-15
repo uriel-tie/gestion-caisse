@@ -246,7 +246,12 @@ export default function OperationDetailModal({ operation, onClose, onRefresh, us
                                 ) : (
                                     <div className="flex items-center justify-between">
                                         <span className="text-blue-700 text-sm">Document joint disponible</span>
-                                        <a href={operation.justificatif.url} target="_blank" rel="noopener noreferrer" className="px-3 py-1.5 bg-blue-600 text-white text-xs font-bold rounded hover:bg-blue-700 transition">
+                                        <a 
+                                            href={`https://localhost:8000/${operation.justificatif.url}`} 
+                                            target="_blank" 
+                                            rel="noopener noreferrer"
+                                            className="px-3 py-1.5 bg-blue-600 text-white text-xs font-bold rounded hover:bg-blue-700 transition"
+                                        > 
                                             Voir le document
                                         </a>
                                     </div>

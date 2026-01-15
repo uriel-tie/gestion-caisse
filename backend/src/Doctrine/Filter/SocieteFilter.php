@@ -12,7 +12,17 @@ class SocieteFilter extends SQLFilter
     {
         // Liste des entités à cloisonner
         $societeAwareEntities = [
-            Utilisateur::class,
+            \App\Entity\Utilisateur::class,
+            \App\Entity\Caisse::class,
+            \App\Entity\Demande::class,
+            \App\Entity\Operation::class,
+            \App\Entity\Service::class,
+            \App\Entity\Transfert::class,
+            \App\Entity\SessionCaisse::class,
+            \App\Entity\CompteComptable::class,
+            \App\Entity\ModePaiement::class,
+            \App\Entity\Cloture::class,
+            \App\Entity\Audit::class,
         ];
 
         if (!in_array($targetEntity->reflClass->name, $societeAwareEntities)) {
@@ -27,10 +37,9 @@ class SocieteFilter extends SQLFilter
             return '';
         }
 
-        if (empty($societeId)) {
+        if (empty($societeId) || $societeId === 'null') {
             return '';
         }
-
         // Important : PostgreSQL et MySQL utilisent souvent des guillemets différents pour les alias
         // On retourne la contrainte SQL
         return sprintf('%s.societe_id = %s', $targetTableAlias, $societeId);

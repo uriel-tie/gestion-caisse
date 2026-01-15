@@ -87,6 +87,10 @@ class Utilisateur implements UserInterface, PasswordAuthenticatedUserInterface, 
     #[ORM\JoinColumn(nullable: true)]
     private ?Societe $societe = null;
 
+  #[ORM\Column(type: 'boolean', options: ['default' => false])]
+    private bool $isEmailVerified = false;
+
+
     public function getSociete(): ?Societe
     {
         return $this->societe;
@@ -335,6 +339,17 @@ class Utilisateur implements UserInterface, PasswordAuthenticatedUserInterface, 
     {
         $this->derniereModificationNom = $derniereModificationNom;
 
+        return $this;
+    }
+
+    public function isIsEmailVerified(): ?bool
+    {
+        return $this->isEmailVerified;
+    }
+
+    public function setIsEmailVerified(bool $isEmailVerified): self
+    {
+        $this->isEmailVerified = $isEmailVerified;
         return $this;
     }
 }
