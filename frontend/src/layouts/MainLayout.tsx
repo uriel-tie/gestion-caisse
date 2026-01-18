@@ -20,16 +20,7 @@ export default function MainLayout({ user, onLogout, children }: MainLayoutProps
   const { t } = useTranslation();
   const navigate = useNavigate();
   const location = useLocation();
-
-  // Debug pour vérifier la valeur de isEmailVerified
-  React.useEffect(() => {
-    console.log('=== MainLayout Render ===');
-    console.log('User object:', user);
-    console.log('isEmailVerified value:', user?.isEmailVerified);
-    console.log('Type of isEmailVerified:', typeof user?.isEmailVerified);
-    console.log('Condition result:', user && !user.isEmailVerified && !isEmailVerificationClosed);
-  }, [user, isEmailVerificationClosed]);
-
+  
   // Filtrage sécurisé du menu
   const filteredNav = NAVIGATION.filter(item => {
     if (item.roles.includes('ALL')) return true;

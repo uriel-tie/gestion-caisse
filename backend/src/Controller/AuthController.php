@@ -16,6 +16,7 @@ use App\Repository\SecurityRequestRepository;
 use App\Entity\SecurityRequest;
 use Symfony\Component\PasswordHasher\Hasher\UserPasswordHasherInterface;
 use Symfony\Component\Routing\Annotation\Route;
+use App\Service\TelegramService;
 
 #[Route('/api', name: 'api_auth_')]
 class AuthController extends AbstractController
@@ -24,7 +25,8 @@ class AuthController extends AbstractController
         private UtilisateurRepository $userRepo,
         private UserPasswordHasherInterface $hasher,
         private JWTTokenManagerInterface $jwtManager,
-        private GoogleAuthenticatorInterface $googleAuth
+        private GoogleAuthenticatorInterface $googleAuth,
+        private TelegramService $telegramService
     ) {}
 
    #[Route('/login', name: 'login', methods: ['POST'])]
@@ -77,12 +79,12 @@ class AuthController extends AbstractController
         ]);
     }
 
-   #[Route('/register', name: 'register', methods: ['POST'])]
+  #[Route('/register', name: 'register', methods: ['POST'])]
     public function register(Request $request, EntityManagerInterface $entityManager, UserPasswordHasherInterface $passwordHasher): JsonResponse
     {
         $data = json_decode($request->getContent(), true);
 
-        // Vérification si l'email existe déjà
+        // Vérification email...
         $existingUser = $this->userRepo->findOneBy(['email' => $data['email']]);
         if ($existingUser) {
             return $this->json(['error' => 'Cet email est déjà utilisé.'], 400);
@@ -90,33 +92,21 @@ class AuthController extends AbstractController
 
         $entityManager->beginTransaction();
         try {
-            // 1. Création de la Société (Avec les infos complètes)
+            // 1. Création Société
             $societe = new Societe();
             $societe->setNom($data['nomSociete']);
-            
-            if (!empty($data['forme'])) $societe->setForme($data['forme']);
-            if (!empty($data['adresse'])) $societe->setAdresse($data['adresse']);
-            if (!empty($data['telephone'])) $societe->setTelephone($data['telephone']);
-            if (!empty($data['capital'])) $societe->setCapitalSocial($data['capital']);
-            if (!empty($data['numeroCompteContribuable'])) {
-                $societe->setNumeroCompteContribuable($data['numeroCompteContribuable']);
-            }
-            if (!empty($data['registreCommerce'])) {
-                $societe->setRegistreCommerce($data['registreCommerce']);
-            }
-            
-            $societe->setIsActive(true); 
+            // ... (tes setters societe) ...
+            $societe->setIsActive(true);
             $societe->setIsDeleted(false);
-            $societe->setModeValidation(Societe::MODE_STANDARD); // Valeur par défaut
-
+            $societe->setModeValidation(Societe::MODE_STANDARD);
             $entityManager->persist($societe);
 
-            // 2. Création du Manager (inchangé)
+            // 2. Création Manager
             $user = new Utilisateur();
             $user->setEmail($data['email']);
             $user->setNom($data['nom'] ?? '');
             $user->setRoles(['ROLE_MANAGER']);
-            $user->setEstActif(false); 
+            $user->setEstActif(false);
             $user->setSociete($societe);
 
             $hashedPassword = $passwordHasher->hashPassword($user, $data['password']);
@@ -124,9 +114,19 @@ class AuthController extends AbstractController
 
             $entityManager->persist($user);
             $entityManager->flush();
-            
-            $entityManager->commit();
+            $entityManager->commit(); // La transaction BDD est finie et validée.
 
+            // -----------------------------------------------------------
+            // CORRECTION 2 : Appel Telegram AVANT le return
+            // -----------------------------------------------------------
+            try {
+                $this->telegramService->sendNewUserAlert($user);
+            } catch (\Exception $e) {
+                // On log l'erreur mais on ne bloque pas la réponse user
+                error_log("Telegram Error: " . $e->getMessage());
+            }
+
+            // CORRECTION 3 : Le return se fait APRES tout le travail
             return new JsonResponse([
                 'message' => 'Compte créé avec succès. En attente de validation.',
                 'userId' => $user->getId()

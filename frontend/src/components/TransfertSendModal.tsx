@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Send, X, Loader2, ArrowRight } from 'lucide-react';
+import Swal from 'sweetalert2';
 import { transfertService } from '../services/transfert.service';
 import { type CaisseSimple } from '../types';
 
@@ -34,11 +35,21 @@ export default function TransfertSendModal({ isOpen, onClose, onSuccess }: Props
                 montant: parseFloat(montant),
                 motif
             });
-            alert("Transfert envoyé !");
+            Swal.fire({
+                title: 'Succès',
+                text: 'Transfert envoyé !',
+                icon: 'success',
+                confirmButtonText: 'OK'
+            });
             onSuccess();
             onClose();
         } catch (err: any) {
-            alert(err.message);
+            Swal.fire({
+                title: 'Erreur',
+                text: err.message || 'Une erreur est survenue',
+                icon: 'error',
+                confirmButtonText: 'OK'
+            });
         } finally {
             setLoading(false);
         }

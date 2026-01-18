@@ -9,7 +9,9 @@ export default function AdminCaisse() {
     const [newCaisse, setNewCaisse] = useState('');
     const [newCaisseEmploye, setNewCaisseEmploye] = useState('');
     const [newCaisseCompte, setNewCaisseCompte] = useState('');
-    const [newCaisseSeuil, setNewCaisseSeuil] = useState('50000'); 
+    // Seuil décaissement par défaut
+    const DEFAULT_SEUIL_DECAISSEMENT = '';
+    const [newCaisseSeuil, setNewCaisseSeuil] = useState(DEFAULT_SEUIL_DECAISSEMENT); 
     
     const token = localStorage.getItem('token');
 
@@ -109,7 +111,7 @@ export default function AdminCaisse() {
                                     type="number" 
                                     value={newCaisseSeuil}
                                     onChange={(e) => setNewCaisseSeuil(e.target.value)}
-                                    placeholder="Plafond auto"
+                                    placeholder="Seuil de décaissement"
                                     className="w-full border rounded-lg px-3 py-2 text-right pr-12"
                                 />
                                 <span className="absolute right-3 top-2 text-gray-400 text-sm">FCFA</span>
@@ -142,7 +144,7 @@ export default function AdminCaisse() {
                                 { nom: newCaisse, employe_id: newCaisseEmploye || null, compte_id: newCaisseCompte || null, seuil: newCaisseSeuil },
                                 'caisses',
                                 setCaisses,
-                                () => { setNewCaisse(''); setNewCaisseSeuil('50000'); setNewCaisseEmploye(''); setNewCaisseCompte(''); }
+                                () => { setNewCaisse(''); setNewCaisseSeuil(DEFAULT_SEUIL_DECAISSEMENT); setNewCaisseEmploye(''); setNewCaisseCompte(''); }
                             )}
                             className="w-full bg-green-600 text-white py-2 rounded-lg hover:bg-green-700 mb-6 disabled:opacity-50 font-medium"
                             disabled={!newCaisse}

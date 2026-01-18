@@ -168,6 +168,21 @@ export default function AdminUsers() {
                         <button onClick={() => setTempPassword(null)} className="text-amber-600 hover:text-amber-800"><X size={20}/></button>
                     </div>
                 )}
+
+                {!tempPassword && (
+                    <div className="mt-4 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+                        <p className="text-sm text-blue-800 font-medium mb-2">ℹ️ Comment sont générés les mots de passe provisoires ?</p>
+                        <p className="text-xs text-blue-700 mb-3">Le mot de passe provisoire est généré automatiquement à partir de l'e-mail et de l'année actuelle :</p>
+                        <div className="bg-white border border-blue-200 p-3 rounded text-xs font-mono text-blue-900 mb-2">
+                            Exemple : e-mail "johndoe@example.com" → Mot de passe : <span className="font-bold">Johndoe@2026!</span>
+                        </div>
+                        <p className="text-xs text-blue-700">
+                            • Format : [Première partie de l'e-mail]@[année actuelle]!<br/>
+                            • La première lettre est en majuscule, le reste en minuscules<br/>
+                            • Le collaborateur doit obligatoirement le changer lors de sa première connexion
+                        </p>
+                    </div>
+                )}
             </div>
 
             {/* TABLEAU DES UTILISATEURS */}

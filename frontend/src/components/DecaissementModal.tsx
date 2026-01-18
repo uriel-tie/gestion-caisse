@@ -160,7 +160,7 @@ export default function DecaissementModal({ isOpen, onClose, onSuccess, demande 
                         >
                             <Printer size={20} /> IMPRIMER LE BON
                         </button>
-                        <button onClick={onClose} className="w-full text-gray-500 py-2 hover:text-gray-800 font-medium">Fermer</button>
+                        <button onClick={() => { setLastOpId(null); onClose(); }} className="w-full text-gray-500 py-2 hover:text-gray-800 font-medium">Fermer</button>
                     </div>
                 </div>
             </div>

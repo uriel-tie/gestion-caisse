@@ -70,8 +70,7 @@ class TransfertController extends AbstractController
         $opDebit->setUtilisateur($user);
         $opDebit->setSessionCaisse($sessionSource);
         $opDebit->setMotif("Transfert vers " . $caisseCible->getNom());
-        $opDebit->setStatut(Operation::STATUT_VALIDEE);
-        // Mode interne
+        $opDebit->setStatut(Operation::STATUT_VALIDEE);        $opDebit->setSociete($societe);        // Mode interne
         $mode = $modeRepo->findOneBy(['libelle' => 'Espèces']) ?? $modeRepo->findAll()[0];
         $opDebit->setModePaiement($mode);
 
@@ -162,6 +161,7 @@ class TransfertController extends AbstractController
         $opCredit->setSessionCaisse($session);
         $opCredit->setMotif("Réception transfert de " . $transfert->getCaisseDepart()->getNom());
         $opCredit->setStatut(Operation::STATUT_VALIDEE);
+        $opCredit->setSociete($transfert->getSociete());
         
         $mode = $modeRepo->findOneBy(['libelle' => 'Espèces']) ?? $modeRepo->findAll()[0];
         $opCredit->setModePaiement($mode);
@@ -233,6 +233,7 @@ class TransfertController extends AbstractController
             $opAnnul->setSessionCaisse($sessionDepart);
             $opAnnul->setMotif("Retour transfert refusé par " . $user->getNom());
             $opAnnul->setStatut(Operation::STATUT_VALIDEE);
+            $opAnnul->setSociete($transfert->getSociete());
             
             $mode = $modeRepo->findOneBy(['libelle' => 'Espèces']) ?? $modeRepo->findAll()[0];
             $opAnnul->setModePaiement($mode);

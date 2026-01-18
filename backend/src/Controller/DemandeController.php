@@ -283,9 +283,17 @@ final class DemandeController extends AbstractController
         /** @var Utilisateur $user */
         $user = $this->getUser();
         $roles = $user->getRoles();
+        $societe = $user->getSociete();
+
+        // Vérif que l'utilisateur appartient à une société
+        if (!$societe) {
+            return $this->json(['error' => 'Vous devez être rattaché à une société'], 403);
+        }
 
         $qb = $repo->createQueryBuilder('d')
             ->join('d.demandeur', 'u')
+            ->andWhere('d.societe = :societe')
+            ->setParameter('societe', $societe)
             ->orderBy('d.createdAt', 'DESC');
 
         if (in_array('ROLE_MANAGER', $roles)) {
