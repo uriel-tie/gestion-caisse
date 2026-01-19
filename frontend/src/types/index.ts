@@ -7,6 +7,13 @@ export interface UserData {
   roles: string[];
   passwordMustBeChanged: boolean;
   isEmailVerified: boolean;
+  customRole?: {
+    id: string;
+    nom: string;
+    baseRole: string;
+    restrictions: string[];
+    adminRestrictions: string[];
+  };
 }
 
 export interface LoginResponse {

@@ -66,16 +66,30 @@ class AuthController extends AbstractController
         // 4. Succès : Génération du Token
         $token = $this->jwtManager->create($user);
 
+        $userData = [
+            'id' => $user->getId(),
+            'nom' => $user->getNom(),
+            'email' => $user->getEmail(),
+            'roles' => $user->getRoles(),
+            'passwordMustBeChanged' => $user->isPasswordMustBeChanged(),
+            'isEmailVerified' => $user->isIsEmailVerified(),
+        ];
+
+        // Ajouter les informations du rôle personnalisé si présent
+        if ($user->getCustomRole()) {
+            $customRole = $user->getCustomRole();
+            $userData['customRole'] = [
+                'id' => $customRole->getId()->toRfc4122(),
+                'nom' => $customRole->getNom(),
+                'baseRole' => $customRole->getBaseRole(),
+                'restrictions' => $customRole->getRestrictions(),
+                'adminRestrictions' => $customRole->getAdminRestrictions(),
+            ];
+        }
+
         return $this->json([
             'token' => $token,
-            'user' => [
-                'id' => $user->getId(),
-                'nom' => $user->getNom(),
-                'email' => $user->getEmail(),
-                'roles' => $user->getRoles(),
-                'passwordMustBeChanged' => $user->isPasswordMustBeChanged(),
-                'isEmailVerified' => $user->isIsEmailVerified(),
-            ]
+            'user' => $userData
         ]);
     }
 

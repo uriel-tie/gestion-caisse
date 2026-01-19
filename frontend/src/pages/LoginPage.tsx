@@ -72,7 +72,7 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLogin }) => {
         if (data.user.passwordMustBeChanged) {
           navigate('/force-change-password');
         } else if(data.user.roles.includes('ROLE_SUPER_ADMIN')) {
-          navigate('/dashboard');
+          navigate('/super-admin');
         } else {
           navigate('/home');
         }
@@ -125,7 +125,14 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLogin }) => {
         localStorage.setItem('token', data.token);
         localStorage.setItem('user', JSON.stringify(data.user));
         onLogin(data.user);
-            navigate('/force-change-password');
+        
+        if (data.user.passwordMustBeChanged) {
+          navigate('/force-change-password');
+        } else if (data.user.roles.includes('ROLE_SUPER_ADMIN')) {
+          navigate('/super-admin');
+        } else {
+          navigate('/home');
+        }
       } else {
         setForgotStatus({ type: 'error', text: data.message || 'Code invalide' });
       }

@@ -10,15 +10,16 @@ import AdminCompta from '../components/AdminCompta';
 import AdminModes from '../components/AdminModes';
 import AdminSoc from '../components/AdminSoc';
 import AdminCaisse from '../components/AdminCaisse';
+import AdminRoles from '../components/AdminRoles';
 
 interface AdminPageProps {
     user: UserData;
     onLogout: () => void;
 }
 
-export default function AdminPage(_props: AdminPageProps) {
+export default function AdminPage(props: AdminPageProps) {
     // Plus besoin de useNavigate ici pour le retour
-    const [activeTab, setActiveTab] = useState<'users' | 'structure' | 'caisse' | 'compta' | 'modes' | 'soc'>('users');
+    const [activeTab, setActiveTab] = useState<'users' | 'structure' | 'caisse' | 'compta' | 'modes' | 'soc' | 'roles'>('users');
     const { t } = useTranslation();
 
     const getTabClass = (tabName: string, colorClass: string) => {
@@ -57,7 +58,14 @@ export default function AdminPage(_props: AdminPageProps) {
                     >
                         <Users size={18} /> {t('pages.admin.tabs.users')}
                     </button>
-                    
+
+                    <button
+                        onClick={() => setActiveTab('roles')}
+                        className={getTabClass('roles', 'text-pink-600')}
+                    >
+                        <Settings size={18} /> {t('pages.admin.tabs.roles')}
+                    </button>
+
                     <button
                         onClick={() => setActiveTab('structure')}
                         className={getTabClass('structure', 'text-blue-600')}
@@ -95,6 +103,7 @@ export default function AdminPage(_props: AdminPageProps) {
                 {activeTab === 'compta' && <AdminCompta />}
                 {activeTab === 'modes' && <AdminModes />}
                 {activeTab === 'soc' && <AdminSoc />}
+                {activeTab === 'roles' && <AdminRoles user={props.user} />}
             </div>
         </div>
     );

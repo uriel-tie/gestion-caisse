@@ -101,7 +101,7 @@ const resources: any = {
             "structure": "Services",
             "caisse": "Caisses",
             "compta": "Plan Comptable",
-            "modes": "Modes Paiement"
+            "modes": "Modes Paiement","roles": "Rôles Personnalisés"
           }
         },
         "requests": {
@@ -540,7 +540,8 @@ const resources: any = {
             "structure": "Services",
             "caisse": "Cash Desks",
             "compta": "Chart of Accounts",
-            "modes": "Payment Methods"
+            "modes": "Payment Methods",
+            "roles": "Custom Roles"
           }
         },
         "requests": {

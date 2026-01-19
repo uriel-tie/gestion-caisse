@@ -9,7 +9,8 @@ import Swal from 'sweetalert2';
 export default function AdminUsers() {
     const [users, setUsers] = useState<any[]>([]);
     const [services, setServices] = useState<any[]>([]);
-    const [formData, setFormData] = useState({ nom: '', email: '', role: 'ROLE_EMPLOYE', service_id: '' });
+    const [formData, setFormData] = useState({ nom: '', email: '', role: 'ROLE_EMPLOYE', service_id: '', custom_role_id: '' });
+    const [customRoles, setCustomRoles] = useState<any[]>([]);
     const [tempPassword, setTempPassword] = useState<string | null>(null);
     const [loading, setLoading] = useState(false);
     const [editingUser, setEditingUser] = useState<any>(null);
@@ -19,7 +20,17 @@ export default function AdminUsers() {
     useEffect(() => {
         fetchUsers();
         fetchServices();
+        fetchCustomRoles();
     }, []);
+
+    const fetchCustomRoles = async () => {
+        try {
+            const res = await fetch('https://127.0.0.1:8000/api/roles', {
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
+            if (res.ok) setCustomRoles(await res.json());
+        } catch (e) { console.error("Erreur roles", e); }
+    };
 
     const fetchUsers = async () => {
         try {
@@ -54,7 +65,7 @@ export default function AdminUsers() {
             if (res.ok) {
                 const data = await res.json();
                 setTempPassword(data.password);
-                setFormData({ nom: '', email: '', role: 'ROLE_EMPLOYE', service_id: '' });
+                setFormData({ nom: '', email: '', role: 'ROLE_EMPLOYE', service_id: '', custom_role_id: '' });
                 fetchUsers();
             }
         } catch (e) { console.error(e); }
@@ -137,12 +148,24 @@ export default function AdminUsers() {
                     </div>
                     <div>
                         <label className="block text-xs font-semibold text-gray-500 uppercase mb-1">Rôle</label>
-                        <select value={formData.role} onChange={e => setFormData({...formData, role: e.target.value})} className="w-full p-2 border rounded-lg outline-none focus:ring-2 focus:ring-blue-500">
+                        <select value={formData.role} onChange={e => setFormData({...formData, role: e.target.value, custom_role_id: ''})} className="w-full p-2 border rounded-lg outline-none focus:ring-2 focus:ring-blue-500">
                             <option value="ROLE_EMPLOYE">Employé</option>
                             <option value="ROLE_CAISSIER">Caissier</option>
-                            <option value="ROLE_CHEF">Chef de Service</option>
+                            <option value="ROLE_CHEF_SERVICE">Chef de Service</option>
                             <option value="ROLE_MANAGER">Manager</option>
                         </select>
+                        {customRoles.length > 0 && (
+                            <div className="mt-2">
+                                <label className="block text-xs font-semibold text-gray-400 uppercase mb-1">Rôles personnalisés</label>
+                                <select value={formData.custom_role_id} onChange={e => setFormData({...formData, custom_role_id: e.target.value})} className="w-full p-2 border rounded-lg outline-none focus:ring-2 focus:ring-blue-500 bg-white">
+                                    <option value="">Aucun</option>
+                                    {customRoles.map(r => (
+                                        <option key={r.id} value={r.id}>{r.nom} — {r.baseRole.replace('ROLE_', '')}</option>
+                                    ))}
+                                </select>
+                                <p className="text-xs text-gray-400 mt-1">Si vous sélectionnez un rôle personnalisé, il prévaudra sur le rôle standard.</p>
+                            </div>
+                        )}
                     </div>
                     <div>
                         <label className="block text-xs font-semibold text-gray-500 uppercase mb-1">Service</label>
@@ -212,7 +235,7 @@ export default function AdminUsers() {
                                 </td>
                                 <td className="px-6 py-4">
                                     <span className="text-sm text-gray-600 font-medium">
-                                        {u.role?.replace('ROLE_', '').replaceAll('_', ' de ') || 'EMPLOYE'}
+                                        {u.customRole?.nom ? `${u.customRole.nom}` : (u.role?.replace('ROLE_', '').replaceAll('_', ' de ') || 'EMPLOYE')}
                                     </span>
                                 </td>
                                 <td className="px-6 py-4">

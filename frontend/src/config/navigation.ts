@@ -15,7 +15,7 @@ export const NAVIGATION = [
     label: 'Mes Demandes', 
     path: '/requests', 
     icon: FileText, 
-    roles: ['ALL'] 
+    roles: ['ROLE_EMPLOYE', 'ROLE_CHEF_SERVICE', 'ROLE_CAISSIER', 'ROLE_MANAGER'] // Exclu ADMIN et SUPER_ADMIN
   },
 
 

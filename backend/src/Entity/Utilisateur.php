@@ -87,6 +87,11 @@ class Utilisateur implements UserInterface, PasswordAuthenticatedUserInterface, 
     #[ORM\JoinColumn(nullable: true)]
     private ?Societe $societe = null;
 
+    // Rôle personnalisé (optionnel) - Si présent, remplace le rôle par défaut
+    #[ORM\ManyToOne(targetEntity: Role::class)]
+    #[ORM\JoinColumn(nullable: true)]
+    private ?Role $customRole = null;
+
   #[ORM\Column(type: 'boolean', options: ['default' => false])]
     private bool $isEmailVerified = false;
 
@@ -350,6 +355,17 @@ class Utilisateur implements UserInterface, PasswordAuthenticatedUserInterface, 
     public function setIsEmailVerified(bool $isEmailVerified): self
     {
         $this->isEmailVerified = $isEmailVerified;
+        return $this;
+    }
+
+    public function getCustomRole(): ?Role
+    {
+        return $this->customRole;
+    }
+
+    public function setCustomRole(?Role $customRole): self
+    {
+        $this->customRole = $customRole;
         return $this;
     }
 }

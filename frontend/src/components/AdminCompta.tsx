@@ -7,11 +7,13 @@ export default function AdminCompta() {
     // Formulaire Création
     const [newNum, setNewNum] = useState('');
     const [newLibelle, setNewLibelle] = useState('');
+    const [newType, setNewType] = useState('CHARGE'); // Type par défaut
 
     // Mode Édition
     const [editingId, setEditingId] = useState<string | null>(null);
     const [editNum, setEditNum] = useState('');
     const [editLibelle, setEditLibelle] = useState('');
+    const [editType, setEditType] = useState('');
 
     const token = localStorage.getItem('token');
 
@@ -34,11 +36,12 @@ export default function AdminCompta() {
             const res = await fetch('https://127.0.0.1:8000/api/comptes', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
-                body: JSON.stringify({ numero: newNum, libelle: newLibelle, type: 'CHARGE' }) // Type par défaut
+                body: JSON.stringify({ numero: newNum, libelle: newLibelle, type: newType || 'CHARGE' })
             });
             if (res.ok) {
                 setNewNum('');
                 setNewLibelle('');
+                setNewType('CHARGE');
                 fetchComptes();
             }
         } catch (e) { alert("Erreur création"); }
@@ -59,6 +62,7 @@ export default function AdminCompta() {
         setEditingId(c.id);
         setEditNum(c.numero);
         setEditLibelle(c.libelle);
+        setEditType(c.type || 'CHARGE');
     };
 
     const handleUpdate = async () => {
@@ -66,7 +70,7 @@ export default function AdminCompta() {
             const res = await fetch(`https://127.0.0.1:8000/api/comptes/${editingId}`, {
                 method: 'PATCH',
                 headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
-                body: JSON.stringify({ numero: editNum, libelle: editLibelle })
+                body: JSON.stringify({ numero: editNum, libelle: editLibelle, type: editType })
             });
             if (res.ok) {
                 setEditingId(null);
@@ -83,25 +87,35 @@ export default function AdminCompta() {
             </div>
 
             {/* BARRE D'AJOUT */}
-            <div className="flex gap-3 mb-6 bg-orange-50 p-4 rounded-lg">
+            <div className="grid grid-cols-12 gap-3 mb-6 bg-orange-50 p-4 rounded-lg">
                 <input 
                     type="text" 
                     value={newNum} 
                     onChange={(e) => setNewNum(e.target.value)} 
-                    placeholder="N° (ex: 606)" 
-                    className="w-32 border rounded-lg px-3 py-2 font-mono font-bold text-gray-700 focus:ring-2 focus:ring-orange-500 outline-none" 
+                    placeholder="Numéro de compte (ex: 606)" 
+                    className="col-span-2 border rounded-lg px-3 py-2 font-mono font-bold text-gray-700 focus:ring-2 focus:ring-orange-500 outline-none" 
                 />
                 <input 
                     type="text" 
                     value={newLibelle} 
                     onChange={(e) => setNewLibelle(e.target.value)} 
                     placeholder="Libellé (ex: Achats Fournitures)" 
-                    className="flex-1 border rounded-lg px-3 py-2 focus:ring-2 focus:ring-orange-500 outline-none" 
+                    className="col-span-5 border rounded-lg px-3 py-2 focus:ring-2 focus:ring-orange-500 outline-none" 
                 />
+                <select 
+                    value={newType} 
+                    onChange={(e) => setNewType(e.target.value)} 
+                    className="col-span-2 border rounded-lg px-3 py-2 focus:ring-2 focus:ring-orange-500 outline-none bg-white text-gray-700 font-medium"
+                >
+                    <option value="CHARGE">Charge</option>
+                    <option value="PRODUIT">Produit</option>
+                    <option value="ACTIF">Actif</option>
+                    <option value="PASSIF">Passif</option>
+                </select>
                 <button 
                     onClick={handleCreate}
                     disabled={!newNum || !newLibelle}
-                    className="bg-orange-600 text-white px-4 py-2 rounded-lg hover:bg-orange-700 disabled:opacity-50 transition-colors font-medium flex items-center"
+                    className="col-span-3 bg-orange-600 text-white px-4 py-2 rounded-lg hover:bg-orange-700 disabled:opacity-50 transition-colors font-medium flex items-center justify-center"
                 >
                     <Plus className="mr-2 h-4 w-4" /> Ajouter
                 </button>
@@ -114,6 +128,7 @@ export default function AdminCompta() {
                         <tr>
                             <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Numéro</th>
                             <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Libellé</th>
+                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Type</th>
                             <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
                         </tr>
                     </thead>
@@ -129,6 +144,14 @@ export default function AdminCompta() {
                                         <td className="px-6 py-4">
                                             <input className="border rounded px-2 py-1 w-full" value={editLibelle} onChange={e => setEditLibelle(e.target.value)} />
                                         </td>
+                                        <td className="px-6 py-4">
+                                            <select className="border rounded px-2 py-1 w-full bg-white" value={editType} onChange={e => setEditType(e.target.value)}>
+                                                <option value="CHARGE">Charge</option>
+                                                <option value="PRODUIT">Produit</option>
+                                                <option value="ACTIF">Actif</option>
+                                                <option value="PASSIF">Passif</option>
+                                            </select>
+                                        </td>
                                         <td className="px-6 py-4 text-right flex justify-end gap-2">
                                             <button onClick={handleUpdate} className="text-green-600 hover:bg-green-100 p-1 rounded"><Save size={18}/></button>
                                             <button onClick={() => setEditingId(null)} className="text-gray-500 hover:bg-gray-100 p-1 rounded"><X size={18}/></button>
@@ -142,6 +165,11 @@ export default function AdminCompta() {
                                         </td>
                                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-700">
                                             {c.libelle}
+                                        </td>
+                                        <td className="px-6 py-4 whitespace-nowrap text-sm">
+                                            <span className="px-3 py-1 bg-orange-100 text-orange-800 rounded-full font-medium text-xs">
+                                                {c.type || 'CHARGE'}
+                                            </span>
                                         </td>
                                         <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium opacity-0 group-hover:opacity-100 transition-opacity">
                                             <button onClick={() => startEdit(c)} className="text-blue-600 hover:text-blue-900 mr-3"><Edit2 size={18}/></button>

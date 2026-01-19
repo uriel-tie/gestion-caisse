@@ -27,6 +27,7 @@ import HomePage from './pages/HomePage';
 
 import type { UserData } from './types';
 import MainLayout from './layouts/MainLayout';
+import AdminLayout from './layouts/AdminLayout';
 
 // --- AUTH GUARD (Layout Version) ---
 const AuthLayout = ({ user }: { user: UserData | null }) => {
@@ -86,6 +87,20 @@ function App() {
                     {/* Force Change Password */}
                     <Route path="/force-change-password" element={<ForceChangePasswordPage />} />
 
+                    {/* Layout Super Admin (Dédiée) */}
+                    <Route 
+                        element={
+                            user?.roles?.includes('ROLE_SUPER_ADMIN') 
+                                ? <AdminLayout user={user!} onLogout={handleLogout} />
+                                : <Navigate to="/dashboard" />
+                        }
+                    >
+                        <Route 
+                            path="/super-admin" 
+                            element={<SuperAdminPage user={user!} onLogout={handleLogout} />} 
+                        />
+                    </Route>
+
                     {/* Layout Principal */}
                     <Route element={<MainLayout user={user!} onLogout={handleLogout} />}>
                         
@@ -118,16 +133,6 @@ function App() {
 
                         {/* Admin Société (Note le /* pour les sous-routes) */}
                         <Route path="/admin/*" element={<AdminPage user={user!} onLogout={handleLogout} />} />
-
-                        {/* Super Admin */}
-                        <Route 
-                            path="/super-admin" 
-                            element={
-                                user?.roles?.includes('ROLE_SUPER_ADMIN') 
-                                    ? <SuperAdminPage user={user!} onLogout={handleLogout} />
-                                    : <Navigate to="/dashboard" />
-                            } 
-                        />
                     </Route>
                 </Route>
 

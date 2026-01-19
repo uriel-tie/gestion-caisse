@@ -25,8 +25,18 @@ export default function MainLayout({ user, onLogout, children }: MainLayoutProps
   const filteredNav = NAVIGATION.filter(item => {
     if (item.roles.includes('ALL')) return true;
     // Vérification si user et user.roles existent avant d'utiliser .includes
-    if (!user?.roles) return false; 
-    return item.roles.some(role => user.roles.includes(role));
+    if (!user?.roles) return false;
+    
+    // Vérifier les rôles standards
+    const hasRole = item.roles.some(role => user.roles.includes(role));
+    if (!hasRole) return false;
+
+    // Si l'utilisateur a un rôle personnalisé, vérifier les restrictions
+    if (user.customRole?.restrictions && user.customRole.restrictions.includes(item.path)) {
+      return false;
+    }
+
+    return true;
   });
 
   return (
@@ -123,8 +133,8 @@ export default function MainLayout({ user, onLogout, children }: MainLayoutProps
         </header>
 
         <main className="flex-1 overflow-y-auto bg-slate-50/50">
-          {/* Banderolette Vérification Email */}
-          {user && !user.isEmailVerified && !isEmailVerificationClosed && (
+          {/* Banderolette Vérification Email - Vérification stricte du champ isEmailVerified */}
+          {user && user.isEmailVerified === false && !isEmailVerificationClosed && (
             <div className="bg-gradient-to-r from-amber-50 to-orange-50 border-b border-amber-200 px-6 py-3 flex items-center justify-between shadow-sm animate-in fade-in slide-in-from-top-2">
               <div className="flex items-center gap-4 flex-1">
                 <div className="flex-shrink-0">

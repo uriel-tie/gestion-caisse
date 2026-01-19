@@ -5,6 +5,7 @@ namespace App\Controller;
 use App\Entity\Utilisateur;
 use App\Repository\ServiceRepository;
 use App\Repository\UtilisateurRepository;
+use App\Repository\RoleRepository;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\JsonResponse;
@@ -154,13 +155,15 @@ class UserController extends AbstractController
                 continue; 
             }
 
+            $customRole = $u->getCustomRole();
             $data[] = [
                 'id' => $u->getId(),
                 'nom' => $u->getNom(),
                 'email' => $u->getEmail(),
                 'role' => $u->getRoles()[0], 
                 'service' => $u->getService() ? $u->getService()->getNom() : 'Aucun',
-                'actif' => $u->isEstActif()
+                'actif' => $u->isEstActif(),
+                'customRole' => $customRole ? ['id' => $customRole->getId()->toRfc4122(), 'nom' => $customRole->getNom()] : null
             ];
         }
         
@@ -172,7 +175,8 @@ class UserController extends AbstractController
         Request $request, 
         EntityManagerInterface $em, 
         UserPasswordHasherInterface $hasher,
-        ServiceRepository $serviceRepo
+        ServiceRepository $serviceRepo,
+        RoleRepository $roleRepo
     ): JsonResponse
     {
         /** @var Utilisateur $currentUser */
@@ -208,9 +212,23 @@ class UserController extends AbstractController
             $user->setService($currentUser->getService());
         } else {
             // Le Manager peut tout faire
-            $role = $data['role'] ?? 'ROLE_EMPLOYE';
-            $user->setRoles([$role]);
-            
+            // Support d'un rôle personnalisé envoyé en 'custom_role_id'
+            $customRoleId = $data['custom_role_id'] ?? null;
+            if ($customRoleId) {
+                $customRole = $roleRepo->find($customRoleId);
+                if ($customRole && $customRole->getSociete() === $maSociete) {
+                    $user->setCustomRole($customRole);
+                    // Appliquer le rôle de base
+                    $user->setRoles([$customRole->getBaseRole()]);
+                } else {
+                    $role = $data['role'] ?? 'ROLE_EMPLOYE';
+                    $user->setRoles([$role]);
+                }
+            } else {
+                $role = $data['role'] ?? 'ROLE_EMPLOYE';
+                $user->setRoles([$role]);
+            }
+
             if (!empty($data['service_id'])) {
                 $service = $serviceRepo->find($data['service_id']);
                 if ($service) $user->setService($service);
