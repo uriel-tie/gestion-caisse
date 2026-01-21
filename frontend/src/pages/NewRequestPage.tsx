@@ -123,7 +123,8 @@ export default function NewRequestPage() {
                 lignes: lignes.map(l => ({
                     designation: l.designation,
                     quantite: l.quantite,
-                    prixUnitaire: l.prixUnitaire
+                    prixUnitaire: l.prixUnitaire,
+                    compte_id: l.compte_id || null
                 }))
             };
 

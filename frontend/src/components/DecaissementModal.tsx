@@ -108,7 +108,8 @@ export default function DecaissementModal({ isOpen, onClose, onSuccess, demande 
                         designation: l.designation,
                         quantite: l.quantite,
                         prix: l.prixUnitaire,
-                        total: l.total
+                        total: l.total,
+                        compte_id: l.compte_id || null
                     }));
                 }
             }

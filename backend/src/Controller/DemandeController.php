@@ -6,6 +6,7 @@ use App\Entity\Demande;
 use App\Entity\LigneDemande;
 use App\Entity\Utilisateur;
 use App\Entity\Societe;
+use App\Entity\CompteComptable;
 use App\Repository\DemandeRepository;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
@@ -107,6 +108,20 @@ final class DemandeController extends AbstractController
                 $ligne->setDesignation($l['designation']);
                 $ligne->setQuantite((int)$l['quantite']);
                 $ligne->setPrixUnitaireEstimatif((float)$l['prixUnitaire']);
+                
+                // Associer le compte comptable par UUID SEULEMENT
+                if (!empty($l['compte_id']) && is_string($l['compte_id'])) {
+                    try {
+                        $compte = $em->getRepository(CompteComptable::class)->find($l['compte_id']);
+                        if ($compte) {
+                            $ligne->setCompte($compte);
+                        }
+                    } catch (\Exception $e) {
+                        // UUID invalide - on ignore
+                        \error_log('Invalid CompteComptable UUID: ' . $l['compte_id']);
+                    }
+                }
+                
                 $demande->addLigne($ligne);
             }
         }
@@ -363,12 +378,18 @@ final class DemandeController extends AbstractController
         $lignes = [];
         if (method_exists($d, 'getLignes')) {
             foreach ($d->getLignes() as $l) {
+                $compte = $l->getCompte();
                 $lignes[] = [
                     'id' => $l->getId(),
                     'designation' => $l->getDesignation(),
                     'quantite' => $l->getQuantite(),
                     'prixUnitaire' => $l->getPrixUnitaireEstimatif(),
-                    'total' => $l->getTotalLigne()
+                    'total' => $l->getTotalLigne(),
+                    'compte' => $compte ? [
+                        'id' => $compte->getId(),
+                        'numero' => $compte->getNumero(),
+                        'libelle' => $compte->getLibelle()
+                    ] : null
                 ];
             }
         }

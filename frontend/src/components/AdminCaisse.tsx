@@ -1,14 +1,15 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { Plus, Monitor, Trash2 } from 'lucide-react';
+import { CompteComptableSelector } from './CompteComptableSelector';
 
 export default function AdminCaisse() {
 
     const [caisses, setCaisses] = useState<any[]>([]);
     const [caissiers, setCaissiers] = useState<any[]>([]);
-    const [comptes, setComptes] = useState<any[]>([]);
     const [newCaisse, setNewCaisse] = useState('');
     const [newCaisseEmploye, setNewCaisseEmploye] = useState('');
-    const [newCaisseCompte, setNewCaisseCompte] = useState('');
+    const [newCaisseNature, setNewCaisseNature] = useState('');
+    const [newCaisseType, setNewCaisseType] = useState('');
     // Seuil décaissement par défaut
     const DEFAULT_SEUIL_DECAISSEMENT = '';
     const [newCaisseSeuil, setNewCaisseSeuil] = useState(DEFAULT_SEUIL_DECAISSEMENT); 
@@ -17,9 +18,13 @@ export default function AdminCaisse() {
 
      useEffect(() => {
             fetchData('caisses', setCaisses);
-            fetchData('comptes', setComptes);
             fetchUsers();
         }, []);
+
+    // Editing compte state
+    const [editingCompteFor, setEditingCompteFor] = useState<string | null>(null);
+    const [editingNature, setEditingNature] = useState<string>('');
+    const [editingType, setEditingType] = useState<string>('');
 
         const fetchData = async (endpoint: string, setter: Function) => {
         const res = await fetch(`https://127.0.0.1:8000/api/${endpoint}`, {
@@ -88,6 +93,26 @@ export default function AdminCaisse() {
         }
     };
 
+    const startEditCompte = (c: any) => {
+      setEditingCompteFor(c.id);
+      // CompteComptableSelector now returns UUIDs, not numero values
+      setEditingType(c.compteComptable?.id || '');
+      setEditingNature(c.compteComptable?.numero ? c.compteComptable.numero.substring(0,3) : '');
+    };
+
+    const saveEditedCompte = async (caisseId: string) => {
+      await handleUpdateCaisse(caisseId, { compte_id: editingType || null });
+      setEditingCompteFor(null);
+      setEditingNature('');
+      setEditingType('');
+    };
+
+    const cancelEditCompte = () => {
+      setEditingCompteFor(null);
+      setEditingNature('');
+      setEditingType('');
+    };
+
     return (
         <div className="space-y-8">
           {/* GESTION DES CAISSES */}
@@ -97,8 +122,8 @@ export default function AdminCaisse() {
                             <h3 className="text-lg font-bold">Caisses Physiques</h3>
                         </div>
                         
-                        {/* Formulaire Création (Inchangé) */}
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mb-4">
+                        {/* Formulaire Création */}
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mb-4 items-end">
                             <input 
                                 type="text" 
                                 value={newCaisse}
@@ -126,25 +151,28 @@ export default function AdminCaisse() {
                                     <option key={c.id} value={c.id}>{c.nom}</option>
                                 ))}
                             </select>
-                            <select
-                                value={newCaisseCompte}
-                                onChange={(e) => setNewCaisseCompte(e.target.value)}
-                                className="border rounded-lg px-3 py-2"
-                            >
-                                <option value="">-- Compte Comptable --</option>
-                                {comptes.map((c: any) => (
-                                    <option key={c.id} value={c.id}>{c.numero} - {c.libelle}</option>
-                                ))}
-                            </select>
+                            <div className="md:col-span-2">
+                                <CompteComptableSelector
+                                    selectedNatureId={newCaisseNature}
+                                    selectedTypeId={newCaisseType}
+                                    onNatureChange={(nature) => {
+                                        setNewCaisseNature(nature || '');
+                                        setNewCaisseType('');
+                                    }}
+                                    onTypeChange={(typeId) => setNewCaisseType(typeId || '')}
+                                    showLabel={true}
+                                    className="text-sm"
+                                />
+                            </div>
                         </div>
         
                         <button 
                             onClick={() => handleCreate(
                                 'caisses',
-                                { nom: newCaisse, employe_id: newCaisseEmploye || null, compte_id: newCaisseCompte || null, seuil: newCaisseSeuil },
+                                { nom: newCaisse, employe_id: newCaisseEmploye || null, compte_id: newCaisseType || null, seuil: newCaisseSeuil },
                                 'caisses',
                                 setCaisses,
-                                () => { setNewCaisse(''); setNewCaisseSeuil(DEFAULT_SEUIL_DECAISSEMENT); setNewCaisseEmploye(''); setNewCaisseCompte(''); }
+                                () => { setNewCaisse(''); setNewCaisseSeuil(DEFAULT_SEUIL_DECAISSEMENT); setNewCaisseEmploye(''); setNewCaisseNature(''); setNewCaisseType(''); }
                             )}
                             className="w-full bg-green-600 text-white py-2 rounded-lg hover:bg-green-700 mb-6 disabled:opacity-50 font-medium"
                             disabled={!newCaisse}
@@ -206,20 +234,32 @@ export default function AdminCaisse() {
 
           {/* COMPTE */}
           <td className="px-3 py-2">
-            <select
-              value={c.compte?.id || ''}
-              onChange={(e) =>
-                handleUpdateCaisse(c.id, { compte_id: e.target.value || null })
-              }
-              className="w-full border rounded px-2 py-1 text-xs"
-            >
-              <option value="">-- Aucun --</option>
-              {comptes.map((cc: any) => (
-                <option key={cc.id} value={cc.id}>
-                  {cc.numero}
-                </option>
-              ))}
-            </select>
+            {editingCompteFor === c.id ? (
+              <div className="flex items-center space-x-2">
+                <div className="w-48">
+                  <CompteComptableSelector
+                    selectedNatureId={editingNature}
+                    selectedTypeId={editingType}
+                    onNatureChange={(n) => { setEditingNature(n || ''); setEditingType(''); }}
+                    onTypeChange={(t) => setEditingType(t || '')}
+                    showLabel={false}
+                  />
+                </div>
+                <button onClick={() => saveEditedCompte(c.id)} className="text-green-600 text-sm">Enregistrer</button>
+                <button onClick={cancelEditCompte} className="text-gray-500 text-sm">Annuler</button>
+              </div>
+            ) : (
+              <div className="flex items-center justify-between">
+                <div>
+                  {c.compteComptable ? (
+                    <span className="px-2 py-1 bg-blue-50 text-blue-700 rounded text-xs font-mono">{c.compteComptable.numero}</span>
+                  ) : (
+                    <span className="text-gray-400 text-xs">Aucun</span>
+                  )}
+                </div>
+                <button onClick={() => startEditCompte(c)} className="text-sm text-blue-600 ml-2">Modifier</button>
+              </div>
+            )}
           </td>
 
           {/* PLAFOND */}

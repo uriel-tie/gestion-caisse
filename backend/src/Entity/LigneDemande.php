@@ -28,6 +28,10 @@ class LigneDemande
     #[ORM\JoinColumn(nullable: false)]
     private ?Demande $demande = null;
 
+    #[ORM\ManyToOne(targetEntity: CompteComptable::class)]
+    #[ORM\JoinColumn(nullable: true)]
+    private ?CompteComptable $compte = null;
+
     public function getId(): ?Uuid { return $this->id; }
 
     public function getDesignation(): ?string { return $this->designation; }
@@ -45,4 +49,7 @@ class LigneDemande
 
     public function getDemande(): ?Demande { return $this->demande; }
     public function setDemande(?Demande $demande): static { $this->demande = $demande; return $this; }
+
+    public function getCompte(): ?CompteComptable { return $this->compte; }
+    public function setCompte(?CompteComptable $compte): static { $this->compte = $compte; return $this; }
 }

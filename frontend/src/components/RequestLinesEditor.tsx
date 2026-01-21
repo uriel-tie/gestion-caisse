@@ -1,5 +1,6 @@
 import React from 'react';
 import { Trash2, Plus } from 'lucide-react';
+import { CompteComptableSelector } from './CompteComptableSelector';
 
 export interface RequestLine {
     id: number;
@@ -7,6 +8,8 @@ export interface RequestLine {
     quantite: number;
     prixUnitaire: number;
     total: number;
+    compte_id?: string | null; // ID du compte comptable (Type)
+    nature_numero?: string | null; // Numéro de la nature (3 chiffres)
 }
 
 interface EditorProps {
@@ -52,10 +55,11 @@ export const RequestLinesEditor: React.FC<EditorProps> = ({ lines, onChange }) =
             <table className="w-full text-sm text-left">
                 <thead className="bg-gray-100 text-gray-700 font-bold uppercase border-b border-gray-300">
                     <tr>
-                        <th className="px-4 py-2 w-1/2">Désignation</th>
+                        <th className="px-4 py-2 w-1/3">Désignation</th>
                         <th className="px-4 py-2 w-20 text-center">Qté</th>
-                        <th className="px-4 py-2 w-32 text-right">P.U.</th>
-                        <th className="px-4 py-2 w-32 text-right">Total</th>
+                        <th className="px-4 py-2 w-24 text-right">P.U.</th>
+                        <th className="px-4 py-2 w-24 text-right">Total</th>
+                        <th className="px-4 py-2 w-32">Compte</th>
                         <th className="px-4 py-2 w-10"></th>
                     </tr>
                 </thead>
@@ -90,6 +94,30 @@ export const RequestLinesEditor: React.FC<EditorProps> = ({ lines, onChange }) =
                             </td>
                             <td className="p-2 text-right font-mono font-medium text-gray-700">
                                 {line.total.toLocaleString()} 
+                            </td>
+                            <td className="p-2">
+                                <CompteComptableSelector
+                                    selectedNatureId={line.nature_numero}
+                                    selectedTypeId={line.compte_id}
+                                    onNatureChange={(nature) => {
+                                        const newLines = lines.map(l => 
+                                            l.id === line.id 
+                                                ? { ...l, nature_numero: nature, compte_id: null }
+                                                : l
+                                        );
+                                        onChange(newLines);
+                                    }}
+                                    onTypeChange={(typeId) => {
+                                        const newLines = lines.map(l => 
+                                            l.id === line.id 
+                                                ? { ...l, compte_id: typeId }
+                                                : l
+                                        );
+                                        onChange(newLines);
+                                    }}
+                                    showLabel={false}
+                                    className="text-xs"
+                                />
                             </td>
                             <td className="p-2 text-center">
                                 <button 
