@@ -146,26 +146,30 @@ export default function AdminUsers() {
                         <label className="block text-xs font-semibold text-gray-500 uppercase mb-1">Email professionnel</label>
                         <input type="email" required value={formData.email} onChange={e => setFormData({...formData, email: e.target.value})} className="w-full p-2 border rounded-lg outline-none focus:ring-2 focus:ring-blue-500" placeholder="j.dupont@entreprise.com"/>
                     </div>
-                    <div>
+                    <div className="md:col-span-2">
                         <label className="block text-xs font-semibold text-gray-500 uppercase mb-1">Rôle</label>
-                        <select value={formData.role} onChange={e => setFormData({...formData, role: e.target.value, custom_role_id: ''})} className="w-full p-2 border rounded-lg outline-none focus:ring-2 focus:ring-blue-500">
-                            <option value="ROLE_EMPLOYE">Employé</option>
-                            <option value="ROLE_CAISSIER">Caissier</option>
-                            <option value="ROLE_CHEF_SERVICE">Chef de Service</option>
-                            <option value="ROLE_MANAGER">Manager</option>
-                        </select>
-                        {customRoles.length > 0 && (
-                            <div className="mt-2">
-                                <label className="block text-xs font-semibold text-gray-400 uppercase mb-1">Rôles personnalisés</label>
-                                <select value={formData.custom_role_id} onChange={e => setFormData({...formData, custom_role_id: e.target.value})} className="w-full p-2 border rounded-lg outline-none focus:ring-2 focus:ring-blue-500 bg-white">
-                                    <option value="">Aucun</option>
+                        <select value={formData.custom_role_id || formData.role} onChange={e => {
+                            const val = e.target.value;
+                            if (val.startsWith('CUSTOM_')) {
+                                setFormData({...formData, custom_role_id: val.replace('CUSTOM_', ''), role: 'ROLE_EMPLOYE'});
+                            } else {
+                                setFormData({...formData, role: val, custom_role_id: ''});
+                            }
+                        }} className="w-full p-2 border rounded-lg outline-none focus:ring-2 focus:ring-blue-500">
+                            <optgroup label="Rôles standards">
+                                <option value="ROLE_EMPLOYE">Employé</option>
+                                <option value="ROLE_CAISSIER">Caissier</option>
+                                <option value="ROLE_CHEF_SERVICE">Chef de Service</option>
+                                <option value="ROLE_MANAGER">Manager</option>
+                            </optgroup>
+                            {customRoles.length > 0 && (
+                                <optgroup label="Rôles personnalisés">
                                     {customRoles.map(r => (
-                                        <option key={r.id} value={r.id}>{r.nom} — {r.baseRole.replace('ROLE_', '')}</option>
+                                        <option key={r.id} value={`CUSTOM_${r.id}`}>✦ {r.nom} — {r.baseRole.replace('ROLE_', '')}</option>
                                     ))}
-                                </select>
-                                <p className="text-xs text-gray-400 mt-1">Si vous sélectionnez un rôle personnalisé, il prévaudra sur le rôle standard.</p>
-                            </div>
-                        )}
+                                </optgroup>
+                            )}
+                        </select>
                     </div>
                     <div>
                         <label className="block text-xs font-semibold text-gray-500 uppercase mb-1">Service</label>
@@ -266,7 +270,8 @@ export default function AdminUsers() {
             {editingUser && (
                 <UserEditModal 
                     user={editingUser} 
-                    services={services} 
+                    services={services}
+                    customRoles={customRoles}
                     onClose={() => setEditingUser(null)} 
                     onSuccess={() => { fetchUsers(); setEditingUser(null); }} 
                 />

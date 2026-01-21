@@ -439,7 +439,7 @@ class UserController extends AbstractController
 
 
     #[Route('/{id}', name: 'update', methods: ['PUT'])]
-    public function update(Request $request, Utilisateur $user, ServiceRepository $serviceRepo, EntityManagerInterface $em): JsonResponse
+    public function update(Request $request, Utilisateur $user, ServiceRepository $serviceRepo, RoleRepository $roleRepo, EntityManagerInterface $em): JsonResponse
     {
         $data = json_decode($request->getContent(), true);
 
@@ -447,45 +447,65 @@ class UserController extends AbstractController
         if (isset($data['nom'])) $user->setNom($data['nom']);
         if (isset($data['email'])) $user->setEmail($data['email']);
 
-        // 2. Mise à jour du RÔLE (Nettoyé)
-        $roleInput = $data['role'] ?? $data['roles'] ?? null;
-
-        if (!empty($roleInput)) {
-            // Si le frontend envoie un tableau, prendre le premier élément
-            if (is_array($roleInput)) {
-                $roleInput = $roleInput[0] ?? '';
+        // 2. Mise à jour du RÔLE PERSONNALISÉ (Priorité)
+        $customRoleId = $data['custom_role_id'] ?? null;
+        
+        if (!empty($customRoleId)) {
+            $customRole = $roleRepo->find($customRoleId);
+            if ($customRole) {
+                // Vérifier que le rôle personnalisé appartient à la même société
+                $maSociete = $user->getSociete();
+                if ($maSociete && $customRole->getSociete() === $maSociete) {
+                    $user->setCustomRole($customRole);
+                    $user->setRoles([$customRole->getBaseRole()]);
+                }
             }
+        } else {
+            // Si on reçoit custom_role_id vide, on efface le rôle customisé
+            if (array_key_exists('custom_role_id', $data)) {
+                $user->setCustomRole(null);
+                
+                // Mise à jour du RÔLE standard (si fourni)
+                $roleInput = $data['role'] ?? $data['roles'] ?? null;
 
-            $newRoles = [];
+                if (!empty($roleInput)) {
+                    // Si le frontend envoie un tableau, prendre le premier élément
+                    if (is_array($roleInput)) {
+                        $roleInput = $roleInput[0] ?? '';
+                    }
 
-            // Normaliser l'input (accepter avec ou sans ROLE_)
-            $normalized = str_replace('ROLE_', '', strtoupper($roleInput));
+                    $newRoles = [];
 
-            // MAP les rôles valides
-            switch ($normalized) {
-                case 'MANAGER':
-                case 'ADMIN':
-                    $newRoles[] = 'ROLE_MANAGER';
-                    break;
-                case 'EMPLOYE':
-                case 'USER':
-                    $newRoles[] = 'ROLE_EMPLOYE';
-                    break;
-                case 'CAISSIER':
-                    $newRoles[] = 'ROLE_CAISSIER';
-                    break;
-                case 'CHEF_SERVICE':
-                case 'CHEF':
-                    $newRoles[] = 'ROLE_CHEF_SERVICE';
-                    break;
-                default:
-                    // Garder le rôle actuel si pas de correspondance
-                    break;
-            }
+                    // Normaliser l'input (accepter avec ou sans ROLE_)
+                    $normalized = str_replace('ROLE_', '', strtoupper($roleInput));
 
-            // On met à jour seulement si on a trouvé un rôle valide
-            if (!empty($newRoles)) {
-                $user->setRoles($newRoles);
+                    // MAP les rôles valides
+                    switch ($normalized) {
+                        case 'MANAGER':
+                        case 'ADMIN':
+                            $newRoles[] = 'ROLE_MANAGER';
+                            break;
+                        case 'EMPLOYE':
+                        case 'USER':
+                            $newRoles[] = 'ROLE_EMPLOYE';
+                            break;
+                        case 'CAISSIER':
+                            $newRoles[] = 'ROLE_CAISSIER';
+                            break;
+                        case 'CHEF_SERVICE':
+                        case 'CHEF':
+                            $newRoles[] = 'ROLE_CHEF_SERVICE';
+                            break;
+                        default:
+                            // Garder le rôle actuel si pas de correspondance
+                            break;
+                    }
+
+                    // On met à jour seulement si on a trouvé un rôle valide
+                    if (!empty($newRoles)) {
+                        $user->setRoles($newRoles);
+                    }
+                }
             }
         }
 
@@ -508,7 +528,8 @@ class UserController extends AbstractController
 
         return $this->json([
             'message' => 'Utilisateur mis à jour', 
-            'role_detecte' => $roleInput ?? 'Aucun' // Petit debug pour voir ce qui est reçu
+            'custom_role' => $user->getCustomRole() ? $user->getCustomRole()->getNom() : null,
+            'role' => $user->getRoles()[0] ?? null
         ]);
     }
 }

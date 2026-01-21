@@ -171,7 +171,7 @@ export default function AdminCompta() {
                                                 {c.type || 'CHARGE'}
                                             </span>
                                         </td>
-                                        <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium opacity-0 group-hover:opacity-100 transition-opacity">
+                                        <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                                             <button onClick={() => startEdit(c)} className="text-blue-600 hover:text-blue-900 mr-3"><Edit2 size={18}/></button>
                                             <button onClick={() => handleDelete(c.id)} className="text-red-600 hover:text-red-900"><Trash2 size={18}/></button>
                                         </td>

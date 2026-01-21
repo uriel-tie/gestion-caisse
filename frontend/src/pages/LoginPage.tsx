@@ -21,7 +21,7 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLogin }) => {
   const navigate = useNavigate();
 
   // États standards (Gardés de ton fichier)
-  const [email, setEmail] = useState<string>('manager@app.com');
+  const [email, setEmail] = useState<string>('admin@gestioncaisse.com');
   const [password, setPassword] = useState<string>('');
   const [error, setError] = useState<string>('');
   const [isLoading, setIsLoading] = useState<boolean>(false);

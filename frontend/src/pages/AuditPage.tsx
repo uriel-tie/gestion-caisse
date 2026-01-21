@@ -96,11 +96,174 @@ export default function AuditPage() {
   };
 
   // --- Helpers Visuels ---
+  const getActionLabel = (action: string) => {
+    if (action.includes('CREATE')) return 'Création';
+    if (action.includes('UPDATE')) return 'Modification';
+    if (action.includes('DELETE')) return 'Suppression';
+    return action;
+  };
+
   const getActionBadgeColor = (action: string) => {
     if (action.includes('CREATE')) return 'bg-green-100 text-green-700 border-green-200';
     if (action.includes('UPDATE')) return 'bg-orange-100 text-orange-700 border-orange-200';
     if (action.includes('DELETE')) return 'bg-red-100 text-red-700 border-red-200';
     return 'bg-gray-100 text-gray-700 border-gray-200';
+  };
+
+  // Mapping des noms de champs techniques vers labels lisibles
+  const getFieldLabel = (field: string): string => {
+    const fieldMap: Record<string, string> = {
+      'id': 'Identifiant',
+      'nom': 'Nom',
+      'prenom': 'Prénom',
+      'email': 'Email',
+      'username': 'Nom d\'utilisateur',
+      'password': 'Mot de passe',
+      'role': 'Rôle',
+      'status': 'Statut',
+      'solde': 'Solde',
+      'montant': 'Montant',
+      'montant_total': 'Montant total',
+      'description': 'Description',
+      'type': 'Type',
+      'date': 'Date',
+      'created_at': 'Date de création',
+      'updated_at': 'Date de modification',
+      'deleted_at': 'Date de suppression',
+      'active': 'Actif',
+      'enabled': 'Activé',
+      'deleted': 'Supprimé',
+      'numero': 'Numéro',
+      'code': 'Code',
+      'raison_sociale': 'Raison sociale',
+      'numero_compte': 'Numéro de compte',
+      'solde_initial': 'Solde initial',
+      'solde_actuel': 'Solde actuel',
+      'devise': 'Devise',
+      'adresse': 'Adresse',
+      'telephone': 'Téléphone',
+      'fax': 'Fax',
+      'contact': 'Contact',
+      'responsable': 'Responsable',
+      'is_active': 'Est actif',
+      'is_deleted': 'Est supprimé',
+      'first_name': 'Prénom',
+      'last_name': 'Nom',
+      'phone': 'Téléphone',
+      'city': 'Ville',
+      'country': 'Pays',
+      'postal_code': 'Code postal',
+      'state': 'État',
+      'user_id': 'ID Utilisateur',
+      'user_nom': 'Nom Utilisateur',
+      'user_prenom': 'Prénom Utilisateur',
+      'caisse_id': 'ID Caisse',
+      'caisse_nom': 'Nom Caisse',
+      'operation_id': 'ID Opération',
+      'operation_type': 'Type Opération',
+      'transaction_id': 'ID Transaction',
+      'date_debut': 'Date de début',
+      'date_fin': 'Date de fin',
+      'motif': 'Motif',
+      'commentaire': 'Commentaire',
+      'reference': 'Référence',
+      'numero_cheque': 'Numéro chèque',
+      'montant_cheque': 'Montant chèque',
+      'devise_montant': 'Devise',
+      'taux': 'Taux',
+      'frais': 'Frais',
+      'justification': 'Justification',
+      'piecejointe': 'Pièce jointe',
+      'approuve': 'Approuvé',
+      'rejeté': 'Rejeté',
+      'en_attente': 'En attente',
+      'validé': 'Validé',
+      'confirmé': 'Confirmé',
+      'libellé': 'Libellé',
+      'objet': 'Objet',
+      // Cas camelCase courants
+      'passwordmustbechanged': 'Changement du mot de passe requis',
+      'passwordchangedat': 'Date du dernier changement du mot de passe',
+      'estouverte': 'Est ouvert(e)',
+      'estfermee': 'Est fermé(e)',
+      'estactive': 'Est actif/active',
+      'estvalidee': 'Est validé(e)',
+      'estapprouvee': 'Est approuvé(e)',
+      'estarchivee': 'Est archivé(e)',
+      'soldeouverture': 'Solde d\'ouverture',
+      'soldedetotaljournal': 'Solde du total journal',
+      'soldedecloturemanuelle': 'Solde de clôture manuel',
+      'montantversemanuel': 'Montant versé manuellement',
+      'montantrendumanuel': 'Montant rendu manuellement',
+      'datefinale': 'Date finale',
+      'dateouverture': 'Date d\'ouverture',
+      'datefermetur': 'Date de fermeture',
+      'datefermé': 'Date de fermeture',
+      'utilisateurcaissierId': 'Caissier',
+      'utilisateurvalidateurId': 'Validateur',
+      'utilisateurapprovateurId': 'Approbateur',
+      'heureouverture': 'Heure d\'ouverture',
+      'herefermetur': 'Heure de fermeture',
+      'estencours': 'Est en cours',
+      'estfinalisee': 'Est finalisée',
+    };
+
+    const lowerField = field.toLowerCase();
+    return fieldMap[lowerField] || convertCamelCaseToFrench(field);
+  };
+
+  // Convertir camelCase en français lisible
+  const convertCamelCaseToFrench = (field: string): string => {
+    // D'abord convertir camelCase -> snake_case
+    const snakeCase = field
+      .replace(/([a-z])([A-Z])/g, '$1_$2')
+      .toLowerCase();
+    
+    // Ensuite convertir en texte lisible
+    return snakeCase
+      .replace(/_/g, ' ')
+      .split(' ')
+      .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+      .join(' ');
+  };
+
+  // Formatter les valeurs pour plus de lisibilité
+  const formatFieldValue = (value: any, field?: string): string => {
+    if (value === null || value === undefined) return 'N/A';
+    if (value === true) return '✓ Oui';
+    if (value === false) return '✗ Non';
+    if (typeof value === 'boolean') return value ? '✓ Oui' : '✗ Non';
+    
+    // Gérer les valeurs textuelles vides
+    if (typeof value === 'string' && value.trim() === '') return '(vide)';
+    
+    // Formater les dates
+    if (typeof value === 'string' && /^\d{4}-\d{2}-\d{2}/.test(value)) {
+      try {
+        const date = new Date(value);
+        return date.toLocaleDateString('fr-FR', { year: 'numeric', month: 'long', day: 'numeric' });
+      } catch {
+        return value;
+      }
+    }
+
+    // Formater les montants/nombres avec séparateurs
+    if (typeof value === 'number') {
+      // Si c'est probablement un montant (contient "montant" ou "solde" dans le nom du champ)
+      if (field && /montant|solde|frais|prix|cout|tarif|taux/.test(field?.toLowerCase())) {
+        return new Intl.NumberFormat('fr-FR', { 
+          style: 'decimal', 
+          minimumFractionDigits: 2,
+          maximumFractionDigits: 2 
+        }).format(value);
+      }
+      return value.toString();
+    }
+
+    // Gérer les objets/arrays
+    if (typeof value === 'object') return JSON.stringify(value);
+    
+    return String(value);
   };
 
   const getTargetBadge = (type: string) => {
@@ -179,10 +342,10 @@ export default function AuditPage() {
           <thead className="bg-gray-50 sticky top-0 z-10 shadow-sm">
             <tr>
               <th className="w-10"></th>
-              <th className="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">{t('pages.audit.date_ip')}</th>
-              <th className="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">{t('pages.audit.actor')}</th>
-              <th className="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">{t('pages.audit.action')}</th>
-              <th className="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">{t('pages.audit.target')}</th>
+              <th className="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Date & IP</th>
+              <th className="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Utilisateur</th>
+              <th className="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Action</th>
+              <th className="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Élément modifié</th>
             </tr>
           </thead>
           <tbody className="bg-white divide-y divide-gray-200">
@@ -223,7 +386,7 @@ export default function AuditPage() {
                     {/* Action */}
                     <td className="px-6 py-4 whitespace-nowrap">
                       <span className={`px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-md border ${getActionBadgeColor(log.action)}`}>
-                        {log.action}
+                        {getActionLabel(log.action)}
                       </span>
                     </td>
                     
@@ -253,17 +416,17 @@ export default function AuditPage() {
                                     <div className="space-y-2">
                                         {Object.entries(log.changes).map(([field, diff], idx) => (
                                             <div key={idx} className="grid grid-cols-12 text-sm gap-4 items-center p-2 hover:bg-gray-50 rounded">
-                                                <div className="col-span-3 font-medium text-gray-600 capitalize">
-                                                    {field.replace('_', ' ')}
+                                                <div className="col-span-3 font-semibold text-gray-700">
+                                                    {getFieldLabel(field)}
                                                 </div>
-                                                <div className="col-span-4 text-red-600 bg-red-50 px-2 py-1 rounded break-all border border-red-100 text-xs font-mono">
-                                                    {diff.old !== null ? String(diff.old) : <span className="text-gray-300 italic">null</span>}
+                                                <div className="col-span-4 text-red-700 bg-red-50 px-3 py-2 rounded break-all border border-red-200 text-xs font-medium">
+                                                    {formatFieldValue(diff.old)}
                                                 </div>
-                                                <div className="col-span-1 flex justify-center text-gray-300">
-                                                    <ArrowRight size={14}/>
+                                                <div className="col-span-1 flex justify-center text-gray-400">
+                                                    <ArrowRight size={16}/>
                                                 </div>
-                                                <div className="col-span-4 text-green-600 bg-green-50 px-2 py-1 rounded break-all border border-green-100 text-xs font-mono font-medium">
-                                                    {diff.new !== null ? String(diff.new) : <span className="text-gray-300 italic">null</span>}
+                                                <div className="col-span-4 text-green-700 bg-green-50 px-3 py-2 rounded break-all border border-green-200 text-xs font-medium">
+                                                    {formatFieldValue(diff.new)}
                                                 </div>
                                             </div>
                                         ))}
