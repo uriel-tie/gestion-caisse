@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Plus, Trash2, Edit2, Save, X, Shield } from 'lucide-react';
 import { NAVIGATION } from '../config/navigation';
 import type { UserData } from '../types';
+import Swal from 'sweetalert2';
 
 interface AdminRolesProps {
     user: UserData;
@@ -58,7 +59,7 @@ export default function AdminRoles({ user }: AdminRolesProps) {
 
     const handleCreate = async () => {
         if (!newRole.nom) {
-            alert('Veuillez remplir le nom du rôle');
+            Swal.fire({ icon: 'warning', title: 'Nom requis', text: 'Veuillez remplir le nom du rôle' });
             return;
         }
         try {
@@ -74,11 +75,12 @@ export default function AdminRoles({ user }: AdminRolesProps) {
                 setNewRole({ nom: '', baseRole: 'ROLE_MANAGER', restrictions: [], adminRestrictions: [] });
                 setShowCreate(false);
                 fetchRoles();
+                Swal.fire({ icon: 'success', title: 'Succès', text: 'Rôle créé avec succès' });
             } else {
-                alert('Erreur création rôle');
+                Swal.fire({ icon: 'error', title: 'Erreur', text: 'Erreur création rôle' });
             }
         } catch (e) {
-            alert('Erreur: ' + e);
+            Swal.fire({ icon: 'error', title: 'Erreur', text: 'Erreur: ' + e });
         }
     };
 
@@ -96,14 +98,26 @@ export default function AdminRoles({ user }: AdminRolesProps) {
             if (res.ok) {
                 setEditingId(null);
                 fetchRoles();
+                Swal.fire({ icon: 'success', title: 'Succès', text: 'Rôle modifié avec succès' });
+            } else {
+                Swal.fire({ icon: 'error', title: 'Erreur', text: 'Erreur lors de la modification du rôle' });
             }
         } catch (e) {
-            alert('Erreur modification: ' + e);
+            Swal.fire({ icon: 'error', title: 'Erreur', text: 'Erreur modification: ' + e });
         }
     };
 
     const handleDelete = async (id: string) => {
-        if (!confirm('Êtes-vous sûr ? Cette action est irréversible.')) return;
+        const confirmRes = await Swal.fire({
+            title: 'Êtes-vous sûr ?',
+            text: 'Cette action est irréversible.',
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonText: 'Oui, supprimer',
+            cancelButtonText: 'Annuler',
+            confirmButtonColor: '#d33'
+        });
+        if (!confirmRes.isConfirmed) return;
         try {
             const res = await fetch(`https://127.0.0.1:8000/api/roles/${id}`, {
                 method: 'DELETE',
@@ -111,12 +125,13 @@ export default function AdminRoles({ user }: AdminRolesProps) {
             });
             if (res.ok) {
                 fetchRoles();
+                Swal.fire({ icon: 'success', title: 'Supprimé', text: 'Rôle supprimé avec succès' });
             } else {
                 const data = await res.json();
-                alert('Erreur: ' + data.error);
+                Swal.fire({ icon: 'error', title: 'Erreur', text: 'Erreur: ' + data.error });
             }
         } catch (e) {
-            alert('Erreur suppression: ' + e);
+            Swal.fire({ icon: 'error', title: 'Erreur', text: 'Erreur suppression: ' + e });
         }
     };
 
@@ -159,8 +174,17 @@ export default function AdminRoles({ user }: AdminRolesProps) {
         }
     };
 
-    const menuItems = NAVIGATION.filter(n => !n.roles.includes('ALL'));
-    const adminItems = ['caisses', 'comptes', 'utilisateurs', 'dossiers', 'rapports'];
+        const menuItems = NAVIGATION.filter(n => !n.roles.includes('ALL'));
+        // Liste complète des éléments d'administration à masquer
+        const adminItems = [
+            { key: 'societe', label: 'Société' },
+            { key: 'personnel', label: 'Personnel' },
+            { key: 'roles', label: 'Rôle personnalisé' },
+            { key: 'services', label: 'Services' },
+            { key: 'caisses', label: 'Caisse' },
+            { key: 'plan_comptable', label: 'Plan comptable' },
+            { key: 'mode_paiement', label: 'Mode de paiement' },
+        ];
 
     return (
         <div className="space-y-6">
@@ -209,7 +233,9 @@ export default function AdminRoles({ user }: AdminRolesProps) {
                         <div>
                             <label className="block text-sm font-semibold mb-2">Masquer dans la navigation</label>
                             <div className="grid grid-cols-2 gap-2">
-                                {menuItems.map(item => (
+                                {menuItems
+                                  .filter(item => item.roles.includes(newRole.baseRole))
+                                  .map(item => (
                                     <label key={item.path} className="flex items-center gap-2">
                                         <input
                                             type="checkbox"
@@ -223,22 +249,25 @@ export default function AdminRoles({ user }: AdminRolesProps) {
                             </div>
                         </div>
 
-                        <div>
-                            <label className="block text-sm font-semibold mb-2">Masquer en admin</label>
-                            <div className="grid grid-cols-2 gap-2">
-                                {adminItems.map(item => (
-                                    <label key={item} className="flex items-center gap-2">
-                                        <input
-                                            type="checkbox"
-                                            checked={newRole.adminRestrictions.includes(item)}
-                                            onChange={() => toggleNewRestriction(item, 'adminRestrictions')}
-                                            className="rounded"
-                                        />
-                                        <span className="text-sm capitalize">{item}</span>
-                                    </label>
-                                ))}
-                            </div>
-                        </div>
+                                                {/* Section Masquer en admin : visible uniquement si baseRole = Manager */}
+                                                {newRole.baseRole === 'ROLE_MANAGER' && (
+                                                    <div>
+                                                        <label className="block text-sm font-semibold mb-2">Masquer en admin</label>
+                                                        <div className="grid grid-cols-2 gap-2">
+                                                            {adminItems.map(item => (
+                                                                <label key={item.key} className="flex items-center gap-2">
+                                                                    <input
+                                                                        type="checkbox"
+                                                                        checked={newRole.adminRestrictions.includes(item.key)}
+                                                                        onChange={() => toggleNewRestriction(item.key, 'adminRestrictions')}
+                                                                        className="rounded"
+                                                                    />
+                                                                    <span className="text-sm">{item.label}</span>
+                                                                </label>
+                                                            ))}
+                                                        </div>
+                                                    </div>
+                                                )}
 
                         <div className="flex gap-2">
                             <button

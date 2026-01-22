@@ -33,6 +33,22 @@ export default function ProfilePage() {
 
         const token = localStorage.getItem('token');
         try {
+            // 1. Vérifier d'abord le mot de passe actuel
+            const verifyRes = await fetch('https://127.0.0.1:8000/api/users/verify-password', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`
+                },
+                body: JSON.stringify({ password: passwords.current })
+            });
+
+            if (!verifyRes.ok) {
+                Swal.fire('Erreur', 'Le mot de passe actuel est incorrect.', 'error');
+                return;
+            }
+
+            // 2. Si ok, procéder au changement
             const res = await fetch('https://127.0.0.1:8000/api/users/change-password', {
                 method: 'PATCH',
                 headers: { 
@@ -379,9 +395,16 @@ export default function ProfilePage() {
                         <h3 className="text-lg font-bold text-gray-800 mb-6 flex items-center">
                             <Lock size={18} className="mr-2 text-gray-400"/> Mot de passe
                         </h3>
-                        
                         <form onSubmit={handleUpdatePassword} className="space-y-4">
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700 mb-1">Mot de passe actuel</label>
+                                    <input 
+                                        type="password" required minLength={6}
+                                        className="w-full border border-gray-300 rounded-lg p-2.5 outline-none focus:ring-2 focus:ring-blue-500 transition bg-gray-50 focus:bg-white"
+                                        value={passwords.current} onChange={e => setPasswords({...passwords, current: e.target.value})}
+                                    />
+                                </div>
                                 <div>
                                     <label className="block text-sm font-medium text-gray-700 mb-1">Nouveau mot de passe</label>
                                     <input 
@@ -390,7 +413,6 @@ export default function ProfilePage() {
                                         value={passwords.new} onChange={e => setPasswords({...passwords, new: e.target.value})}
                                     />
                                 </div>
-
                                 <div>
                                     <label className="block text-sm font-medium text-gray-700 mb-1">Confirmer</label>
                                     <input 
@@ -400,7 +422,6 @@ export default function ProfilePage() {
                                     />
                                 </div>
                             </div>
-
                             <div className="pt-4 flex justify-end">
                                 <button type="submit" className="bg-white border border-gray-300 hover:bg-gray-50 text-gray-700 px-6 py-2.5 rounded-lg font-bold flex items-center shadow-sm transition">
                                     <Save size={18} className="mr-2" /> Mettre à jour le mot de passe

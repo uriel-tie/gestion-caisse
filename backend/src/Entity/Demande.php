@@ -12,6 +12,10 @@ use Doctrine\Common\Collections\ArrayCollection;
 use Doctrine\Common\Collections\Collection;
 
 #[ORM\Entity(repositoryClass: DemandeRepository::class)]
+#[ORM\Table(indexes: [
+    new ORM\Index(name: "idx_demande_statut", columns: ["statut"]),
+    new ORM\Index(name: "idx_demande_societe", columns: ["societe_id"])
+])]
 class Demande
 {
     // Constantes pour éviter les fautes de frappe dans le code

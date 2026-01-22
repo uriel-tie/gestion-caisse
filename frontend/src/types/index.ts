@@ -7,6 +7,10 @@ export interface UserData {
   roles: string[];
   passwordMustBeChanged: boolean;
   isEmailVerified: boolean;
+  societe?: {
+    id: string;
+    nom: string;
+  };
   customRole?: {
     id: string;
     nom: string;

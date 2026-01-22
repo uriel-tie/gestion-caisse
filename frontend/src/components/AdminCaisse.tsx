@@ -251,8 +251,8 @@ export default function AdminCaisse() {
             ) : (
               <div className="flex items-center justify-between">
                 <div>
-                  {c.compteComptable ? (
-                    <span className="px-2 py-1 bg-blue-50 text-blue-700 rounded text-xs font-mono">{c.compteComptable.numero}</span>
+                  {c.compte ? (
+                    <span className="px-2 py-1 bg-blue-50 text-blue-700 rounded text-xs font-mono">{c.compte.numero}</span>
                   ) : (
                     <span className="text-gray-400 text-xs">Aucun</span>
                   )}

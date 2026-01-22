@@ -9,6 +9,10 @@ use Doctrine\ORM\Mapping as ORM;
 use Symfony\Component\Uid\Uuid;
 
 #[ORM\Entity(repositoryClass: SessionCaisseRepository::class)]
+#[ORM\Table(indexes: [
+    new ORM\Index(name: "idx_sessioncaisse_statut", columns: ["statut"]),
+    new ORM\Index(name: "idx_sessioncaisse_societe", columns: ["societe_id"])
+])]
 class SessionCaisse
 {
     public const STATUT_EN_ATTENTE = 'EN_ATTENTE';

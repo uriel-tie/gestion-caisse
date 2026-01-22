@@ -103,6 +103,10 @@ class UserController extends AbstractController
             'nom' => method_exists($user, 'getNom') ? $user->getNom() : '',
             'roles' => $user->getRoles(),
             'password_must_be_changed' => $user->isPasswordMustBeChanged(),
+            'societe' => $user->getSociete() ? [
+                'id' => $user->getSociete()->getId(),
+                'nom' => $user->getSociete()->getNom(),
+            ] : null,
         ]);
     }
 
@@ -299,6 +303,24 @@ class UserController extends AbstractController
         return $this->json(['message' => 'Profil mis à jour avec succès.']);
     }
 
+    #[Route('/verify-password', name: 'verify_password', methods: ['POST'])]
+    public function verifyPassword(Request $request, UserPasswordHasherInterface $hasher, #[CurrentUser] ?Utilisateur $user): JsonResponse
+    {
+        if (!$user) {
+            return $this->json(['error' => 'Utilisateur non trouvé'], 404);
+        }
+        $data = json_decode($request->getContent(), true);
+        $password = $data['password'] ?? null;
+        if (!$password) {
+            return $this->json(['error' => 'Mot de passe requis.'], 400);
+        }
+        if ($hasher->isPasswordValid($user, $password)) {
+            return $this->json(['message' => 'Mot de passe correct.']);
+        } else {
+            return $this->json(['error' => 'Mot de passe incorrect.'], 401);
+        }
+    }
+
     // 2. CHANGER LE MOT DE PASSE (Et valider le compte)
     #[Route('/change-password', name: 'change_password', methods: ['PATCH'])]
     public function changePassword(
@@ -311,15 +333,23 @@ class UserController extends AbstractController
         if (!$user) return $this->json(['error' => 'Utilisateur non trouvé'], 404);
 
         $data = json_decode($request->getContent(), true);
+        $currentPassword = $data['current_password'] ?? null;
         $newPassword = $data['new_password'] ?? null;
 
-        if (!$newPassword || strlen($newPassword) < 6) {
+        if (!$currentPassword || !$newPassword) {
+            return $this->json(['error' => 'Champs requis manquants.'], 400);
+        }
+        if (strlen($newPassword) < 6) {
             return $this->json(['error' => 'Le mot de passe doit faire au moins 6 caractères.'], 400);
+        }
+
+        // Vérification du mot de passe actuel
+        if (!$hasher->isPasswordValid($user, $currentPassword)) {
+            return $this->json(['error' => 'Le mot de passe actuel est incorrect.'], 401);
         }
 
         // Hashage du nouveau mot de passe
         $user->setPassword($hasher->hashPassword($user, $newPassword));
-        
         // CRUCIAL : On désactive le flag "Doit changer son mot de passe"
         $user->setPasswordMustBeChanged(false);
 

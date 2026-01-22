@@ -26,7 +26,6 @@ export default function HomePage({ user }: HomePageProps) {
 
   return (
     <div className="max-w-7xl mx-auto">
-      
       {/* 1. En-tête de Bienvenue */}
       <div className="bg-gradient-to-r from-blue-900 to-slate-900 rounded-2xl p-8 text-white shadow-xl mb-10 relative overflow-hidden">
         <div className="absolute top-0 right-0 p-4 opacity-10">
@@ -48,143 +47,138 @@ export default function HomePage({ user }: HomePageProps) {
       </div>
 
       {/* 2. Grille de Raccourcis (Selon le Rôle) */}
-      <h2 className="text-xl font-bold text-gray-800 mb-6 flex items-center gap-2">
-        <ArrowRight className="text-blue-600" /> Accès Rapide
-      </h2>
+      {/* Si l'utilisateur a un rôle personnalisé, on masque l'accès rapide */}
+      {(!user.customRole || !user.customRole.id) && (
+        <>
+          <h2 className="text-xl font-bold text-gray-800 mb-6 flex items-center gap-2">
+            <ArrowRight className="text-blue-600" /> Accès Rapide
+          </h2>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-
-        {/* --- BLOC COMMUN : TOUS LES UTILISATEURS --- */}
-        <div 
-          onClick={() => navigate('/requests/new')}
-          className="bg-white p-6 rounded-xl shadow-sm border border-gray-200 hover:shadow-md hover:border-blue-300 transition cursor-pointer group"
-        >
-          <div className="bg-blue-50 w-12 h-12 rounded-lg flex items-center justify-center text-blue-600 mb-4 group-hover:bg-blue-600 group-hover:text-white transition">
-            <Plus size={24} />
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {/* --- BLOC COMMUN : TOUS LES UTILISATEURS --- */}
+            <div 
+              onClick={() => navigate('/requests/new')}
+              className="bg-white p-6 rounded-xl shadow-sm border border-gray-200 hover:shadow-md hover:border-blue-300 transition cursor-pointer group"
+            >
+              <div className="bg-blue-50 w-12 h-12 rounded-lg flex items-center justify-center text-blue-600 mb-4 group-hover:bg-blue-600 group-hover:text-white transition">
+                <Plus size={24} />
+              </div>
+              <h3 className="font-bold text-gray-900 mb-1">Nouvelle Demande</h3>
+              <p className="text-sm text-gray-500">Créer un bon de caisse ou une fiche de besoin.</p>
+            </div>
+            <div 
+              onClick={() => navigate('/requests')}
+              className="bg-white p-6 rounded-xl shadow-sm border border-gray-200 hover:shadow-md hover:border-blue-300 transition cursor-pointer group"
+            >
+              <div className="bg-indigo-50 w-12 h-12 rounded-lg flex items-center justify-center text-indigo-600 mb-4 group-hover:bg-indigo-600 group-hover:text-white transition">
+                <FileText size={24} />
+              </div>
+              <h3 className="font-bold text-gray-900 mb-1">Mes Demandes</h3>
+              <p className="text-sm text-gray-500">Suivre l'état de mes demandes en cours.</p>
+            </div>
+            {/* --- BLOC CAISSIER --- */}
+            {role.includes('CAISSIER') && (
+              <>
+                <div 
+                  onClick={() => navigate('/caisse/workstation')}
+                  className="bg-white p-6 rounded-xl shadow-sm border-l-4 border-l-green-500 hover:shadow-md transition cursor-pointer group"
+                >
+                  <div className="bg-green-50 w-12 h-12 rounded-lg flex items-center justify-center text-green-600 mb-4 group-hover:scale-110 transition">
+                    <Monitor size={24} />
+                  </div>
+                  <h3 className="font-bold text-gray-900 mb-1">Ma Caisse</h3>
+                  <p className="text-sm text-gray-500">Accéder à la station de travail pour encaisser/décaisser.</p>
+                </div>
+                <div 
+                  onClick={() => navigate('/caisse/history')}
+                  className="bg-white p-6 rounded-xl shadow-sm border border-gray-200 hover:shadow-md transition cursor-pointer group"
+                >
+                  <div className="bg-gray-50 w-12 h-12 rounded-lg flex items-center justify-center text-gray-600 mb-4">
+                    <Clock size={24} />
+                  </div>
+                  <h3 className="font-bold text-gray-900 mb-1">Journal</h3>
+                  <p className="text-sm text-gray-500">Voir l'historique de mes opérations.</p>
+                </div>
+              </>
+            )}
+            {/* --- BLOC CHEF DE SERVICE --- */}
+            {role.includes('CHEF') && (
+              <>
+                <div 
+                  onClick={() => navigate('/chef/validations')}
+                  className="bg-white p-6 rounded-xl shadow-sm border-l-4 border-l-orange-500 hover:shadow-md transition cursor-pointer group"
+                >
+                  <div className="bg-orange-50 w-12 h-12 rounded-lg flex items-center justify-center text-orange-600 mb-4">
+                    <CheckCircle size={24} />
+                  </div>
+                  <h3 className="font-bold text-gray-900 mb-1">Validations</h3>
+                  <p className="text-sm text-gray-500">Demandes de l'équipe en attente.</p>
+                </div>
+                <div 
+                  onClick={() => navigate('/chef/team')}
+                  className="bg-white p-6 rounded-xl shadow-sm border border-gray-200 hover:shadow-md transition cursor-pointer"
+                >
+                  <div className="bg-teal-50 w-12 h-12 rounded-lg flex items-center justify-center text-teal-600 mb-4">
+                    <Users size={24} />
+                  </div>
+                  <h3 className="font-bold text-gray-900 mb-1">Mon Équipe</h3>
+                  <p className="text-sm text-gray-500">Gérer les membres du service.</p>
+                </div>
+              </>
+            )}
+            {/* --- BLOC SUPER ADMIN --- */}
+            {role.includes('ROLE_SUPER_ADMIN') && (
+              <>
+                <div 
+                  onClick={() => navigate('/super-admin')}
+                  className="bg-white p-6 rounded-xl shadow-sm border-l-4 border-l-blue-500 hover:shadow-md transition cursor-pointer"
+                >
+                  <div className="bg-blue-50 w-12 h-12 rounded-lg flex items-center justify-center text-blue-600 mb-4">
+                    <Shield size={24} />
+                  </div>
+                  <h3 className="font-bold text-gray-900 mb-1">Super Admin</h3>
+                  <p className="text-sm text-gray-500">Accès complet au système.</p>
+                </div>
+              </>
+            )}
+            {/* --- BLOC MANAGER --- */}
+            {role.includes('MANAGER') && (
+              <>
+                <div 
+                  onClick={() => navigate('/manager/supervision')}
+                  className="bg-white p-6 rounded-xl shadow-sm border-l-4 border-l-purple-600 hover:shadow-md transition cursor-pointer"
+                >
+                  <div className="bg-purple-50 w-12 h-12 rounded-lg flex items-center justify-center text-purple-600 mb-4">
+                    <Activity size={24} />
+                  </div>
+                  <h3 className="font-bold text-gray-900 mb-1">Supervision Live</h3>
+                  <p className="text-sm text-gray-500">État des caisses en temps réel.</p>
+                </div>
+                <div 
+                  onClick={() => navigate('/manager/history')}
+                  className="bg-white p-6 rounded-xl shadow-sm border border-gray-200 hover:shadow-md transition cursor-pointer"
+                >
+                  <div className="bg-yellow-50 w-12 h-12 rounded-lg flex items-center justify-center text-yellow-600 mb-4">
+                    <DollarSign size={24} />
+                  </div>
+                  <h3 className="font-bold text-gray-900 mb-1">Finance</h3>
+                  <p className="text-sm text-gray-500">Historique global et comptabilité.</p>
+                </div>
+                <div 
+                  onClick={() => navigate('/admin')}
+                  className="bg-white p-6 rounded-xl shadow-sm border border-gray-200 hover:shadow-md transition cursor-pointer"
+                >
+                  <div className="bg-gray-50 w-12 h-12 rounded-lg flex items-center justify-center text-gray-600 mb-4">
+                    <Shield size={24} />
+                  </div>
+                  <h3 className="font-bold text-gray-900 mb-1">Admin</h3>
+                  <p className="text-sm text-gray-500">Paramétrage système.</p>
+                </div>
+              </>
+            )}
           </div>
-          <h3 className="font-bold text-gray-900 mb-1">Nouvelle Demande</h3>
-          <p className="text-sm text-gray-500">Créer un bon de caisse ou une fiche de besoin.</p>
-        </div>
-
-        <div 
-          onClick={() => navigate('/requests')}
-          className="bg-white p-6 rounded-xl shadow-sm border border-gray-200 hover:shadow-md hover:border-blue-300 transition cursor-pointer group"
-        >
-          <div className="bg-indigo-50 w-12 h-12 rounded-lg flex items-center justify-center text-indigo-600 mb-4 group-hover:bg-indigo-600 group-hover:text-white transition">
-            <FileText size={24} />
-          </div>
-          <h3 className="font-bold text-gray-900 mb-1">Mes Demandes</h3>
-          <p className="text-sm text-gray-500">Suivre l'état de mes demandes en cours.</p>
-        </div>
-
-        {/* --- BLOC CAISSIER --- */}
-        {role.includes('CAISSIER') && (
-          <>
-            <div 
-              onClick={() => navigate('/caisse/workstation')}
-              className="bg-white p-6 rounded-xl shadow-sm border-l-4 border-l-green-500 hover:shadow-md transition cursor-pointer group"
-            >
-              <div className="bg-green-50 w-12 h-12 rounded-lg flex items-center justify-center text-green-600 mb-4 group-hover:scale-110 transition">
-                <Monitor size={24} />
-              </div>
-              <h3 className="font-bold text-gray-900 mb-1">Ma Caisse</h3>
-              <p className="text-sm text-gray-500">Accéder à la station de travail pour encaisser/décaisser.</p>
-            </div>
-            
-            <div 
-              onClick={() => navigate('/caisse/history')}
-              className="bg-white p-6 rounded-xl shadow-sm border border-gray-200 hover:shadow-md transition cursor-pointer group"
-            >
-              <div className="bg-gray-50 w-12 h-12 rounded-lg flex items-center justify-center text-gray-600 mb-4">
-                <Clock size={24} />
-              </div>
-              <h3 className="font-bold text-gray-900 mb-1">Journal</h3>
-              <p className="text-sm text-gray-500">Voir l'historique de mes opérations.</p>
-            </div>
-          </>
-        )}
-
-        {/* --- BLOC CHEF DE SERVICE --- */}
-        {role.includes('CHEF') && (
-          <>
-            <div 
-              onClick={() => navigate('/chef/validations')}
-              className="bg-white p-6 rounded-xl shadow-sm border-l-4 border-l-orange-500 hover:shadow-md transition cursor-pointer group"
-            >
-              <div className="bg-orange-50 w-12 h-12 rounded-lg flex items-center justify-center text-orange-600 mb-4">
-                <CheckCircle size={24} />
-              </div>
-              <h3 className="font-bold text-gray-900 mb-1">Validations</h3>
-              <p className="text-sm text-gray-500">Demandes de l'équipe en attente.</p>
-            </div>
-            <div 
-              onClick={() => navigate('/chef/team')}
-              className="bg-white p-6 rounded-xl shadow-sm border border-gray-200 hover:shadow-md transition cursor-pointer"
-            >
-              <div className="bg-teal-50 w-12 h-12 rounded-lg flex items-center justify-center text-teal-600 mb-4">
-                <Users size={24} />
-              </div>
-              <h3 className="font-bold text-gray-900 mb-1">Mon Équipe</h3>
-              <p className="text-sm text-gray-500">Gérer les membres du service.</p>
-            </div>
-          </>
-        )}
-
-        {/* --- BLOC SUPER ADMIN --- */}
-        {role.includes('ROLE_SUPER_ADMIN') && (
-          <>
-            <div 
-              onClick={() => navigate('/super-admin')}
-              className="bg-white p-6 rounded-xl shadow-sm border-l-4 border-l-blue-500 hover:shadow-md transition cursor-pointer"
-            >
-              <div className="bg-blue-50 w-12 h-12 rounded-lg flex items-center justify-center text-blue-600 mb-4">
-                <Shield size={24} />
-              </div>
-              <h3 className="font-bold text-gray-900 mb-1">Super Admin</h3>
-              <p className="text-sm text-gray-500">Accès complet au système.</p>
-            </div>
-          </>
-        )}
-
-        {/* --- BLOC MANAGER --- */}
-        {role.includes('MANAGER') && (
-          <>
-            <div 
-              onClick={() => navigate('/manager/supervision')}
-              className="bg-white p-6 rounded-xl shadow-sm border-l-4 border-l-purple-600 hover:shadow-md transition cursor-pointer"
-            >
-              <div className="bg-purple-50 w-12 h-12 rounded-lg flex items-center justify-center text-purple-600 mb-4">
-                <Activity size={24} />
-              </div>
-              <h3 className="font-bold text-gray-900 mb-1">Supervision Live</h3>
-              <p className="text-sm text-gray-500">État des caisses en temps réel.</p>
-            </div>
-
-            <div 
-              onClick={() => navigate('/manager/history')}
-              className="bg-white p-6 rounded-xl shadow-sm border border-gray-200 hover:shadow-md transition cursor-pointer"
-            >
-              <div className="bg-yellow-50 w-12 h-12 rounded-lg flex items-center justify-center text-yellow-600 mb-4">
-                <DollarSign size={24} />
-              </div>
-              <h3 className="font-bold text-gray-900 mb-1">Finance</h3>
-              <p className="text-sm text-gray-500">Historique global et comptabilité.</p>
-            </div>
-
-            <div 
-              onClick={() => navigate('/admin')}
-              className="bg-white p-6 rounded-xl shadow-sm border border-gray-200 hover:shadow-md transition cursor-pointer"
-            >
-              <div className="bg-gray-50 w-12 h-12 rounded-lg flex items-center justify-center text-gray-600 mb-4">
-                <Shield size={24} />
-              </div>
-              <h3 className="font-bold text-gray-900 mb-1">Admin</h3>
-              <p className="text-sm text-gray-500">Paramétrage système.</p>
-            </div>
-          </>
-        )}
-
-      </div>
+        </>
+      )}
     </div>
   );
 }

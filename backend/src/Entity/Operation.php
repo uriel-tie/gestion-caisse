@@ -9,6 +9,8 @@ use Doctrine\ORM\Mapping as ORM;
 use Symfony\Component\Uid\Uuid;
 
 #[ORM\Entity(repositoryClass: OperationRepository::class)]
+#[ORM\Index(name: "idx_operation_statut", columns: ["statut"])]
+#[ORM\Index(name: "idx_operation_societe", columns: ["societe_id"])]
 #[ORM\Index(name: 'idx_operation_date', columns: ['date'])] // Optimisation requise par le guide (Section 6)
 class Operation
 {

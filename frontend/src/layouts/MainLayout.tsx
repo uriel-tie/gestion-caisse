@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Outlet, useNavigate, useLocation } from 'react-router-dom';
 import { LogOut, Menu, Bell, User, AlertTriangle, X} from 'lucide-react';
 import { NAVIGATION } from '../config/navigation';
@@ -8,45 +8,77 @@ import LanguageSwitcher from '../components/LanguageSwitcher';
 import { useTranslation } from 'react-i18next';
 
 interface MainLayoutProps {
-  user: UserData;
+  user: UserData | null;
   onLogout: () => void;
   children?: React.ReactNode;
   title?: string;
 }
 
-export default function MainLayout({ user, onLogout, children }: MainLayoutProps) {
+
+const MainLayout: React.FC<MainLayoutProps> = ({ user, onLogout, children, title }) => {
   const [isSidebarOpen, setSidebarOpen] = useState(true);
   const [isEmailVerificationClosed, setIsEmailVerificationClosed] = useState(false);
+  const [freshUser, setFreshUser] = useState<UserData | null>(user);
   const { t } = useTranslation();
   const navigate = useNavigate();
   const location = useLocation();
-  
-  // Filtrage sécurisé du menu
+
+  // Rafraîchir l'utilisateur depuis l'API pour avoir isEmailVerified et la société à jour
+  useEffect(() => {
+    const fetchUser = async () => {
+      try {
+        const token = localStorage.getItem('token');
+        const id = user?.id;
+        if (!token) return;
+        const res = await fetch(`https://127.0.0.1:8000/api/users/${id}`, {
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+        if (res.ok) {
+          const data = await res.json();
+          setFreshUser(data);
+        }
+      } catch (e) {
+        // ignore
+      }
+    };
+    fetchUser();
+  }, []);
+
+  // Récupérer le nom de la société (priorité à freshUser, sinon user)
+  const societeName = freshUser?.societe?.nom || user?.societe?.nom || '';
+
+  // Filtrage dynamique du menu selon le baseRole sélectionné
   const filteredNav = NAVIGATION.filter(item => {
-    if (item.roles.includes('ALL')) return true;
-    // Vérification si user et user.roles existent avant d'utiliser .includes
-    if (!user?.roles) return false;
-    
-    // Vérifier les rôles standards
-    const hasRole = item.roles.some(role => user.roles.includes(role));
-    if (!hasRole) return false;
-
-    // Si l'utilisateur a un rôle personnalisé, vérifier les restrictions
-    if (user.customRole?.restrictions && user.customRole.restrictions.includes(item.path)) {
-      return false;
+    const u = freshUser || user;
+    // Si customRole présent, on filtre selon son baseRole
+    if (u?.customRole?.baseRole) {
+      if (item.roles.includes('ALL')) return true;
+      // Afficher seulement les éléments du baseRole sélectionné
+      const hasBaseRole = item.roles.includes(u.customRole.baseRole);
+      if (!hasBaseRole) return false;
+      // Appliquer les restrictions personnalisées
+      if (u.customRole.restrictions && u.customRole.restrictions.includes(item.path)) {
+        return false;
+      }
+      return true;
+    } else {
+      // Cas classique : selon les rôles de l'utilisateur
+      if (item.roles.includes('ALL')) return true;
+      if (!u?.roles) return false;
+      const hasRole = item.roles.some(role => u.roles.includes(role));
+      if (!hasRole) return false;
+      if (u?.customRole?.restrictions && u.customRole.restrictions.includes(item.path)) {
+        return false;
+      }
+      return true;
     }
-
-    return true;
   });
 
   return (
     <div className="flex h-screen bg-gray-50 overflow-hidden font-sans">
-      
       {/* --- SIDEBAR --- */}
       <aside 
-        className={`${
-          isSidebarOpen ? 'w-64' : 'w-20'
-        } bg-slate-900 text-slate-300 transition-all duration-300 flex flex-col shadow-xl z-20`}
+        className={`$${isSidebarOpen ? 'w-64' : 'w-20'} bg-slate-900 text-slate-300 transition-all duration-300 flex flex-col shadow-xl z-20`}
       >
         <div className="h-16 flex items-center px-6 bg-slate-950 border-b border-slate-800">
           <div className="flex items-center gap-3 overflow-hidden">
@@ -63,7 +95,6 @@ export default function MainLayout({ user, onLogout, children }: MainLayoutProps
           {filteredNav.map((item) => {
             const Icon = item.icon;
             const isActive = location.pathname === item.path;
-            
             return (
               <button
                 key={item.path}
@@ -119,22 +150,32 @@ export default function MainLayout({ user, onLogout, children }: MainLayoutProps
             <Menu size={24} />
           </button>
 
-          <div className="flex items-center gap-4">
-            <LanguageSwitcher />
-            <NotificationWidget />
-            <div className="h-8 w-px bg-gray-200 mx-2"></div>
-            <div className="flex items-center gap-2">
-                <span className="text-sm font-medium text-gray-700 bg-gray-100 px-3 py-1 rounded-full">
-                    {/* Sécurité sur l'accès aux rôles */}
-                    {user?.roles?.[0]?.replace('ROLE_', '').replaceAll('_', ' DE ') || 'EMPLOYE'}
+          <div className="flex items-center gap-4 w-full justify-between">
+            {/* Nom de la société centré */}
+            <div className="flex-1 flex justify-center">
+              {societeName && (
+                <span className="text-base font-semibold text-blue-900 bg-blue-50 px-4 py-1 rounded-full shadow-sm truncate max-w-xs">
+                  {societeName}
                 </span>
+              )}
+            </div>
+            <div className="flex items-center gap-4">
+              <LanguageSwitcher />
+              <NotificationWidget />
+              <div className="h-8 w-px bg-gray-200 mx-2"></div>
+              <div className="flex items-center gap-2">
+                  <span className="text-sm font-medium text-gray-700 bg-gray-100 px-3 py-1 rounded-full">
+                      {/* Sécurité sur l'accès aux rôles */}
+                      {user?.roles?.[0]?.replace('ROLE_', '').replaceAll('_', ' DE ') || 'EMPLOYE'}
+                  </span>
+              </div>
             </div>
           </div>
         </header>
 
         <main className="flex-1 overflow-y-auto bg-slate-50/50">
-          {/* Banderolette Vérification Email - Vérification stricte du champ isEmailVerified */}
-          {user && user.isEmailVerified === false && !isEmailVerificationClosed && (
+          {/* Banderolette Vérification Email - stricte: vérifie la valeur réelle en base */}
+          {freshUser && freshUser.isEmailVerified === false && !isEmailVerificationClosed && (
             <div className="bg-gradient-to-r from-amber-50 to-orange-50 border-b border-amber-200 px-6 py-3 flex items-center justify-between shadow-sm animate-in fade-in slide-in-from-top-2">
               <div className="flex items-center gap-4 flex-1">
                 <div className="flex-shrink-0">
@@ -176,4 +217,6 @@ export default function MainLayout({ user, onLogout, children }: MainLayoutProps
       </div>
     </div>
   );
-}
+};
+
+export default MainLayout;

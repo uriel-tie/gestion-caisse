@@ -1,6 +1,8 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Settings, Users, BookOpen, CreditCard, Building2, Monitor } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import Swal from 'sweetalert2';
 import type { UserData } from '../types';
 
 // On garde tes composants existants
@@ -17,10 +19,43 @@ interface AdminPageProps {
     onLogout: () => void;
 }
 
-export default function AdminPage(props: AdminPageProps) {
-    // Plus besoin de useNavigate ici pour le retour
-    const [activeTab, setActiveTab] = useState<'users' | 'structure' | 'caisse' | 'compta' | 'modes' | 'soc' | 'roles'>('users');
+const AdminPage = ({ user, onLogout }: AdminPageProps) => {
+    const [activeTab, setActiveTab] = useState<'personnel' | 'services' | 'caisses' | 'plan_comptable' | 'mode_paiement' | 'societe' | 'roles'>('personnel');
     const { t } = useTranslation();
+    const navigate = useNavigate();
+
+    // Définir la liste des onglets et leur clé d'accès pour adminRestrictions
+    const TABS = [
+        { key: 'societe', label: t('pages.admin.tabs.soc'), icon: <Building2 size={18} />, color: 'text-green-600', component: <AdminSoc /> },
+        { key: 'personnel', label: t('pages.admin.tabs.users'), icon: <Users size={18} />, color: 'text-purple-600', component: <AdminUsers /> },
+        { key: 'roles', label: t('pages.admin.tabs.roles'), icon: <Settings size={18} />, color: 'text-pink-600', component: <AdminRoles user={user} /> },
+        { key: 'services', label: t('pages.admin.tabs.structure'), icon: <Settings size={18} />, color: 'text-blue-600', component: <AdminStructure /> },
+        { key: 'caisses', label: t('pages.admin.tabs.caisse'), icon: <Monitor size={18} />, color: 'text-red-600', component: <AdminCaisse /> },
+        { key: 'plan_comptable', label: t('pages.admin.tabs.compta'), icon: <BookOpen size={18} />, color: 'text-orange-600', component: <AdminCompta /> },
+        { key: 'mode_paiement', label: t('pages.admin.tabs.modes'), icon: <CreditCard size={18} />, color: 'text-indigo-600', component: <AdminModes /> },
+    ];
+
+    // Si l'utilisateur a un customRole avec adminRestrictions, on filtre les onglets
+    const adminRestrictions = user?.customRole?.adminRestrictions || [];
+    const visibleTabs = TABS.filter(tab => !adminRestrictions.includes(tab.key));
+
+    // Redirection si aucun onglet n'est visible ou actif
+    useEffect(() => {
+        if (visibleTabs.length === 0) {
+            Swal.fire({
+                icon: 'warning',
+                title: 'Accès refusé',
+                text: "Vous n'avez pas accès à cette page. Vous serez redirigé dans quelques instants...",
+                showConfirmButton: false,
+                timer: 2200,
+                timerProgressBar: true
+            }).then(() => {
+                navigate('/home');
+            });
+        } else if (!visibleTabs.some(tab => tab.key === activeTab)) {
+            setActiveTab((visibleTabs[0]?.key as typeof activeTab) || 'personnel');
+        }
+    }, [visibleTabs, activeTab, navigate]);
 
     const getTabClass = (tabName: string, colorClass: string) => {
         const isActive = activeTab === tabName;
@@ -45,66 +80,26 @@ export default function AdminPage(props: AdminPageProps) {
             {/* Navigation par Onglets (Style épuré) */}
             <div className="border-b border-gray-200 mb-8">
                 <nav className="-mb-px flex space-x-8">
-                     <button 
-                        onClick={() => setActiveTab('soc')} 
-                        className={getTabClass('soc', 'text-green-600')}
-                    >
-                         <Building2 size={18} /> {t('pages.admin.tabs.soc')}
-                    </button>
-                    
-                    <button
-                        onClick={() => setActiveTab('users')}
-                        className={getTabClass('users', 'text-purple-600')}
-                    >
-                        <Users size={18} /> {t('pages.admin.tabs.users')}
-                    </button>
-
-                    <button
-                        onClick={() => setActiveTab('roles')}
-                        className={getTabClass('roles', 'text-pink-600')}
-                    >
-                        <Settings size={18} /> {t('pages.admin.tabs.roles')}
-                    </button>
-
-                    <button
-                        onClick={() => setActiveTab('structure')}
-                        className={getTabClass('structure', 'text-blue-600')}
-                    >
-                        <Settings size={18} /> {t('pages.admin.tabs.structure')}
-                    </button>
-                    <button
-                        onClick={() => setActiveTab('caisse')}
-                        className={getTabClass('caisse', 'text-red-600')}
-                    >
-                        <Monitor size={18} /> {t('pages.admin.tabs.caisse')}
-                    </button>
-
-                    <button
-                        onClick={() => setActiveTab('compta')}
-                        className={getTabClass('compta', 'text-orange-600')}
-                    >
-                        <BookOpen size={18} /> {t('pages.admin.tabs.compta')}
-                    </button>
-
-                    <button 
-                        onClick={() => setActiveTab('modes')} 
-                        className={getTabClass('modes', 'text-indigo-600')}
-                    >
-                         <CreditCard size={18} /> {t('pages.admin.tabs.modes')}
-                    </button>
+                    {visibleTabs.map(tab => (
+                        <button
+                            key={tab.key}
+                            onClick={() => setActiveTab(tab.key as any)}
+                            className={getTabClass(tab.key, tab.color)}
+                        >
+                            {tab.icon} {tab.label}
+                        </button>
+                    ))}
                 </nav>
             </div>
 
             {/* Zone de Contenu */}
             <div className="animate-in fade-in slide-in-from-bottom-2 duration-200">
-                {activeTab === 'users' && <AdminUsers />}
-                {activeTab === 'structure' && <AdminStructure />}
-                {activeTab === 'caisse' && <AdminCaisse />}
-                {activeTab === 'compta' && <AdminCompta />}
-                {activeTab === 'modes' && <AdminModes />}
-                {activeTab === 'soc' && <AdminSoc />}
-                {activeTab === 'roles' && <AdminRoles user={props.user} />}
+                {visibleTabs.map(tab => (
+                    activeTab === tab.key && <div key={tab.key}>{tab.component}</div>
+                ))}
             </div>
         </div>
     );
-}
+};
+
+export default AdminPage;

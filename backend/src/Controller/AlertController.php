@@ -22,7 +22,8 @@ public function getAlerts(
     OperationRepository $operationRepo,
     TransfertRepository $transfertRepo,
     CaisseRepository $caisseRepo,
-    SessionCaisseRepository $sessionRepo
+    SessionCaisseRepository $sessionRepo,
+    \Doctrine\ORM\EntityManagerInterface $em
 ): JsonResponse {
     $user = $this->getUser();
     if (!$user) {
@@ -41,12 +42,22 @@ public function getAlerts(
 
     // --- 1. MANAGER ---
     if (in_array('ROLE_MANAGER', $roles)) {
+        // Comptage groupé via DQL natif (filtre global SocieteFilter déjà actif)
+        $counts = $em->createQuery('
+            SELECT
+                (SELECT COUNT(d1.id) FROM App\\Entity\\Demande d1 WHERE d1.statut = :statutDemande) AS validations,
+                (SELECT COUNT(o1.id) FROM App\\Entity\\Operation o1 WHERE o1.statut = :statutOperation) AS operations,
+                (SELECT COUNT(s1.id) FROM App\\Entity\\SessionCaisse s1 WHERE s1.statut = :statutEcart) AS ecarts
+        ')
+        ->setParameter('statutDemande', 'ATTENTE_MANAGER')
+        ->setParameter('statutOperation', 'EN_ATTENTE')
+        ->setParameter('statutEcart', 'ECART')
+        ->getSingleResult();
         $alerts['manager'] = [
-            'validations' => $demandeRepo->count(['statut' => 'ATTENTE_MANAGER']), 
-            // Correction du statut 'PENDING' -> 'EN_ATTENTE' selon ton entité Operation
-            'operations' => $operationRepo->count(['statut' => 'EN_ATTENTE']), 
-            'cancellations' => 0 ,
-            'ecarts' => $sessionRepo->count(['statut' => 'ECART', 'societe' => $societe])
+            'validations' => (int)$counts['validations'],
+            'operations' => (int)$counts['operations'],
+            'cancellations' => 0,
+            'ecarts' => (int)$counts['ecarts']
         ];
     }
 
@@ -54,19 +65,16 @@ public function getAlerts(
     if (in_array('ROLE_CHEF_SERVICE', $roles)) {
         $service = $user->getService();
         if ($service) {
+            // Le filtre global SocieteFilter s'applique déjà
             $count = $demandeRepo->createQueryBuilder('d')
                 ->select('count(d.id)')
                 ->join('d.demandeur', 'u')
                 ->where('u.service = :service')
                 ->andWhere('d.statut = :statut')
-                // Sécurité supplémentaire : on s'assure que la demande appartient à la même société
-                ->andWhere('d.societe = :societe') 
                 ->setParameter('service', $service)
                 ->setParameter('statut', 'ATTENTE_CHEF')
-                ->setParameter('societe', $societe)
                 ->getQuery()
                 ->getSingleScalarResult();
-
             $alerts['chef'] = ['team_validations' => (int) $count];
         }
     }

@@ -246,6 +246,7 @@ class Utilisateur implements UserInterface, PasswordAuthenticatedUserInterface, 
     /**
      * @see UserInterface
      */
+    #[\Deprecated('eraseCredentials() est dépréciée depuis Symfony 7.3. Déplacer la logique de nettoyage vers la sérialisation si nécessaire.')]
     public function eraseCredentials(): void
     {
         // If you store any temporary, sensitive data on the user, clear it here
