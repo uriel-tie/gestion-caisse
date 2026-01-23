@@ -71,21 +71,57 @@ export const CompteComptableSelector: React.FC<CompteComptableSelectorProps> = (
         const loadTypes = async () => {
             setLoadingTypes(true);
             try {
-                const res = await fetch(`https://127.0.0.1:8000/api/comptes/types?nature=${selectedNatureId}`, {
+                // selectedNatureId peut être soit un UUID, soit un numéro (pour compatibilité)
+                // Si c'est un UUID, on l'utilise directement, sinon on cherche d'abord la nature par numéro
+                let natureId = selectedNatureId;
+                
+                // Si ce n'est pas un UUID (format UUID), c'est probablement un numéro
+                const isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(selectedNatureId);
+                
+                if (!isUUID) {
+                    // Trouver la nature par numéro
+                    const nature = natures.find(n => n.numero === selectedNatureId);
+                    if (nature) {
+                        natureId = nature.id;
+                        console.log('Nature trouvée par numéro:', nature);
+                    } else {
+                        console.warn('Nature non trouvée pour numéro:', selectedNatureId);
+                        setTypes([]);
+                        setLoadingTypes(false);
+                        return;
+                    }
+                }
+
+                console.log('Chargement des types pour nature_id:', natureId);
+                const res = await fetch(`https://127.0.0.1:8000/api/comptes/types?nature_id=${natureId}`, {
                     headers: { 'Authorization': `Bearer ${token}` }
                 });
+                
                 if (res.ok) {
-                    setTypes(await res.json());
+                    const typesData = await res.json();
+                    console.log('Types reçus:', typesData);
+                    setTypes(typesData);
+                } else {
+                    const errorData = await res.json().catch(() => null);
+                    console.error('Erreur API types:', res.status, errorData);
+                    setTypes([]);
                 }
             } catch (err) {
                 console.error('Erreur chargement types', err);
+                setTypes([]);
             } finally {
                 setLoadingTypes(false);
             }
         };
 
+        // Attendre que les natures soient chargées si nécessaire
+        if (natures.length === 0 && !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(selectedNatureId)) {
+            // Si on a besoin des natures mais qu'elles ne sont pas encore chargées, on attend
+            return;
+        }
+
         loadTypes();
-    }, [selectedNatureId, token]);
+    }, [selectedNatureId, token, natures]);
 
     return (
         <div className={`space-y-3 ${className}`}>
@@ -104,7 +140,7 @@ export const CompteComptableSelector: React.FC<CompteComptableSelectorProps> = (
                 >
                     <option value="">-- Sélectionner une nature --</option>
                     {natures.map((n) => (
-                        <option key={n.id} value={n.numero}>
+                        <option key={n.id} value={n.id}>
                             {n.numero} — {n.libelle}
                         </option>
                     ))}
@@ -122,11 +158,11 @@ export const CompteComptableSelector: React.FC<CompteComptableSelectorProps> = (
                     <select
                         value={selectedTypeId || ''}
                         onChange={(e) => onTypeChange(e.target.value || null)}
-                        disabled={loadingTypes || types.length === 0}
+                        disabled={loadingTypes}
                         className="w-full px-3 py-2 border border-gray-300 rounded-lg outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-gray-100"
                     >
                         <option value="">
-                            {loadingTypes ? 'Chargement...' : types.length === 0 ? 'Aucun type disponible' : '-- Sélectionner un type --'}
+                            {loadingTypes ? 'Chargement...' : types.length === 0 ? 'Aucun type disponible pour cette nature' : '-- Sélectionner un type --'}
                         </option>
                         {types.map((t) => (
                             <option key={t.id} value={t.id}>
@@ -134,6 +170,11 @@ export const CompteComptableSelector: React.FC<CompteComptableSelectorProps> = (
                             </option>
                         ))}
                     </select>
+                    {!loadingTypes && types.length === 0 && selectedNatureId && (
+                        <p className="text-xs text-amber-600 mt-1">
+                            ⚠️ Aucun compte de type "type" n'est lié à cette nature. Créez d'abord un compte de type "type" et associez-le à cette nature.
+                        </p>
+                    )}
                 </div>
             )}
         </div>

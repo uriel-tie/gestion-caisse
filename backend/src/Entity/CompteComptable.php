@@ -26,11 +26,15 @@ class CompteComptable
     private ?string $libelle = null; // Ex: "Achats Marchandises"
 
     #[ORM\Column(length: 50)]
-    private ?string $type = null; // RECETTE, DEPENSE, ou TRESORERIE
+    private ?string $typeCompte = null; // 'nature' ou 'type'
 
     #[ORM\ManyToOne(targetEntity: Societe::class)]
     #[ORM\JoinColumn(nullable: false)]
     private ?Societe $societe = null;
+
+    // Nouvelles constantes pour typeCompte
+    public const TYPECOMPTE_NATURE = 'nature';
+    public const TYPECOMPTE_TYPE = 'type';
 
     public function getSociete(): ?Societe { return $this->societe; }
     public function setSociete(?Societe $societe): static { $this->societe = $societe; return $this; }
@@ -67,14 +71,29 @@ class CompteComptable
         return $this;
     }
 
+    public function getTypeCompte(): ?string
+    {
+        return $this->typeCompte;
+    }
+
+    public function setTypeCompte(string $typeCompte): static
+    {
+        // Validation : seules 'nature' et 'type' sont acceptées
+        if (!in_array($typeCompte, [self::TYPECOMPTE_NATURE, self::TYPECOMPTE_TYPE], true)) {
+            throw new \InvalidArgumentException("typeCompte doit être 'nature' ou 'type'");
+        }
+        $this->typeCompte = $typeCompte;
+        return $this;
+    }
+
+    // Méthode de compatibilité pour l'ancien champ 'type'
     public function getType(): ?string
     {
-        return $this->type;
+        return $this->typeCompte;
     }
 
     public function setType(string $type): static
     {
-        $this->type = $type;
-        return $this;
+        return $this->setTypeCompte($type);
     }
 }

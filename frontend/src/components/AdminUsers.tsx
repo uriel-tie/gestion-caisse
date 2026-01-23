@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { 
-    UserPlus, User, Copy, Ban, CheckCircle, 
-    Trash2, AlertTriangle, KeyRound, Edit2, Loader2, X 
+    UserPlus, Ban, CheckCircle, 
+    Trash2, KeyRound, Edit2, Loader2, X 
 } from 'lucide-react';
 import UserEditModal from './UserEditModal';
 import Swal from 'sweetalert2';
@@ -37,7 +37,10 @@ export default function AdminUsers() {
             const res = await fetch('https://127.0.0.1:8000/api/users', { 
                 headers: { 'Authorization': `Bearer ${token}` } 
             });
-            if (res.ok) setUsers(await res.json());
+            if (res.ok) {
+                const data = await res.json();
+                setUsers(data);
+            }
         } catch (e) { console.error("Erreur users", e); }
     };
 
@@ -66,7 +69,8 @@ export default function AdminUsers() {
                 const data = await res.json();
                 setTempPassword(data.password);
                 setFormData({ nom: '', email: '', role: 'ROLE_EMPLOYE', service_id: '', custom_role_id: '' });
-                fetchUsers();
+                // Rafraîchir la liste des utilisateurs pour voir le nouveau rôle
+                await fetchUsers();
             }
         } catch (e) { console.error(e); }
         finally { setLoading(false); }
@@ -148,7 +152,7 @@ export default function AdminUsers() {
                     </div>
                     <div className="md:col-span-2">
                         <label className="block text-xs font-semibold text-gray-500 uppercase mb-1">Rôle</label>
-                        <select value={formData.custom_role_id || formData.role} onChange={e => {
+                        <select value={formData.custom_role_id ? `CUSTOM_${formData.custom_role_id}` : formData.role} onChange={e => {
                             const val = e.target.value;
                             if (val.startsWith('CUSTOM_')) {
                                 setFormData({...formData, custom_role_id: val.replace('CUSTOM_', ''), role: 'ROLE_EMPLOYE'});
@@ -224,7 +228,12 @@ export default function AdminUsers() {
                         </tr>
                     </thead>
                     <tbody className="divide-y divide-gray-200">
-                        {users.map((u) => (
+                        {users.map((u) => {
+                            // Debug: log pour vérifier la structure des données
+                            if (u.customRole) {
+                                console.log('User with customRole:', u.nom, u.customRole);
+                            }
+                            return (
                             <tr key={u.id} className="hover:bg-gray-50 transition-colors">
                                 <td className="px-6 py-4">
                                     <div className="flex items-center gap-3">
@@ -239,7 +248,19 @@ export default function AdminUsers() {
                                 </td>
                                 <td className="px-6 py-4">
                                     <span className="text-sm text-gray-600 font-medium">
-                                        {u.customRole?.nom ? `${u.customRole.nom}` : (u.role?.replace('ROLE_', '').replaceAll('_', ' de ') || 'EMPLOYE')}
+                                        {(() => {
+                                            // Vérifier si customRole existe et a un nom
+                                            if (u.customRole && u.customRole !== null && typeof u.customRole === 'object' && u.customRole.nom) {
+                                                return (
+                                                    <span className="flex items-center gap-1">
+                                                        <span className="text-amber-600">✦</span>
+                                                        {u.customRole.nom}
+                                                    </span>
+                                                );
+                                            }
+                                            // Sinon, afficher le rôle standard
+                                            return u.role?.replace('ROLE_', '').replaceAll('_', ' de ') || 'EMPLOYE';
+                                        })()}
                                     </span>
                                 </td>
                                 <td className="px-6 py-4">
@@ -261,7 +282,8 @@ export default function AdminUsers() {
                                     </div>
                                 </td>
                             </tr>
-                        ))}
+                            );
+                        })}
                     </tbody>
                 </table>
             </div>

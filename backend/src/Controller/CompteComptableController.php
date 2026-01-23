@@ -3,7 +3,9 @@
 namespace App\Controller;
 
 use App\Entity\CompteComptable;
+use App\Entity\CompteLie;
 use App\Repository\CompteComptableRepository;
+use App\Repository\CompteLieRepository;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\JsonResponse;
@@ -26,7 +28,8 @@ class CompteComptableController extends AbstractController
                 'id' => $c->getId(),
                 'numero' => $c->getNumero(),
                 'libelle' => $c->getLibelle(),
-                'type' => $c->getType(),
+                'type' => $c->getType(), // Compatibilité
+                'typeCompte' => $c->getTypeCompte(),
                 'label_complet' => $c->__toString() // "606 - Achats"
             ];
         }
@@ -35,7 +38,7 @@ class CompteComptableController extends AbstractController
 
     // 2. CRÉER (Pour Admin uniquement)
     #[Route('', name: 'create', methods: ['POST'])]
-    public function create(Request $request, EntityManagerInterface $em): JsonResponse
+    public function create(Request $request, EntityManagerInterface $em, CompteComptableRepository $compteRepo): JsonResponse
     {
         $this->denyAccessUnlessGranted('ROLE_MANAGER');
 
@@ -51,23 +54,58 @@ class CompteComptableController extends AbstractController
             return $this->json(['error' => 'Numéro et Libellé obligatoires'], 400);
         }
 
+        if (empty($data['typeCompte']) || !in_array($data['typeCompte'], [CompteComptable::TYPECOMPTE_NATURE, CompteComptable::TYPECOMPTE_TYPE], true)) {
+            return $this->json(['error' => 'typeCompte doit être "nature" ou "type"'], 400);
+        }
+
         $compte = new CompteComptable();
         $compte->setNumero($data['numero']);
         $compte->setLibelle($data['libelle']);
         $compte->setSociete($user->getSociete());
-        $compte->setType($data['type'] ?? 'CHARGE'); // Par défaut une charge
+        $compte->setTypeCompte($data['typeCompte']);
 
         $em->persist($compte);
         $em->flush();
+
+        // Si c'est un compte "type", créer la liaison avec la nature parente
+        if ($data['typeCompte'] === CompteComptable::TYPECOMPTE_TYPE && !empty($data['nature_id'])) {
+            $nature = $compteRepo->find($data['nature_id']);
+            if (!$nature) {
+                return $this->json(['error' => 'Nature parente introuvable'], 400);
+            }
+            if ($nature->getTypeCompte() !== CompteComptable::TYPECOMPTE_NATURE) {
+                return $this->json(['error' => 'Le compte parent doit être de type "nature"'], 400);
+            }
+
+            $compteLie = new CompteLie();
+            $compteLie->setCompteNature($nature);
+            $compteLie->setCompteType($compte);
+            $em->persist($compteLie);
+            $em->flush();
+        }
 
         return $this->json(['message' => 'Compte créé', 'id' => $compte->getId()], 201);
     }
     
     // 3. SUPPRIMER (Pour Admin)
     #[Route('/{id}', name: 'delete', methods: ['DELETE'])]
-    public function delete(CompteComptable $compte, EntityManagerInterface $em): JsonResponse
+    public function delete(CompteComptable $compte, EntityManagerInterface $em, CompteLieRepository $compteLieRepo): JsonResponse
     {
         $this->denyAccessUnlessGranted('ROLE_MANAGER');
+        
+        // Supprimer les liaisons associées (cascade)
+        if ($compte->getTypeCompte() === CompteComptable::TYPECOMPTE_TYPE) {
+            $liaison = $compteLieRepo->findNatureByType($compte);
+            if ($liaison) {
+                $em->remove($liaison);
+            }
+        } else {
+            // Si c'est une nature, supprimer toutes les liaisons avec ses types
+            $liaisons = $compteLieRepo->findTypesByNature($compte);
+            foreach ($liaisons as $liaison) {
+                $em->remove($liaison);
+            }
+        }
         
         $em->remove($compte);
         $em->flush();
@@ -92,7 +130,11 @@ class CompteComptableController extends AbstractController
         }
 
         if (isset($data['type'])) {
-            $compte->setType($data['type']);
+            $compte->setType($data['type']); // Compatibilité
+        }
+
+        if (isset($data['typeCompte'])) {
+            $compte->setTypeCompte($data['typeCompte']);
         }
 
         $em->flush();
@@ -104,60 +146,108 @@ class CompteComptableController extends AbstractController
     }
 
     /**
-     * Récupère les comptes "Nature" (3 chiffres seulement)
-     * Ex: 601, 606, 611, etc.
+     * Récupère les comptes "Nature" (typeCompte = 'nature')
      */
     #[Route('/natures', name: 'list_natures', methods: ['GET'])]
     public function listNatures(CompteComptableRepository $repo): JsonResponse
     {
-        $allComptes = $repo->findAllSorted();
-        $natures = [];
-
-        foreach ($allComptes as $c) {
-            // Une Nature a exactement 3 chiffres
-            if (strlen($c->getNumero()) === 3) {
-                $natures[] = [
-                    'id' => $c->getId(),
-                    'numero' => $c->getNumero(),
-                    'libelle' => $c->getLibelle(),
-                    'label_complet' => $c->__toString()
-                ];
-            }
+        $natures = $repo->findBy(['typeCompte' => CompteComptable::TYPECOMPTE_NATURE], ['numero' => 'ASC']);
+        
+        $data = [];
+        foreach ($natures as $c) {
+            $data[] = [
+                'id' => $c->getId()->toRfc4122(),
+                'numero' => $c->getNumero(),
+                'libelle' => $c->getLibelle(),
+                'label_complet' => $c->__toString()
+            ];
         }
 
-        return $this->json($natures);
+        return $this->json($data);
     }
 
     /**
-     * Récupère les comptes "Type" (4 chiffres ou plus)
-     * Optionnellement filtrés par Nature
-     * Ex: GET /api/comptes/types?nature=606
+     * Récupère les comptes "Type" filtrés par Nature via CompteLie
+     * Ex: GET /api/comptes/types?nature_id=<uuid>
      */
     #[Route('/types', name: 'list_types', methods: ['GET'])]
-    public function listTypes(Request $request, CompteComptableRepository $repo): JsonResponse
+    public function listTypes(Request $request, CompteComptableRepository $compteRepo, CompteLieRepository $compteLieRepo): JsonResponse
     {
-        $nature = $request->query->get('nature');
-        $allComptes = $repo->findAllSorted();
-        $types = [];
-
-        foreach ($allComptes as $c) {
-            // Un Type a 4 chiffres ou plus
-            if (strlen($c->getNumero()) >= 4) {
-                // Si une Nature est spécifiée, on filtre par rapport à elle
-                if ($nature && strpos($c->getNumero(), $nature) !== 0) {
-                    continue;
-                }
-
-                $types[] = [
-                    'id' => $c->getId(),
+        $natureId = $request->query->get('nature_id');
+        
+        if (!$natureId) {
+            // Si aucune nature spécifiée, retourner tous les types
+            $types = $compteRepo->findBy(['typeCompte' => CompteComptable::TYPECOMPTE_TYPE], ['numero' => 'ASC']);
+            $data = [];
+            foreach ($types as $c) {
+                $liaison = $compteLieRepo->findNatureByType($c);
+                $data[] = [
+                    'id' => $c->getId()->toRfc4122(),
                     'numero' => $c->getNumero(),
                     'libelle' => $c->getLibelle(),
-                    'nature' => substr($c->getNumero(), 0, 3), // Les 3 premiers chiffres
+                    'nature_id' => $liaison ? $liaison->getCompteNature()->getId()->toRfc4122() : null,
                     'label_complet' => $c->__toString()
+                ];
+            }
+            return $this->json($data);
+        }
+
+        // Filtrer par nature via CompteLie
+        $nature = $compteRepo->find($natureId);
+        if (!$nature) {
+            \error_log("Nature introuvable pour ID: " . $natureId);
+            return $this->json(['error' => 'Nature introuvable'], 400);
+        }
+        
+        if ($nature->getTypeCompte() !== CompteComptable::TYPECOMPTE_NATURE) {
+            \error_log("Le compte trouvé n'est pas une nature. ID: " . $natureId . ", typeCompte: " . $nature->getTypeCompte());
+            return $this->json(['error' => 'Le compte trouvé n\'est pas une nature'], 400);
+        }
+
+        \error_log("Recherche des types pour nature ID: " . $nature->getId()->toRfc4122() . ", numero: " . $nature->getNumero());
+        $liaisons = $compteLieRepo->findTypesByNature($nature);
+        \error_log("Nombre de liaisons trouvées: " . count($liaisons));
+        
+        $data = [];
+        foreach ($liaisons as $liaison) {
+            $type = $liaison->getCompteType();
+            if ($type) {
+                $data[] = [
+                    'id' => $type->getId()->toRfc4122(),
+                    'numero' => $type->getNumero(),
+                    'libelle' => $type->getLibelle(),
+                    'nature_id' => $nature->getId()->toRfc4122(),
+                    'label_complet' => $type->__toString()
                 ];
             }
         }
 
-        return $this->json($types);
+        \error_log("Types retournés: " . count($data));
+        return $this->json($data);
+    }
+
+    /**
+     * Récupère la nature parente d'un compte type
+     * Ex: GET /api/comptes/{id}/nature
+     */
+    #[Route('/{id}/nature', name: 'get_nature', methods: ['GET'])]
+    public function getNature(CompteComptable $compte, CompteLieRepository $compteLieRepo): JsonResponse
+    {
+        if ($compte->getTypeCompte() !== CompteComptable::TYPECOMPTE_TYPE) {
+            return $this->json(['error' => 'Ce compte n\'est pas de type "type"'], 400);
+        }
+
+        $liaison = $compteLieRepo->findNatureByType($compte);
+        if (!$liaison) {
+            return $this->json(['error' => 'Aucune nature parente trouvée'], 404);
+        }
+
+        $nature = $liaison->getCompteNature();
+        return $this->json([
+            'id' => $nature->getId()->toRfc4122(),
+            'numero' => $nature->getNumero(),
+            'libelle' => $nature->getLibelle(),
+            'label_complet' => $nature->__toString()
+        ]);
     }
 }

@@ -117,8 +117,9 @@ const RegisterPage: React.FC = () => {
         {/* PARTIE GAUCHE : IMAGE / BANNIÈRE */}
         <div className="hidden md:block w-1/3 bg-slate-900 p-8 text-white flex flex-col justify-between relative overflow-hidden">
           <div className="relative z-10">
-            <h1 className="text-3xl font-bold text-yellow-500 mb-2">ORBIS</h1>
+            <h1 className="text-3xl font-bold text-yellow-500 mb-2">ORBIS CAISSE</h1>
             <p className="text-slate-400 text-sm">Gestion de Caisse Pro</p>
+            <br />
           </div>
           
           <div className="relative z-10 space-y-6">
@@ -146,6 +147,7 @@ const RegisterPage: React.FC = () => {
           </div>
 
           <div className="relative z-10 mt-auto">
+            <br /><br /><br /><br /><br /><br /><br /><br /><br /><br />
             <p className="text-xs text-slate-500">© 2025 Orbis Finance.</p>
           </div>
 

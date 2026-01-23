@@ -1,10 +1,33 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Shield, Activity, Users, ArrowRight, CheckCircle, Lock } from 'lucide-react';
 
 export default function LandingPage() {
   const navigate = useNavigate();
-  const isAuthenticated = !!localStorage.getItem('token');
+  const [isAuthenticated, setIsAuthenticated] = useState(!!localStorage.getItem('token'));
+
+  useEffect(() => {
+    const checkToken = async () => {
+      const token = localStorage.getItem('token');
+      if (!token) return;
+      try {
+        // Utilise une route protégée simple (ici /api/users/profile, à adapter si besoin)
+        const res = await fetch('https://127.0.0.1:8000/api/users/profile', {
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+        if (!res.ok) {
+          localStorage.removeItem('token');
+          localStorage.removeItem('user');
+          setIsAuthenticated(false);
+        }
+      } catch {
+        localStorage.removeItem('token');
+        localStorage.removeItem('user');
+        setIsAuthenticated(false);
+      }
+    };
+    checkToken();
+  }, []);
 
   return (
     <div className="min-h-screen bg-white flex flex-col font-sans text-gray-900">
@@ -26,7 +49,7 @@ export default function LandingPage() {
           </nav>
 
           <button 
-            onClick={() => navigate(isAuthenticated ? '/dashboard' : '/login')}
+            onClick={() => navigate(isAuthenticated ? '/home' : '/login')}
             className="bg-gray-900 hover:bg-gray-800 text-white px-5 py-2.5 rounded-full font-medium transition-all shadow-lg hover:shadow-gray-900/20 flex items-center gap-2"
           >
             {isAuthenticated ? 'Mon Espace' : 'Se connecter'}

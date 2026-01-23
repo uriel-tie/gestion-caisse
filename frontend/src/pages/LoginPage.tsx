@@ -57,7 +57,7 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLogin }) => {
       }
 
       // 2FA requis
-      if (data['2fa_required']) {
+      if (data['requires2fa']) {
         setShow2FAInput(true);
         setError('Veuillez entrer le code de validation.');
         setIsLoading(false);

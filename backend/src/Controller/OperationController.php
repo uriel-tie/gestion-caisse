@@ -42,6 +42,7 @@ class OperationController extends AbstractController
             'mode' => $request->query->get('mode'),       
             'statut' => $request->query->get('statut'),
             'compte' => $request->query->get('compte'),
+            'caisse' => $request->query->get('caisse'),
         ];  
 
         $caisseRestrict = null;
@@ -50,7 +51,13 @@ class OperationController extends AbstractController
             if (!$caisseRestrict) return $this->json([]);
         }
 
-        $paginator = $operationRepository->findWithFilters($filters, $page, $limit, $caisseRestrict);
+        // Si un filtre caisse est fourni (pour les managers), récupérer l'entité Caisse
+        $caisseFilter = null;
+        if (!empty($filters['caisse']) && $this->isGranted('ROLE_MANAGER')) {
+            $caisseFilter = $caisseRepo->find($filters['caisse']);
+        }
+
+        $paginator = $operationRepository->findWithFilters($filters, $page, $limit, $caisseRestrict, $caisseFilter);
         $totalItems = count($paginator);
         $totalPages = ceil($totalItems / $limit);
 

@@ -34,7 +34,7 @@ export default function ForceChangePasswordPage() {
         const token = localStorage.getItem('token');
 
         try {
-            const res = await fetch('https://127.0.0.1:8000/api/users/change-password', {
+            const res = await fetch('https://127.0.0.1:8000/api/users/Forced-change-password', {
                 method: 'PATCH',
                 headers: { 
                     'Content-Type': 'application/json',

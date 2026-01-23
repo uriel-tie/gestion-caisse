@@ -93,11 +93,31 @@ export default function AdminCaisse() {
         }
     };
 
-    const startEditCompte = (c: any) => {
+    const startEditCompte = async (c: any) => {
       setEditingCompteFor(c.id);
-      // CompteComptableSelector now returns UUIDs, not numero values
+      // CompteComptableSelector now uses UUIDs
       setEditingType(c.compteComptable?.id || '');
-      setEditingNature(c.compteComptable?.numero ? c.compteComptable.numero.substring(0,3) : '');
+      
+      // Si le compte a une nature parente, la récupérer via l'API
+      if (c.compteComptable?.id) {
+        try {
+          const token = localStorage.getItem('token');
+          const res = await fetch(`https://127.0.0.1:8000/api/comptes/${c.compteComptable.id}/nature`, {
+            headers: { 'Authorization': `Bearer ${token}` }
+          });
+          if (res.ok) {
+            const nature = await res.json();
+            setEditingNature(nature.id);
+          } else {
+            setEditingNature('');
+          }
+        } catch (e) {
+          console.error('Erreur récupération nature', e);
+          setEditingNature('');
+        }
+      } else {
+        setEditingNature('');
+      }
     };
 
     const saveEditedCompte = async (caisseId: string) => {

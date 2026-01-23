@@ -35,7 +35,7 @@ class AuthController extends AbstractController
         $data = json_decode($request->getContent(), true);
         $email = $data['email'] ?? ''; 
         $password = $data['password'] ?? '';
-        $code2FA = $data['code2FA'] ?? '';
+        $code2FA = $data['code_2fa'] ?? '';
 
         $user = $this->userRepo->findOneBy(['email' => $email]);
 
@@ -73,6 +73,7 @@ class AuthController extends AbstractController
             'roles' => $user->getRoles(),
             'passwordMustBeChanged' => $user->isPasswordMustBeChanged(),
             'isEmailVerified' => $user->isIsEmailVerified(),
+            'is2faEnabled' => $user->is2faEnabled(),
         ];
 
         // Ajouter les informations du rôle personnalisé si présent
@@ -109,7 +110,12 @@ class AuthController extends AbstractController
             // 1. Création Société
             $societe = new Societe();
             $societe->setNom($data['nomSociete']);
-            // ... (tes setters societe) ...
+            $societe->setForme($data['forme']);
+            $societe->setAdresse($data['adresse']);
+            $societe->setTelephone($data['telephone']);
+            $societe->setRegistreCommerce($data['registreCommerce']);
+            $societe->setNumeroCompteContribuable($data['numeroCompteContribuable']);
+            $societe->setCapitalSocial($data['capital']);
             $societe->setIsActive(true);
             $societe->setIsDeleted(false);
             $societe->setModeValidation(Societe::MODE_STANDARD);

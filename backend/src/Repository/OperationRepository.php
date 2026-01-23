@@ -72,7 +72,7 @@ class OperationRepository extends ServiceEntityRepository
     /**
      * Recherche avancée avec filtres et pagination
      */
-    public function findWithFilters(array $filters, int $page = 1, int $limit = 15, ?\App\Entity\Caisse $caisseRestrict = null)
+    public function findWithFilters(array $filters, int $page = 1, int $limit = 15, ?\App\Entity\Caisse $caisseRestrict = null, ?\App\Entity\Caisse $caisseFilter = null)
     {
         $qb = $this->createQueryBuilder('o')
             ->orderBy('o.date', 'DESC');
@@ -80,11 +80,21 @@ class OperationRepository extends ServiceEntityRepository
         // 1. Restriction Sécurité (Si c'est un caissier, il ne voit que sa caisse)
         if ($caisseRestrict) {
             $qb->join('o.sessionCaisse', 's')
-               ->andWhere('s.caisse = :caisse')
-               ->setParameter('caisse', $caisseRestrict);
+               ->andWhere('s.caisse = :caisseRestrict')
+               ->setParameter('caisseRestrict', $caisseRestrict);
         }
 
-        // 2. Filtres Dynamiques
+        // 2. Filtre par caisse (pour les managers)
+        if ($caisseFilter) {
+            // Si on n'a pas déjà fait le join pour caisseRestrict, on le fait maintenant
+            if (!$caisseRestrict) {
+                $qb->join('o.sessionCaisse', 's');
+            }
+            $qb->andWhere('s.caisse = :caisseFilter')
+               ->setParameter('caisseFilter', $caisseFilter);
+        }
+
+        // 3. Filtres Dynamiques
         if (!empty($filters['type'])) {
             $qb->andWhere('o.type = :type')
                ->setParameter('type', $filters['type']);
@@ -118,7 +128,7 @@ class OperationRepository extends ServiceEntityRepository
                ->setParameter('compte', '%' . $filters['compte'] . '%');
         }
 
-        // 3. Pagination
+        // 4. Pagination
         $query = $qb->getQuery();
         
         // On utilise Doctrine Paginator pour gérer correctement le LIMIT/OFFSET

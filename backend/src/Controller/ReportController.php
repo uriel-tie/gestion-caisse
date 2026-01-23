@@ -32,6 +32,8 @@ class ReportController extends AbstractController
             'date_debut' => $request->query->get('date_debut'),
             'date_fin' => $request->query->get('date_fin'),
             'mode' => $request->query->get('mode'),
+            'compte' => $request->query->get('compte'),
+            'caisse' => $request->query->get('caisse'),
         ];
 
         // 2. Sécurité : Restriction par caisse (comme dans OperationController)
@@ -44,9 +46,15 @@ class ReportController extends AbstractController
             }
         }
 
+        // Si un filtre caisse est fourni (pour les managers), récupérer l'entité Caisse
+        $caisseFilter = null;
+        if (!empty($filters['caisse']) && $this->isGranted('ROLE_MANAGER')) {
+            $caisseFilter = $caisseRepo->find($filters['caisse']);
+        }
+
         // 3. Récupération des données avec filtres
         // On demande la page 1 avec une limite très haute (ex: 2000) pour avoir "tout" le résultat filtré dans le PDF
-        $paginator = $opRepo->findWithFilters($filters, 1, 2000, $caisseRestrict);
+        $paginator = $opRepo->findWithFilters($filters, 1, 2000, $caisseRestrict, $caisseFilter);
         
         // On extrait les résultats du Paginator pour les passer à la vue
         $operations = $paginator->getIterator();
@@ -112,6 +120,7 @@ class ReportController extends AbstractController
             'date_fin' => $request->query->get('date_fin'),
             'mode' => $request->query->get('mode'),
             'compte' => $request->query->get('compte'),
+            'caisse' => $request->query->get('caisse'),
         ];
 
         // 2. Sécurité
@@ -123,8 +132,14 @@ class ReportController extends AbstractController
             }
         }
 
+        // Si un filtre caisse est fourni (pour les managers), récupérer l'entité Caisse
+        $caisseFilter = null;
+        if (!empty($filters['caisse']) && $this->isGranted('ROLE_MANAGER')) {
+            $caisseFilter = $caisseRepo->find($filters['caisse']);
+        }
+
         // 3. Récupération des données
-        $paginator = $opRepo->findWithFilters($filters, 1, 5000, $caisseRestrict);
+        $paginator = $opRepo->findWithFilters($filters, 1, 5000, $caisseRestrict, $caisseFilter);
         $operations = $paginator->getIterator();
 
         // 4. Création du fichier Excel

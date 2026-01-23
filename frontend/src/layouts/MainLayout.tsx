@@ -16,6 +16,10 @@ interface MainLayoutProps {
 
 
 const MainLayout: React.FC<MainLayoutProps> = ({ user, onLogout, children, title }) => {
+    // Synchroniser freshUser avec la prop user à chaque changement de user
+    useEffect(() => {
+      setFreshUser(user);
+    }, [user]);
   const [isSidebarOpen, setSidebarOpen] = useState(true);
   const [isEmailVerificationClosed, setIsEmailVerificationClosed] = useState(false);
   const [freshUser, setFreshUser] = useState<UserData | null>(user);
@@ -42,7 +46,7 @@ const MainLayout: React.FC<MainLayoutProps> = ({ user, onLogout, children, title
       }
     };
     fetchUser();
-  }, []);
+  }, [user]);
 
   // Récupérer le nom de la société (priorité à freshUser, sinon user)
   const societeName = freshUser?.societe?.nom || user?.societe?.nom || '';
@@ -50,26 +54,18 @@ const MainLayout: React.FC<MainLayoutProps> = ({ user, onLogout, children, title
   // Filtrage dynamique du menu selon le baseRole sélectionné
   const filteredNav = NAVIGATION.filter(item => {
     const u = freshUser || user;
-    // Si customRole présent, on filtre selon son baseRole
     if (u?.customRole?.baseRole) {
       if (item.roles.includes('ALL')) return true;
-      // Afficher seulement les éléments du baseRole sélectionné
       const hasBaseRole = item.roles.includes(u.customRole.baseRole);
       if (!hasBaseRole) return false;
-      // Appliquer les restrictions personnalisées
-      if (u.customRole.restrictions && u.customRole.restrictions.includes(item.path)) {
-        return false;
-      }
+      if (u.customRole.restrictions && u.customRole.restrictions.includes(item.path)) return false;
       return true;
     } else {
-      // Cas classique : selon les rôles de l'utilisateur
       if (item.roles.includes('ALL')) return true;
       if (!u?.roles) return false;
       const hasRole = item.roles.some(role => u.roles.includes(role));
       if (!hasRole) return false;
-      if (u?.customRole?.restrictions && u.customRole.restrictions.includes(item.path)) {
-        return false;
-      }
+      if (u?.customRole?.restrictions && u.customRole.restrictions.includes(item.path)) return false;
       return true;
     }
   });

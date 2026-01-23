@@ -97,6 +97,7 @@ class UserController extends AbstractController
         }
 
         // 4. RÉPONSE
+        $customRole = $user->getCustomRole();
         return new JsonResponse([
             'id' => $user->getId(),
             'email' => $user->getEmail(),
@@ -106,6 +107,12 @@ class UserController extends AbstractController
             'societe' => $user->getSociete() ? [
                 'id' => $user->getSociete()->getId(),
                 'nom' => $user->getSociete()->getNom(),
+            ] : null,
+            'customRole' => $customRole ? [
+                'id' => $customRole->getId()->__toString(),
+                'nom' => $customRole->getNom(),
+                'baseRole' => $customRole->getBaseRole(),
+                'restrictions' => $customRole->getRestrictions() ?? [],
             ] : null,
         ]);
     }
@@ -321,7 +328,35 @@ class UserController extends AbstractController
         }
     }
 
-    // 2. CHANGER LE MOT DE PASSE (Et valider le compte)
+    #[Route('/Forced-change-password', name: 'forced_change_password', methods: ['PATCH'])]
+    public function forcedChangePassword(
+        Request $request, 
+        UserPasswordHasherInterface $hasher, 
+        EntityManagerInterface $em,
+        #[CurrentUser] ?Utilisateur $user
+    ): JsonResponse
+    {
+        if (!$user) return $this->json(['error' => 'Utilisateur non trouvé'], 404);
+
+        $data = json_decode($request->getContent(), true);
+        $newPassword = $data['new_password'] ?? null;
+
+        if (!$newPassword || strlen($newPassword) < 6) {
+            return $this->json(['error' => 'Le mot de passe doit faire au moins 6 caractères.'], 400);
+        }
+
+        // Hashage du nouveau mot de passe
+        $user->setPassword($hasher->hashPassword($user, $newPassword));
+        
+        // CRUCIAL : On désactive le flag "Doit changer son mot de passe"
+        $user->setPasswordMustBeChanged(false);
+
+        $em->flush();
+
+        return $this->json(['message' => 'Mot de passe modifié. Compte sécurisé.']);
+    }
+
+    // 2. CHANGER LE MOT DE PASSE
     #[Route('/change-password', name: 'change_password', methods: ['PATCH'])]
     public function changePassword(
         Request $request, 
