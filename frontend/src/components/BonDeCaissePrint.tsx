@@ -99,7 +99,9 @@ export default function BonDeCaissePrint({ operationId, onClose }: BonDeCaissePr
                         <div className="text-right">
                             <h2 className="text-3xl font-black text-gray-900 uppercase">BON DE CAISSE</h2>
                             <div className="inline-block bg-gray-100 px-3 py-1 rounded mt-2">
-                                <p className="text-sm font-mono font-bold text-gray-700">N° {operation.numero}</p>
+                                <p className="text-sm font-mono font-bold text-gray-700">
+                                    N° {operation.ref || operation.numero}
+                                </p>
                             </div>
                         </div>
                     </div>

@@ -12,6 +12,7 @@ use Symfony\Component\Uid\Uuid;
 #[ORM\Index(name: "idx_operation_statut", columns: ["statut"])]
 #[ORM\Index(name: "idx_operation_societe", columns: ["societe_id"])]
 #[ORM\Index(name: 'idx_operation_date', columns: ['date'])] // Optimisation requise par le guide (Section 6)
+#[ORM\HasLifecycleCallbacks]
 class Operation
 {
     public const STATUT_BROUILLON = 'BROUILLON';
@@ -83,6 +84,9 @@ class Operation
     #[ORM\ManyToOne(targetEntity: Societe::class)]
     #[ORM\JoinColumn(nullable: false)] 
     private ?Societe $societe = null;
+
+    #[ORM\Column(length: 50, unique: true, nullable: true)]
+    private ?string $ref = null;
 
     public function getDetails(): ?array
     {
@@ -156,6 +160,14 @@ class Operation
     public function __construct()
     {
         $this->date = new \DateTimeImmutable();
+    }
+
+    #[ORM\PrePersist]
+    public function generateRef(): void
+    {
+        if ($this->ref === null) {
+            $this->ref = 'OP-' . (new \DateTimeImmutable())->format('YmdHis') . '-' . substr(bin2hex(random_bytes(3)), 0, 6);
+        }
     }
 
     public function __toString(): string
@@ -236,6 +248,17 @@ class Operation
     public function setSociete(?Societe $societe): static
     {
         $this->societe = $societe;
+        return $this;
+    }
+
+    public function getRef(): ?string
+    {
+        return $this->ref;
+    }
+
+    public function setRef(?string $ref): static
+    {
+        $this->ref = $ref;
         return $this;
     }
 

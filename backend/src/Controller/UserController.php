@@ -104,6 +104,7 @@ class UserController extends AbstractController
             'nom' => method_exists($user, 'getNom') ? $user->getNom() : '',
             'roles' => $user->getRoles(),
             'password_must_be_changed' => $user->isPasswordMustBeChanged(),
+            'is_email_verified' => $user->isIsEmailVerified(),
             'societe' => $user->getSociete() ? [
                 'id' => $user->getSociete()->getId(),
                 'nom' => $user->getSociete()->getNom(),

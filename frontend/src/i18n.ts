@@ -7,6 +7,7 @@ const resources: any = {
   fr: {
     translation: {
       "common": {
+        "action": "Action",
         "loading": "Chargement...",
         "error": "Une erreur est survenue",
         "save": "Enregistrer",
@@ -29,6 +30,9 @@ const resources: any = {
         "logout": "Déconnexion"
       },
       "manager": {
+        "type": "Type",
+        "titre": "Titre",
+        "date": "Date",
         "validation_title": "Centre de Validation",
         "validation_subtitle": "Gérez les demandes et opérations en attente de validation.",
         "refresh": "Actualiser",
@@ -446,6 +450,7 @@ const resources: any = {
   en: {
     translation: {
       "common": {
+        "action": "Action",
         "loading": "Loading...",
         "error": "An error occurred",
         "save": "Save",
@@ -468,6 +473,9 @@ const resources: any = {
         "logout": "Logout"
       },
       "manager": {
+        "type": "Type",
+        "titre": "Title",
+        "date": "Date",
         "validation_title": "Validation Center",
         "validation_subtitle": "Manage requests and operations pending validation.",
         "refresh": "Refresh",

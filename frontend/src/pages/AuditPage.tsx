@@ -121,7 +121,6 @@ export default function AuditPage() {
       'password': 'Mot de passe',
       'role': 'Rôle',
       'status': 'Statut',
-      'solde': 'Solde',
       'montant': 'Montant',
       'montant_total': 'Montant total',
       'description': 'Description',
@@ -206,6 +205,33 @@ export default function AuditPage() {
       'herefermetur': 'Heure de fermeture',
       'estencours': 'Est en cours',
       'estfinalisee': 'Est finalisée',
+
+      // Champs Utilisateur additionnels
+      "customRole": "Rôle personnalisé",
+      "is2faEnabled": "Double authentification",
+      "google Authenticator Secret": "Clé 2FA",
+      "isEmailVerified": "Email vérifié",
+      "passwordMustBeChanged": "Changement de mot de passe requis",
+      "estActif": "Statut d'activation",
+
+      // Champs Caisse
+      "solde": "Solde de la caisse",
+      "estOuverte": "État d'ouverture",
+      
+      // Champs Demande / Opération
+      "statut": "Statut",
+      "operation": "Référence opération",
+      "caissierTraitant": "Caissier",
+      
+      // Champs SessionCaisse
+      "dateFermeture": "Date de fermeture",
+      "montantFermeture": "Montant réel à la fermeture",
+      "montantTheorique": "Montant théorique attendu",
+      "billetage": "Détails du billetage",
+
+      // Champs Transfert
+      "dateValidation": "Date de validation",
+      "receveur": "Récepteur du transfert"
     };
 
     const lowerField = field.toLowerCase();

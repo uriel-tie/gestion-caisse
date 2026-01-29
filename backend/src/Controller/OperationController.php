@@ -363,7 +363,9 @@ class OperationController extends AbstractController
         return $this->json([
             'operation' => [
                 'id' => (string) $op->getId(),
-                'numero' => 'OP-' . str_pad((string)$op->getId(), 6, '0', STR_PAD_LEFT),
+                // Numéro d'affichage : on privilégie la référence métier si présente
+                'numero' => $op->getRef() ?: 'OP-' . str_pad((string)$op->getId(), 6, '0', STR_PAD_LEFT),
+                'ref' => $op->getRef(),
                 'date' => $op->getDate()->format('d/m/Y H:i'),
                 'montant' => $op->getMontant(),
                 'motif' => $op->getMotif(),

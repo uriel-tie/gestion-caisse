@@ -9,15 +9,19 @@ interface ViewerProps {
 export const RequestBonViewer: React.FC<ViewerProps> = ({ demande, onClose }) => {
     if (!demande) return null;
 
-    const getStatusLabel = (status: string) => {
-        switch(status) {
+    const getStatusLabel = (status?: string) => {
+        if (!status) {
+            return '';
+        }
+
+        switch (status) {
             case 'BROUILLON': return 'BROUILLON';
             case 'ATTENTE_CHEF': return 'ATTENTE CHEF';
             case 'ATTENTE_MANAGER': return 'ATTENTE MANAGER';
             case 'VALIDEE_A_PAYER': return 'BON À PAYER';
             case 'PAYEE': return 'PAYÉE';
             case 'REFUSEE': return 'REFUSÉE';
-            default: return status?.replace(/_/g, ' ');
+            default: return status.replace(/_/g, ' ');
         }
     };
 
@@ -33,7 +37,7 @@ export const RequestBonViewer: React.FC<ViewerProps> = ({ demande, onClose }) =>
     const statusLabel = getStatusLabel(demande.statut);
     
     // Taille adaptative : Si le texte est long, on réduit la police
-    const watermarkSize = statusLabel.length > 10 ? 'text-[80px]' : 'text-[150px]';
+    const watermarkSize = statusLabel && statusLabel.length > 10 ? 'text-[80px]' : 'text-[150px]';
 
     return (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 overflow-y-auto print:p-0 print:bg-white">
@@ -72,7 +76,7 @@ export const RequestBonViewer: React.FC<ViewerProps> = ({ demande, onClose }) =>
                         
                         <div className="flex justify-between items-start border-b-2 border-gray-900 pb-6 mb-8">
                             <div>
-                                <h1 className="text-4xl font-black uppercase tracking-tighter text-gray-900 mb-2">Bon de Caisse</h1>
+                                <h1 className="text-4xl font-black uppercase tracking-tighter text-gray-900 mb-2">Demande</h1>
                                 <div className="flex items-center gap-3">
                                     <span className="px-3 py-1 bg-gray-900 text-white font-mono text-sm font-bold rounded">
                                         N° {demande.numeroReference || '---'}
@@ -84,10 +88,6 @@ export const RequestBonViewer: React.FC<ViewerProps> = ({ demande, onClose }) =>
                             </div>
                             {/* ... */}
                         </div>
-                        {/* ... */}
-                        
-                        {/* Info Demandeur, Tableau Lignes, Footer Totaux, Signature ... */}
-                        {/* ... (Copie la fin de ton fichier précédent ici) ... */}
                         
                         {/* Rappel du bloc Lignes pour être sûr */}
                         <div className="mb-8 bg-white/50 rounded-lg">

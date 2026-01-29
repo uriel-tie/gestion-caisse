@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { Check, X, Banknote, FileText, AlertCircle, RefreshCw } from 'lucide-react';
+import { RequestBonViewer } from '../components/RequestBonViewer';
 import { useTranslation } from 'react-i18next';
 import Swal from 'sweetalert2';
 
@@ -30,6 +31,31 @@ const ManagerValidationPage: React.FC = () => {
     const [operations, setOperations] = useState<OperationToValidate[]>([]);
     const [activeTab, setActiveTab] = useState<'rh' | 'caisse'>('rh');
     const [loading, setLoading] = useState(false);
+    const [selectedDemande, setSelectedDemande] = useState<any | null>(null);
+    const [loadingDetail, setLoadingDetail] = useState(false);
+
+    // Ouvre le viewer pour une demande (charge le détail complet)
+    const handleViewDemande = async (id: string) => {
+        setLoadingDetail(true);
+        try {
+            const token = localStorage.getItem('token');
+            const res = await fetch(`https://127.0.0.1:8000/api/demandes/${id}`, {
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
+            if (res.ok) {
+                setSelectedDemande(await res.json());
+            }
+        } catch (e) {
+            console.error('Erreur chargement détail demande', e);
+        } finally {
+            setLoadingDetail(false);
+        }
+    };
+
+    // Ferme le viewer
+    const handleCloseViewer = () => {
+        setSelectedDemande(null);
+    };
 
     const fetchData = async () => {
         setLoading(true);
@@ -179,10 +205,35 @@ const ManagerValidationPage: React.FC = () => {
                         demandes.length === 0 ? (
                             <EmptyState message={t("manager.aucune_demande")} />
                         ) : (
-                            <div className="grid gap-6 md:grid-cols-2 xl:grid-cols-3">
-                                {demandes.map((d) => (
-                                    <CardRH key={d.id} data={d} onAction={handleDemandeAction} />
-                                ))}
+                            <div className="overflow-x-auto bg-white rounded-xl shadow-sm border border-gray-200">
+                                <table className="min-w-full divide-y divide-gray-100">
+                                    <thead className="bg-gray-50">
+                                        <tr>
+                                            <th className="px-4 py-3 text-left text-xs font-bold text-gray-500 uppercase">{t("manager.titre")}</th>
+                                            <th className="px-4 py-3 text-left text-xs font-bold text-gray-500 uppercase">{t("manager.demandeur")}</th>
+                                            <th className="px-4 py-3 text-left text-xs font-bold text-gray-500 uppercase">{t("manager.type")}</th>
+                                            <th className="px-4 py-3 text-left text-xs font-bold text-gray-500 uppercase">{t("manager.motif")}</th>
+                                            <th className="px-4 py-3 text-right text-xs font-bold text-gray-500 uppercase">{t("manager.montant")}</th>
+                                            <th className="px-4 py-3 text-center text-xs font-bold text-gray-500 uppercase">{t("common.action")}</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody className="divide-y divide-gray-100">
+                                        {demandes.map((d) => (
+                                            <tr key={d.id} className="hover:bg-purple-50/40 transition">
+                                                <td className="px-4 py-3 font-medium text-gray-900 max-w-[180px] truncate" title={d.titre}>{d.titre}</td>
+                                                <td className="px-4 py-3 text-gray-700">{d.demandeur}</td>
+                                                <td className="px-4 py-3 text-gray-500">{d.type}</td>
+                                                <td className="px-4 py-3 text-gray-600 max-w-[220px] truncate" title={d.motif}>{d.motif}</td>
+                                                <td className="px-4 py-3 text-right font-bold text-gray-900">{d.montant} <span className="text-xs font-normal text-gray-500">FCFA</span></td>
+                                                <td className="px-4 py-3 text-center flex gap-2 justify-center items-center">
+                                                    <button onClick={() => handleDemandeAction(d.id, 'refuser')} className="p-2 text-red-600 bg-red-50 hover:bg-red-100 rounded-lg transition-colors" title={t("manager.refuser")}> <X size={18}/> </button>
+                                                    <button onClick={() => handleDemandeAction(d.id, 'valider')} className="p-2 text-green-600 bg-green-50 hover:bg-green-100 rounded-lg transition-colors" title={t("manager.valider")}> <Check size={18}/> </button>
+                                                    <button onClick={() => handleViewDemande(d.id)} className="p-2 text-blue-600 bg-blue-50 hover:bg-blue-100 rounded-lg transition-colors" title={t("common.view")}> <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" /></svg> </button>
+                                                </td>
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                </table>
                             </div>
                         )
                     )}
@@ -192,12 +243,58 @@ const ManagerValidationPage: React.FC = () => {
                         operations.length === 0 ? (
                             <EmptyState message={t("manager.aucune_operation")} />
                         ) : (
-                            <div className="grid gap-6 md:grid-cols-2 xl:grid-cols-3">
-                                {operations.map((op) => (
-                                    <CardOperation key={op.id} data={op} onAction={handleOperationAction} />
-                                ))}
+                            <div className="overflow-x-auto bg-white rounded-xl shadow-sm border border-gray-200">
+                                <table className="min-w-full divide-y divide-gray-100">
+                                    <thead className="bg-gray-50">
+                                        <tr>
+                                            <th className="px-4 py-3 text-left text-xs font-bold text-gray-500 uppercase">{t("manager.type")}</th>
+                                            <th className="px-4 py-3 text-left text-xs font-bold text-gray-500 uppercase">{t("manager.caissier")}</th>
+                                            <th className="px-4 py-3 text-left text-xs font-bold text-gray-500 uppercase">{t("manager.service")}</th>
+                                            <th className="px-4 py-3 text-left text-xs font-bold text-gray-500 uppercase">{t("manager.motif")}</th>
+                                            <th className="px-4 py-3 text-left text-xs font-bold text-gray-500 uppercase">{t("manager.date")}</th>
+                                            <th className="px-4 py-3 text-left text-xs font-bold text-gray-500 uppercase">{t("manager.justificatif")}</th>
+                                            <th className="px-4 py-3 text-right text-xs font-bold text-gray-500 uppercase">{t("manager.montant")}</th>
+                                            <th className="px-4 py-3 text-center text-xs font-bold text-gray-500 uppercase">{t("common.action")}</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody className="divide-y divide-gray-100">
+                                        {operations.map((op) => (
+                                            <tr key={op.id} className="hover:bg-orange-50/40 transition">
+                                                <td className="px-4 py-3 font-medium text-gray-900 max-w-[120px] truncate" title={op.type}>{op.type}</td>
+                                                <td className="px-4 py-3 text-gray-700">{op.caissier}</td>
+                                                <td className="px-4 py-3 text-gray-500">{op.service}</td>
+                                                <td className="px-4 py-3 text-gray-600 max-w-[220px] truncate" title={op.motif}>{op.motif}</td>
+                                                <td className="px-4 py-3 text-gray-400">{op.date}</td>
+                                                <td className="px-4 py-3 text-center">
+                                                    {op.has_justificatif ? (
+                                                        <span className="bg-green-50 text-green-700 text-xs px-2 py-1 rounded-full font-medium border border-green-100">📎</span>
+                                                    ) : (
+                                                        <span className="text-gray-300">-</span>
+                                                    )}
+                                                </td>
+                                                <td className="px-4 py-3 text-right font-bold text-orange-600">{op.montant.toLocaleString()} <span className="text-xs font-normal text-gray-500">FCFA</span></td>
+                                                <td className="px-4 py-3 text-center flex gap-2 justify-center items-center">
+                                                    <button onClick={() => handleOperationAction(op.id, 'refuser')} className="p-2 text-red-600 bg-red-50 hover:bg-red-100 rounded-lg transition-colors" title={t("manager.refuser")}> <X size={18}/> </button>
+                                                    <button onClick={() => handleOperationAction(op.id, 'valider')} className="p-2 text-green-600 bg-green-50 hover:bg-green-100 rounded-lg transition-colors" title={t("manager.payer")}> <Check size={18}/> </button>
+                                                </td>
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                </table>
                             </div>
                         )
+                    )}
+
+                    {/* Modale viewer demande RH */}
+                    {selectedDemande && (
+                        <RequestBonViewer demande={selectedDemande} onClose={handleCloseViewer} />
+                    )}
+
+                    {/* Loader overlay pour le détail */}
+                    {loadingDetail && (
+                        <div className="fixed inset-0 bg-black/20 z-40 flex items-center justify-center">
+                            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-white"></div>
+                        </div>
                     )}
                 </>
             )}

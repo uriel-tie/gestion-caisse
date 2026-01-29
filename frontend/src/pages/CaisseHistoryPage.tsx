@@ -88,13 +88,14 @@ export default function CaisseHistoryPage() {
                 </select>
             </div>
             {/* ... dates ... */}
+            
         </div>
 
         {/* Liste */}
         <table className="min-w-full divide-y divide-gray-200">
             <thead className="bg-white">
                 <tr>
-                    <th className="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase">{t('pages.caisseHistory.table.headers.hour')}</th>
+                    <th className="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase">{t('manager.date')}</th>
                     <th className="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase">{t('pages.caisseHistory.table.headers.type')}</th>
                     <th className="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase">{t('pages.caisseHistory.table.headers.reason')}</th>
                     <th className="px-6 py-3 text-right text-xs font-bold text-gray-500 uppercase">{t('pages.caisseHistory.table.headers.amount')}</th>
@@ -105,7 +106,29 @@ export default function CaisseHistoryPage() {
                 {operations.map((op) => (
                     <tr key={op.id} className="hover:bg-gray-50 transition-colors">
                         <td className="px-6 py-4 text-sm text-gray-500">
-                            {new Date(op.date).toLocaleString(i18n.language)}
+                          {(() => {
+                            if (!op.date) return '-';
+                            let d = op.date;
+                            // Si c'est un timestamp numérique
+                            if (typeof d === 'number') {
+                              const dateObj = new Date(d);
+                              if (!isNaN(dateObj.getTime())) {
+                                return dateObj.toLocaleString(i18n.language);
+                              }
+                            }
+                            // Si c'est une string
+                            if (typeof d === 'string') {
+                              // Remplacer espace par T si besoin (format SQL)
+                              if (/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}/.test(d)) {
+                                d = d.replace(' ', 'T');
+                              }
+                              const dateObj = new Date(d);
+                              if (!isNaN(dateObj.getTime())) {
+                                return dateObj.toLocaleString(i18n.language);
+                              }
+                            }
+                            return op.date;
+                          })()}
                         </td>
                         <td className="px-6 py-4">
                             <span className={`px-2 py-1 text-xs font-bold rounded ${op.type === 'ENCAISSEMENT' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>

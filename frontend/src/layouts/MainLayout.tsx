@@ -170,39 +170,6 @@ const MainLayout: React.FC<MainLayoutProps> = ({ user, onLogout, children, title
         </header>
 
         <main className="flex-1 overflow-y-auto bg-slate-50/50">
-          {/* Banderolette Vérification Email - stricte: vérifie la valeur réelle en base */}
-          {freshUser && freshUser.isEmailVerified === false && !isEmailVerificationClosed && (
-            <div className="bg-gradient-to-r from-amber-50 to-orange-50 border-b border-amber-200 px-6 py-3 flex items-center justify-between shadow-sm animate-in fade-in slide-in-from-top-2">
-              <div className="flex items-center gap-4 flex-1">
-                <div className="flex-shrink-0">
-                  <AlertTriangle className="text-amber-500" size={20} />
-                </div>
-                <div className="flex-1">
-                  <p className="text-sm font-semibold text-amber-900">
-                    Vérifiez votre adresse email
-                  </p>
-                  <p className="text-xs text-amber-700 mt-1">
-                    Cela vous permettra de réinitialiser votre mot de passe en cas d'oubli.
-                  </p>
-                </div>
-              </div>
-              <div className="flex items-center gap-2 flex-shrink-0">
-                <button 
-                  onClick={() => navigate('/profile')}
-                  className="text-xs font-semibold bg-amber-500 hover:bg-amber-600 text-white px-4 py-2 rounded-lg transition-colors whitespace-nowrap"
-                >
-                  Vérifier maintenant
-                </button>
-                <button 
-                  onClick={() => setIsEmailVerificationClosed(true)}
-                  className="text-amber-600 hover:text-amber-700 hover:bg-amber-100 p-2 rounded-lg transition-colors"
-                  title="Masquer"
-                >
-                  <X size={18} />
-                </button>
-              </div>
-            </div>
-          )}
 
           <div className="p-6">
             <div className="max-w-7xl mx-auto h-full">
