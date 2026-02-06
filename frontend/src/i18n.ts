@@ -191,7 +191,7 @@ const resources: any = {
           "role_default": "EMPLOYÉ"
         },
         "newRequest": {
-          "title": "Bon de Caisse",
+          "title": "Demander des Fonds",
           "subtitle": "Demande de Fonds",
           "back": "Annuler et Retour",
           "date": "Date",
@@ -636,7 +636,7 @@ const resources: any = {
           "role_default": "EMPLOYEE"
         },
         "newRequest": {
-          "title": "Cash Voucher",
+          "title": "Request Funds",
           "subtitle": "Funds Request",
           "back": "Cancel and go back",
           "date": "Date",
