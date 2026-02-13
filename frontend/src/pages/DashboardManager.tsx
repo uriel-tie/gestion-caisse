@@ -1,16 +1,15 @@
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
-import { ArrowRight, FileText, Shield, Users, TrendingUp, Settings } from 'lucide-react'; 
+import { ArrowRight, FileText, TrendingUp, Settings } from 'lucide-react'; 
 import type { UserData } from '../types';
 import CaissesLiveView from '../components/CaissesLiveView';
-import NotificationWidget from '../components/NotificationWidget';
 
 interface DashboardProps {
   user: UserData;
   onLogout: () => void;
 }
 
-export default function DashboardManager({ user }: DashboardProps) {
+export default function DashboardManager({ }: DashboardProps) {
   const navigate = useNavigate();
   const { t } = useTranslation();
 

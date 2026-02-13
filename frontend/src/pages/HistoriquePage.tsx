@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Calendar, Printer, ArrowLeft, ChevronLeft, ChevronRight, FileSpreadsheet, Eye } from 'lucide-react';
+import { Printer, ArrowLeft, ChevronLeft, ChevronRight, FileSpreadsheet, Eye } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import OperationDetailModal from '../components/OperationDetailModal';
 
@@ -31,7 +31,6 @@ export default function HistoriquePage() {
   });
 
   const [loading, setLoading] = useState(false);
-    const userRole = localStorage.getItem('userRole') as 'MANAGER' | 'CAISSIER';
 
   // 1. Chargement initial des listes
   useEffect(() => {

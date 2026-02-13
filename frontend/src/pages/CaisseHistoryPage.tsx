@@ -17,7 +17,7 @@ export default function CaisseHistoryPage() {
   const [page, setPage] = useState(1);
   const [operations, setOperations] = useState<any[]>([]);
   const [meta, setMeta] = useState({ currentPage: 1, itemsPerPage: 30, totalPages: 1, totalItems: 0 });
-  const [loading, setLoading] = useState(false);
+  const [, setLoading] = useState(false);
   const [selectedOp, setSelectedOp] = useState<any>(null);
   const { t, i18n } = useTranslation();
 

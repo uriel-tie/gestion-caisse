@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { Plus, Trash2, Edit2, Save, X, Shield } from 'lucide-react';
 import { NAVIGATION } from '../config/navigation';
 import type { UserData } from '../types';
@@ -19,7 +19,7 @@ interface CustomRole {
     updatedAt: string;
 }
 
-export default function AdminRoles({ user }: AdminRolesProps) {
+export default function AdminRoles({ }: AdminRolesProps) {
     const [roles, setRoles] = useState<CustomRole[]>([]);
     const [baseRoles] = useState([
         { value: 'ROLE_MANAGER', label: 'Manager' },

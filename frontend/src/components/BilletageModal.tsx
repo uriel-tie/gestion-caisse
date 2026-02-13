@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from 'react';
-import { X, Coins, Save, Calculator } from 'lucide-react';
+import { X, Coins, Save } from 'lucide-react';
 
 interface Props {
     isOpen: boolean;

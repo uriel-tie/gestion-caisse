@@ -1,7 +1,6 @@
-import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { 
-  User, Monitor, FileText, Activity, Users, Shield, 
+  Monitor, FileText, Activity, Users, Shield, 
   ArrowRight, Plus, Clock, DollarSign, CheckCircle 
 } from 'lucide-react';
 import type { UserData } from '../types';

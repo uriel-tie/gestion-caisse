@@ -11,7 +11,6 @@ import {
 } from 'lucide-react';
 import InputField from '../components/InputField';
 import type { UserData } from '../types';
-import Swal from 'sweetalert2'; // Optionnel pour les alertes, ou utilise ton état Error
 
 interface LoginPageProps {
   onLogin: (user: UserData) => void;

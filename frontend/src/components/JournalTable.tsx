@@ -1,5 +1,5 @@
-import React, { useEffect, useState } from 'react';
-import { Search, Filter, RotateCcw, AlertTriangle, Printer } from 'lucide-react';
+import { useEffect, useState } from 'react';
+import { RotateCcw, AlertTriangle, Printer } from 'lucide-react';
 import type { UserData } from '../types';
 
 interface Operation {

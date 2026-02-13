@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Check, X, Banknote, FileText, AlertCircle, RefreshCw } from 'lucide-react';
+import { Check, X, Banknote, FileText, RefreshCw } from 'lucide-react';
 import { RequestBonViewer } from '../components/RequestBonViewer';
 import { useTranslation } from 'react-i18next';
 import Swal from 'sweetalert2';
@@ -313,98 +313,6 @@ const EmptyState = ({ message }: { message: string }) => (
     </div>
 );
 
-const CardRH = ({ data, onAction }: { data: DemandeToValidate, onAction: (id: string, action: 'valider' | 'refuser') => void }) => {
-    const { t } = useTranslation();
-    
-    return (
-        <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-5 hover:shadow-md transition-shadow flex flex-col h-full">
-            <div className="flex justify-between items-start mb-3">
-                <h3 className="font-bold text-gray-900 line-clamp-1" title={data.titre}>{data.titre}</h3>
-                <span className="bg-blue-50 text-blue-700 text-[10px] font-bold px-2 py-1 rounded uppercase tracking-wide">{data.type}</span>
-            </div>
-            
-            <div className="mb-4 flex-1">
-                <p className="text-xs text-gray-500 mb-1">{t("manager.demandeur")}</p>
-                <p className="text-sm font-medium text-gray-800 flex items-center gap-2 mb-3">
-                    <span className="w-6 h-6 rounded-full bg-purple-100 text-purple-600 flex items-center justify-center text-xs font-bold">
-                        {data.demandeur.charAt(0)}
-                    </span>
-                    {data.demandeur}
-                </p>
-                
-                <p className="text-xs text-gray-500 mb-1">{t("manager.motif")}</p>
-                <p className="text-sm text-gray-600 bg-gray-50 p-2.5 rounded-lg border border-gray-100 line-clamp-3 min-h-[4rem]">
-                    {data.motif || "Aucune description fournie."}
-                </p>
-            </div>
 
-            <div className="pt-4 mt-auto border-t border-gray-100 flex items-center justify-between">
-                <div>
-                    <p className="text-xs text-gray-400">{t("manager.montant")}</p>
-                    <span className="font-bold text-lg text-gray-900">{data.montant} <span className="text-xs font-normal text-gray-500">FCFA</span></span>
-                </div>
-                <div className="flex gap-2">
-                    <button onClick={() => onAction(data.id, 'refuser')} className="p-2 text-red-600 bg-red-50 hover:bg-red-100 rounded-lg transition-colors" title={t("manager.refuser")}>
-                        <X size={20}/>
-                    </button>
-                    <button onClick={() => onAction(data.id, 'valider')} className="py-2 px-4 bg-purple-600 text-white hover:bg-purple-700 rounded-lg flex items-center text-sm font-medium transition-colors shadow-sm shadow-purple-200">
-                        <Check size={16} className="mr-2"/> {t("manager.valider")}
-                    </button>
-                </div>
-            </div>
-        </div>
-    );
-};
-
-const CardOperation = ({ data, onAction }: { data: OperationToValidate, onAction: (id: string, action: 'valider' | 'refuser') => void }) => {
-    const { t } = useTranslation();
-    
-    return (
-        <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-5 hover:shadow-md transition-shadow flex flex-col h-full relative overflow-hidden">
-            <div className="absolute top-0 left-0 w-1 h-full bg-orange-500"></div>
-            
-            <div className="flex justify-between items-start mb-3 pl-2">
-                <h3 className="font-bold text-gray-900 flex items-center gap-2">
-                    <AlertCircle className="w-4 h-4 text-orange-500"/>
-                    {data.type}
-                </h3>
-                <span className="text-xs text-gray-400">{data.date}</span>
-            </div>
-            
-            <div className="mb-4 flex-1 pl-2">
-                <div className="flex justify-between items-center mb-3">
-                     <div>
-                        <p className="text-xs text-gray-500">{t("manager.caissier")}</p>
-                        <p className="text-sm font-medium text-gray-800">{data.caissier}</p>
-                     </div>
-                     {data.has_justificatif && (
-                        <span className="bg-green-50 text-green-700 text-[10px] px-2 py-1 rounded-full font-medium border border-green-100">
-                            📎 {t("manager.justificatif")}
-                        </span>
-                     )}
-                </div>
-
-                <p className="text-sm text-gray-600 bg-orange-50/50 p-2.5 rounded-lg border border-orange-100 italic">
-                    "{data.motif}"
-                </p>
-            </div>
-            
-            <div className="pt-4 mt-auto border-t border-gray-100 flex items-center justify-between pl-2">
-                <div>
-                    <p className="text-xs text-gray-400">{t("manager.montant")}</p>
-                    <span className="font-bold text-xl text-orange-600">{data.montant.toLocaleString()} <span className="text-xs font-normal text-gray-500">FCFA</span></span>
-                </div>
-                <div className="flex gap-2">
-                    <button onClick={() => onAction(data.id, 'refuser')} className="p-2 text-red-600 bg-red-50 hover:bg-red-100 rounded-lg transition-colors" title={t("manager.refuser")}>
-                        <X size={20}/>
-                    </button>
-                    <button onClick={() => onAction(data.id, 'valider')} className="py-2 px-4 bg-green-600 text-white hover:bg-green-700 rounded-lg flex items-center text-sm font-medium transition-colors shadow-sm shadow-green-200">
-                        <Check size={16} className="mr-2"/> {t("manager.payer")}
-                    </button>
-                </div>
-            </div>
-        </div>
-    );
-};
 
 export default ManagerValidationPage;

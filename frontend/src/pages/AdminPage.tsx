@@ -19,7 +19,7 @@ interface AdminPageProps {
     onLogout: () => void;
 }
 
-const AdminPage = ({ user, onLogout }: AdminPageProps) => {
+const AdminPage = ({ user }: AdminPageProps) => {
     const [activeTab, setActiveTab] = useState<'personnel' | 'services' | 'caisses' | 'plan_comptable' | 'mode_paiement' | 'societe' | 'roles'>('personnel');
     const { t } = useTranslation();
     const navigate = useNavigate();

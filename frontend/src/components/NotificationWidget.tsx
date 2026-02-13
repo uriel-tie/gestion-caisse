@@ -1,5 +1,5 @@
-import React, { useState, useEffect, useRef } from 'react';
-import { Bell, Briefcase, FileText, ArrowRightLeft, AlertCircle } from 'lucide-react';
+import { useState, useEffect, useRef } from 'react';
+import { Bell, ArrowRightLeft } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
 export default function NotificationWidget() {

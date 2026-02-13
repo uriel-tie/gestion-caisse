@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Outlet, useNavigate, useLocation } from 'react-router-dom';
-import { LogOut, Menu, Bell, User, AlertTriangle, X} from 'lucide-react';
+import { LogOut, Menu} from 'lucide-react';
 import { NAVIGATION } from '../config/navigation';
 import type { UserData } from '../types';
 import NotificationWidget from '../components/NotificationWidget';
@@ -15,13 +15,13 @@ interface MainLayoutProps {
 }
 
 
-const MainLayout: React.FC<MainLayoutProps> = ({ user, onLogout, children, title }) => {
+const MainLayout: React.FC<MainLayoutProps> = ({ user, onLogout, children }) => {
     // Synchroniser freshUser avec la prop user à chaque changement de user
     useEffect(() => {
       setFreshUser(user);
     }, [user]);
   const [isSidebarOpen, setSidebarOpen] = useState(true);
-  const [isEmailVerificationClosed, setIsEmailVerificationClosed] = useState(false);
+  const [] = useState(false);
   const [freshUser, setFreshUser] = useState<UserData | null>(user);
   const { t } = useTranslation();
   const navigate = useNavigate();

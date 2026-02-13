@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Shield, Activity, Users, ArrowRight, CheckCircle, Lock } from 'lucide-react';
 

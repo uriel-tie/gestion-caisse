@@ -4,7 +4,7 @@ import Swal from 'sweetalert2';
 
 export default function MyTeamPage() {
     const [users, setUsers] = useState<any[]>([]);
-    const [loading, setLoading] = useState(true);
+    const [, setLoading] = useState(true);
     const [showModal, setShowModal] = useState(false);
 
     // Form state

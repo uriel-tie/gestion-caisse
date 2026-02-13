@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Wallet, RefreshCw, AlertTriangle } from 'lucide-react';
 
 interface SoldeResponse {

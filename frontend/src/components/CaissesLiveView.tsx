@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Monitor, User, Lock, Unlock, Activity, AlertCircle, FileText, Banknote, ShieldCheck, ArrowRight, Wallet } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 

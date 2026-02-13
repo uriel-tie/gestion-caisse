@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { DollarSign, LogOut, Lock, Unlock, Monitor, Power, AlertCircle, Activity, ArrowRight } from 'lucide-react';
+import { DollarSign, LogOut, Lock, Unlock, Monitor, Power, AlertCircle, Activity } from 'lucide-react';
 import Swal from 'sweetalert2';
 import withReactContent from 'sweetalert2-react-content';
 

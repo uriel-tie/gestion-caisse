@@ -1,17 +1,18 @@
 // src/pages/AdminManagersPage.tsx
 import React, { useEffect, useState } from 'react';
 import { CheckCircle, XCircle } from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
+
 
 interface Manager {
   id: string;
   nom: string;
   email: string;
   actif: boolean;
+  roles: string[];
 }
 
 const AdminManagersPage: React.FC = () => {
-  const navigate = useNavigate();
+
   const [managers, setManagers] = useState<Manager[]>([]);
   const [loading, setLoading] = useState(true);
   const [updatingId, setUpdatingId] = useState<string | null>(null);
@@ -30,7 +31,7 @@ const AdminManagersPage: React.FC = () => {
       const data: Manager[] = await res.json();
 
       // On filtre uniquement les managers
-      setManagers(data.filter(u => u.role === 'ROLE_MANAGER'));
+      setManagers(data.filter(u => u.roles.includes('ROLE_MANAGER')));
     } catch (err: any) {
       console.error(err);
       setError(err.message || 'Erreur lors du chargement');

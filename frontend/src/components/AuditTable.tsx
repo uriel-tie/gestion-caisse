@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { ShieldAlert, RefreshCw, User, Search } from 'lucide-react';
 import {type AuditLog } from '../types';
 

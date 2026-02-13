@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { Plus, Trash2, BookOpen, Edit2, Save, X } from 'lucide-react';
 
 export default function AdminCompta() {
