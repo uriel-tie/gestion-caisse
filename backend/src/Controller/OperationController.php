@@ -1,25 +1,27 @@
 <?php
-
 namespace App\Controller;
-
 use App\Entity\Operation;
 use App\Entity\Justificatif; 
 use App\Entity\ModePaiement;
 use App\Entity\SessionCaisse; 
 use App\Entity\Demande;       
 use App\Entity\Societe;
+use App\Entity\BonDeCaisse;
 use App\Repository\ModePaiementRepository;
 use App\Repository\OperationRepository;
 use App\Repository\SessionCaisseRepository;
 use App\Repository\CompteComptableRepository;
 use App\Repository\UtilisateurRepository;
 use App\Repository\DemandeRepository;
+use App\Repository\BonDeCaisseRepository;
+use App\Service\BonDeCaisseManager;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\Routing\Annotation\Route;
-use Symfony\Component\Uid\Uuid; // Pour la validation des ID
+use Symfony\Component\Uid\Uuid; 
+use DateTimeImmutable;
 
 #[Route('/api/operations', name: 'api_operations_')]
 class OperationController extends AbstractController
@@ -43,6 +45,7 @@ class OperationController extends AbstractController
             'statut' => $request->query->get('statut'),
             'compte' => $request->query->get('compte'),
             'caisse' => $request->query->get('caisse'),
+            'ref' => $request->query->get('ref'),
         ];  
 
         $caisseRestrict = null;
@@ -63,28 +66,73 @@ class OperationController extends AbstractController
 
         $data = [];
         foreach ($paginator as $op) {
-             $sessionCaisse = $op->getSessionCaisse();
-             $caisse = $sessionCaisse ? $sessionCaisse->getCaisse() : null;
-             $nomCaisse = $caisse ? $caisse->getNom() : 'N/A';
-             
-             $data[] = [
-                'id' => (string) $op->getId(), // Cast explicite
-                'type' => $op->getType(),
-                'montant' => (float) $op->getMontant(),
-                'date' => $op->getDate()->format('d/m/Y H:i'),
-                'statut' => $op->getStatut(),
-                'mode' => $op->getModePaiement() ? $op->getModePaiement()->getLibelle() : 'N/A',
-                'utilisateur' => $op->getUtilisateur() ? $op->getUtilisateur()->getNom() : 'Inconnu',
-                'motif' => $op->getMotif() ?? 'Non précisé',
-                'caisse' => $nomCaisse,
-                'estDemandeAnnulation' => $op->isEstDemandeAnnulation(),
-                'beneficiaire' => $op->getBeneficiaire(),
-                'justificatif' => $op->getJustificatif() ? [
-                    'type' => $op->getJustificatif()->getType(),
-                    'url' => $op->getJustificatif()->getChemin(), 
-                    'fichier' => $op->getJustificatif()->getFichier(),
-                ] : null,
-             ];
+            try {
+                $sessionCaisse = $op->getSessionCaisse();
+                $caisse = $sessionCaisse ? $sessionCaisse->getCaisse() : null;
+                $nomCaisse = $caisse ? $caisse->getNom() : 'N/A';
+                $demande = $op->getDemande();
+                $bonDeCaisse = $op->getBonDeCaisse();
+                // Récupération sécurisée du retour de fond
+                $retourOp = null;
+                if ($bonDeCaisse) {
+                    $retourOp = $bonDeCaisse->getOperationRetourFond();
+                }
+
+                $data[] = [
+                    'id' => (string) $op->getId(),
+                    'type' => $op->getType(),
+                    'montant' => (float) $op->getMontant(),
+                    'date' => $op->getDate()->format('d/m/Y H:i'),
+                    'statut' => $op->getStatut(),
+                    'mode' => $op->getModePaiement() ? $op->getModePaiement()->getLibelle() : 'N/A',
+                    'utilisateur' => $op->getUtilisateur() ? $op->getUtilisateur()->getNom() : 'Inconnu',
+                    'motif' => $op->getMotif() ?? 'Non précisé',
+                    'motif_annulation' => $op->getMotifAnnulation(), 
+                    'operationLiee' => $op->getOperationLiee() !== null, 
+                    'caisse' => $nomCaisse,
+                    'estDemandeAnnulation' => $op->isEstDemandeAnnulation(),
+                    'beneficiaire' => $op->getBeneficiaire(),
+                    'ref' => $op->getRef(),
+                    'demande' => $demande ? [
+                        'id' => (string) $demande->getId(),
+                        'numeroReference' => method_exists($demande, 'getNumeroReference') ? $demande->getNumeroReference() : null,
+                    ] : null,
+                    'justificatif' => $op->getJustificatif() ? [
+                        'type' => $op->getJustificatif()->getType(),
+                        'url' => $op->getJustificatif()->getChemin(), 
+                        'fichier' => $op->getJustificatif()->getFichier(),
+                    ] : null,
+                    'bonDeCaisse' => $bonDeCaisse ? [
+                        'id' => (string) $bonDeCaisse->getId(),
+                        'numero' => $bonDeCaisse->getReference(), 
+                        'retourFond' => $retourOp ? [
+                            'montant' => (float) $retourOp->getMontant()
+                        ] : null
+                    ] : null,
+                ];
+            } catch (\Exception $e) {
+                // En cas d'erreur, on log et on continue avec des valeurs par défaut
+                error_log('Erreur lors du traitement de l\'opération ' . $op->getId() . ': ' . $e->getMessage());
+                $data[] = [
+                    'id' => (string) $op->getId(),
+                    'type' => $op->getType(),
+                    'montant' => (float) $op->getMontant(),
+                    'date' => $op->getDate()->format('d/m/Y H:i'),
+                    'statut' => $op->getStatut(),
+                    'mode' => 'N/A',
+                    'utilisateur' => 'Erreur',
+                    'motif' => 'Erreur lors du traitement',
+                    'motif_annulation' => null,
+                    'operationLiee' => false,
+                    'caisse' => 'N/A',
+                    'estDemandeAnnulation' => false,
+                    'beneficiaire' => null,
+                    'demande' => null,
+                    'justificatif' => null,
+                    'bonDeCaisse' => null,
+                    'ref' => null,
+                ];
+            }
         }
 
         return $this->json([
@@ -129,16 +177,16 @@ class OperationController extends AbstractController
         Request $request, 
         EntityManagerInterface $em, 
         ModePaiementRepository $modeRepo,
-        SessionCaisseRepository $sessionRepo
+        SessionCaisseRepository $sessionRepo,
+        BonDeCaisseManager $bonManager
     ): JsonResponse
+
     {
        /** @var Utilisateur $user */
         $user = $this->getUser();
         $societe = $user->getSociete();
-        
         // On cherche une session active (via string ou constante si importée)
         $session = $sessionRepo->findOneBy(['caissier' => $user, 'statut' => 'OUVERTE']);
-        
         if (!$session) {
             return $this->json(['error' => 'Aucune session de caisse ouverte.'], 403);
         }
@@ -146,7 +194,6 @@ class OperationController extends AbstractController
         $caisse = $session->getCaisse();
         $compteCaisse = $caisse->getCompteComptable();
         $numeroCompte = $compteCaisse ? $compteCaisse->getNumero() : '530';
-        
         $data = json_decode($request->getContent(), true);
 
         if (!isset($data['montant']) || $data['montant'] <= 0) {
@@ -155,7 +202,6 @@ class OperationController extends AbstractController
 
         $mode = $modeRepo->findOneBy(['libelle' => $data['mode'] ?? 'Espèces']);
         if (!$mode) $mode = $modeRepo->findAll()[0] ?? null;
-
         $op = new Operation();
         $op->setType('ENCAISSEMENT');
         $op->setMontant((string)$data['montant']);
@@ -167,23 +213,69 @@ class OperationController extends AbstractController
         $op->setModePaiement($mode);
         $op->setSessionCaisse($session);
         $op->setSociete($societe);
-
         $em->persist($op);
         $this->processJustificatif($op, $data, $em);
-
         $caisse = $session->getCaisse();
         $nouveauSolde = (float)$caisse->getSolde() + (float)$data['montant'];
         $caisse->setSolde((string)$nouveauSolde);
         $em->persist($caisse);
-
+        $em->flush();
+        // Création du bon de caisse de référence pour cet encaissement
+        $bon = $bonManager->creerPourOperation($op, null);
         $em->flush();
 
         return $this->json([
             'message' => 'Encaissement enregistré !',
             'nouveau_solde' => $nouveauSolde,
-            'id' => (string) $op->getId() // Retourne l'ID pour impression éventuelle
+            'id' => (string) $op->getId(), // Retourne l'ID pour impression éventuelle
+            'bon_de_caisse_id' => (string) $bon->getId(),
+            'bon_de_caisse_ref' => $bon->getReference(),
         ], 201);
     }
+
+    #[Route('/{id}/retour-fond', name: 'retour_fond', methods: ['POST'])]
+        public function retourFond(
+            string $id, 
+            Request $request, 
+            OperationRepository $opRepo, 
+            EntityManagerInterface $em
+        ): JsonResponse {
+            $opOriginale = $opRepo->find($id);
+            $data = json_decode($request->getContent(), true);
+            $montant = $data['montant'] ?? 0;
+            if (!$opOriginale || !$opOriginale->getBonDeCaisse()) {
+                return $this->json(['error' => 'Opération ou Bon de Caisse introuvable'], 404);
+            }
+            if ($montant > $opOriginale->getMontant()) {
+                return $this->json(['error' => 'Le montant du retour de fond est supérieur au montant de l\'opération'], 400);
+            }
+
+            // 1. Création de l'encaissement (le retour de fond)
+            $retour = new Operation();
+            $retour->setType('ENCAISSEMENT');
+            $retour->setMontant($montant);
+            $retour->setMotif("Retour de fond " . $opOriginale->getBonDeCaisse()->getReference());
+            $retour->setStatut('VALIDEE');
+            $retour->setDate(new DateTimeImmutable());
+            $retour->setUtilisateur($this->getUser());
+            $retour->setSessionCaisse($opOriginale->getSessionCaisse());
+            $retour->setSociete($opOriginale->getSociete());
+            $retour->setModePaiement($opOriginale->getModePaiement());
+            $retour->setCompteComptable($opOriginale->getCompteComptable());
+            $caisse = $opOriginale->getSessionCaisse()->getCaisse();
+            $nouveauSolde = (float)$caisse->getSolde() + (float)$data['montant'];
+            $caisse->setSolde((string)$nouveauSolde);
+            $em->persist($caisse);
+            $em->flush();
+
+            // 2. Lien avec le Bon de Caisse original
+            $bon = $opOriginale->getBonDeCaisse();
+            $bon->setOperationRetourFond($retour);
+            $em->persist($retour);
+            $em->flush();
+
+            return $this->json(['message' => 'Retour de fond enregistré', 'id' => $retour->getId()]);
+        }
 
     #[Route('/decaissement', name: 'create_decaissement', methods: ['POST'])]
     public function createDecaissement(
@@ -192,7 +284,8 @@ class OperationController extends AbstractController
         ModePaiementRepository $modeRepo,
         SessionCaisseRepository $sessionRepo,
         CompteComptableRepository $compteRepo, 
-        DemandeRepository $demandeRepo
+        DemandeRepository $demandeRepo,
+        BonDeCaisseManager $bonManager
     ): JsonResponse
     {
         /** @var Utilisateur $user */
@@ -218,7 +311,6 @@ class OperationController extends AbstractController
 
         if (!empty($data['demande_id'])) {
             $demande = $demandeRepo->find($data['demande_id']);
-            
             if ($demande) {
                 // Vérif statut (chaine pour éviter erreur constante)
                 if ($demande->getStatut() !== 'VALIDEE_A_PAYER') {
@@ -258,8 +350,8 @@ class OperationController extends AbstractController
         if (!empty($data['compte_id'])) {
             $compte = $compteRepo->find($data['compte_id']);
             if ($compte) $numeroCompte = $compte->getNumero();
+
         }
-        
         $mode = $modeRepo->findOneBy(['libelle' => $data['mode'] ?? 'Espèces']);
         if (!$mode) $mode = $modeRepo->findAll()[0] ?? null;
 
@@ -277,7 +369,6 @@ class OperationController extends AbstractController
         if ($detailsLignes) {
             $op->setDetails($detailsLignes);
         }
-        
         if ($demande) {
             $op->setMotif("Règlement Demande " . $demande->getNumeroReference());
             $op->setDemande($demande); // Liaison explicite
@@ -293,7 +384,6 @@ class OperationController extends AbstractController
         if ($isManager || $isDemandeValidee || $montant <= $seuilCaisse) {
             $op->setStatut(Operation::STATUT_VALIDEE);
             $msg = "Décaissement validé.";
-            
             // DÉBIT IMMEDIAT
             $caisse->setSolde((string)($soldeReel - $montant));
             $em->persist($caisse);
@@ -313,12 +403,18 @@ class OperationController extends AbstractController
         $em->persist($op);
         $this->processJustificatif($op, $data, $em);
         $em->flush();
+        // Création du bon de caisse lié à cette opération (avec la demande si présente)
+        $bon = $bonManager->creerPourOperation($op, $demande);
+        $em->flush();
 
         // ICI : On retourne l'ID en string pour éviter le bug "undefined"
         return $this->json([
             'message' => $msg, 
             'statut' => $op->getStatut(), 
-            'id' => (string) $op->getId()
+            'id' => (string) $op->getId(),
+            'bon_de_caisse_id' => (string) $bon->getId(),
+            'bon_de_caisse_ref' => $bon->getReference(),
+
         ], 201);
     }
 
@@ -445,7 +541,6 @@ class OperationController extends AbstractController
         if ($action === 'valider') {
             $operation->setStatut(Operation::STATUT_VALIDEE);
             $session = $operation->getSessionCaisse();
-            
             if ($session) {
                 $caisse = $session->getCaisse();
                 $montant = (float) $operation->getMontant();
@@ -486,11 +581,9 @@ class OperationController extends AbstractController
             $justificatif->setType('FICHIER');
             $parts = explode(',', $data['fichier_data']);
             $fileData = base64_decode(count($parts) > 1 ? $parts[1] : $parts[0]);
-            
             $newFilename = uniqid('justif_') . '.' . pathinfo($data['fichier_nom'], PATHINFO_EXTENSION);
             $targetDir = $this->getParameter('kernel.project_dir') . '/public/uploads/justificatifs';
             if (!is_dir($targetDir)) mkdir($targetDir, 0777, true);
-            
             file_put_contents($targetDir . '/' . $newFilename, $fileData);
             $justificatif->setFichier($data['fichier_nom']);
             $justificatif->setChemin('uploads/justificatifs/' . $newFilename);

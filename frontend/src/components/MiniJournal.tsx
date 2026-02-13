@@ -55,8 +55,8 @@ export default function MiniJournal() {
                                     <p className="text-xs text-gray-400">{new Date(op.date).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</p>
                                 </div>
                             </div>
-                            <span className={`text-sm font-bold ${op.type === 'ENCAISSEMENT' ? 'text-green-600' : 'text-gray-800'}`}>
-                                {op.type === 'DECAISSEMENT' ? '-' : '+'}{Number(op.montant).toLocaleString()}
+                            <span className={`text-sm font-bold ${op.type === 'ENCAISSEMENT' ? 'text-green-600' : 'text-red-600'}`}>
+                                {Number(op.montant).toLocaleString()}
                             </span>
                         </div>
                     ))

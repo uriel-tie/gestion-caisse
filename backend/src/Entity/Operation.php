@@ -4,6 +4,7 @@ namespace App\Entity;
 
 use App\Repository\OperationRepository;
 use App\Entity\Societe;
+use App\Entity\BonDeCaisse;
 use Doctrine\DBAL\Types\Types;
 use Doctrine\ORM\Mapping as ORM;
 use Symfony\Component\Uid\Uuid;
@@ -87,6 +88,14 @@ class Operation
 
     #[ORM\Column(length: 50, unique: true, nullable: true)]
     private ?string $ref = null;
+
+    /**
+     * Lien optionnel vers le bon de caisse associé à cette opération.
+     * Il s'agit généralement de l'opération principale qui génère le bon,
+     * mais on garde la relation pour faciliter la navigation.
+     */
+    #[ORM\OneToOne(mappedBy: 'operationPrincipale', targetEntity: BonDeCaisse::class, cascade: ['persist', 'remove'])]
+    private ?BonDeCaisse $bonDeCaisse = null;
 
     public function getDetails(): ?array
     {
@@ -259,6 +268,23 @@ class Operation
     public function setRef(?string $ref): static
     {
         $this->ref = $ref;
+        return $this;
+    }
+
+    public function getBonDeCaisse(): ?BonDeCaisse
+    {
+        return $this->bonDeCaisse;
+    }
+
+    public function setBonDeCaisse(?BonDeCaisse $bonDeCaisse): static
+    {
+        // synchroniser le côté propriétaire si nécessaire
+        if ($bonDeCaisse && $bonDeCaisse->getOperationPrincipale() !== $this) {
+            $bonDeCaisse->setOperationPrincipale($this);
+        }
+
+        $this->bonDeCaisse = $bonDeCaisse;
+
         return $this;
     }
 

@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { Save, ArrowLeft, FileText, Users, Loader2, User, UserPlus } from 'lucide-react';
 import { RequestLinesEditor, type RequestLine } from '../components/RequestLinesEditor';
-import { type UserData } from '../types'; // Assure-toi d'importer UserData
+import { type UserData } from '../types';
 import Swal from 'sweetalert2';
 
 export default function NewRequestPage() {
@@ -99,35 +99,30 @@ export default function NewRequestPage() {
 
     }, []);
 
-    const handleSubmit = async (e: React.FormEvent) => {
+    const handleSubmit = async (e: React.FormEvent, isDraft = false) => {
         e.preventDefault();
-        
-        if (totalGeneral <= 0) {
+        if (!isDraft && totalGeneral <= 0) {
             Swal.fire(t('common.error'), t('pages.newRequest.errors.amount_zero'), 'error');
             return;
         }
-
         setLoading(true);
         const token = localStorage.getItem('token');
-        
         try {
             const payload = {
                 titre,
                 type,
                 motif,
                 montant: totalGeneral,
-                // Logique d'envoi selon le mode choisi
                 beneficiaire_id: beneficiaireMode === 'LIST' ? beneficiaireId : null,
                 beneficiaire_autre: beneficiaireMode === 'MANUAL' ? beneficiaireNom : null,
-                
                 lignes: lignes.map(l => ({
                     designation: l.designation,
                     quantite: l.quantite,
                     prixUnitaire: l.prixUnitaire,
                     compte_id: l.compte_id || null
-                }))
+                })),
+                isDraft
             };
-
             const response = await fetch('https://127.0.0.1:8000/api/demandes', {
                 method: 'POST',
                 headers: {
@@ -136,9 +131,8 @@ export default function NewRequestPage() {
                 },
                 body: JSON.stringify(payload)
             });
-
             if (response.ok) {
-                navigate('/requests'); 
+                navigate('/requests');
             } else {
                 const error = await response.json();
                 Swal.fire(t('common.error'), error.message || t('pages.newRequest.errors.create_error'), 'error');
@@ -160,7 +154,7 @@ export default function NewRequestPage() {
                 </button>
             </div>
 
-            <form onSubmit={handleSubmit} className="bg-white p-8 md:p-12 shadow-2xl rounded-lg border-t-8 border-blue-600 relative overflow-hidden">
+            <form onSubmit={(e) => handleSubmit(e, false)} className="bg-white p-8 md:p-12 shadow-2xl rounded-lg border-t-8 border-blue-600 relative overflow-hidden">
                 <div className="absolute top-0 right-0 p-8 opacity-5 pointer-events-none">
                     <FileText size={200} />
                 </div>
@@ -302,7 +296,6 @@ export default function NewRequestPage() {
                             {totalGeneral.toLocaleString()} <span className="text-lg text-gray-400 font-normal">{t('common.currency')}</span>
                         </span>
                     </div>
-
                     <button 
                         type="submit" 
                         disabled={loading}
@@ -310,6 +303,15 @@ export default function NewRequestPage() {
                     >
                         {loading ? <Loader2 className="mr-2 animate-spin" /> : <Save className="mr-2" />}
                         {loading ? t('pages.newRequest.submitting') : t('pages.newRequest.submit')}
+                    </button>
+                    <button
+                        type="button"
+                        disabled={loading}
+                        onClick={(e) => handleSubmit(e as any, true)}
+                        className="flex items-center px-8 py-4 rounded-lg font-bold text-blue-600 bg-blue-100 shadow-xl hover:bg-blue-200 transition"
+                    >
+                        <FileText className="mr-2" />
+                        {t('pages.newRequest.save_draft')}
                     </button>
                 </div>
             </form>

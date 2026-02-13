@@ -24,6 +24,7 @@ final class DemandeController extends AbstractController
         $user = $this->getUser();
         $societe = $user->getSociete();
         $data = json_decode($request->getContent(), true);
+        $isDraft = !empty($data['isDraft']);
 
         // 1. Récupération Config Société & Rôles
         $modeValidation = $societe ? $societe->getModeValidation() : Societe::MODE_STANDARD;
@@ -70,29 +71,32 @@ final class DemandeController extends AbstractController
         }
 
         // --- CŒUR DU REACTEUR : LOGIQUE DES STATUTS ---
-
-        // CAS 1 : MODE AUTONOMIE (Urgence / Caisse directe)
-        if ($modeValidation === Societe::MODE_AUTONOMIE) {
-            // Tout le monde passe direct en caisse
-            $demande->setStatut('VALIDEE_A_PAYER');
-        }
-        // CAS 2 : LE MANAGER (Il a tous les droits)
-        elseif (in_array('ROLE_MANAGER', $roles)) {
-            $demande->setStatut('VALIDEE_A_PAYER');
-        }
-        // CAS 3 : LE CHEF DE SERVICE
-        elseif (in_array('ROLE_CHEF_SERVICE', $roles)) {
-            if ($modeValidation === Societe::MODE_DELEGATION) {
-                // Délégation : Le chef valide final, y compris pour lui-même
+        if ($isDraft) {
+            $demande->setStatut('BROUILLON');
+        } else {
+            // CAS 1 : MODE AUTONOMIE (Urgence / Caisse directe)
+            if ($modeValidation === Societe::MODE_AUTONOMIE) {
+                // Tout le monde passe direct en caisse
                 $demande->setStatut('VALIDEE_A_PAYER');
-            } else {
-                // Standard : Le chef doit demander au Manager
-                $demande->setStatut('ATTENTE_MANAGER');
             }
-        }
-        // CAS 4 : EMPLOYE / CAISSIER (Standard)
-        else {
-            $demande->setStatut('ATTENTE_CHEF');
+            // CAS 2 : LE MANAGER (Il a tous les droits)
+            elseif (in_array('ROLE_MANAGER', $roles)) {
+                $demande->setStatut('VALIDEE_A_PAYER');
+            }
+            // CAS 3 : LE CHEF DE SERVICE
+            elseif (in_array('ROLE_CHEF_SERVICE', $roles)) {
+                if ($modeValidation === Societe::MODE_DELEGATION) {
+                    // Délégation : Le chef valide final, y compris pour lui-même
+                    $demande->setStatut('VALIDEE_A_PAYER');
+                } else {
+                    // Standard : Le chef doit demander au Manager
+                    $demande->setStatut('ATTENTE_MANAGER');
+                }
+            }
+            // CAS 4 : EMPLOYE / CAISSIER (Standard)
+            else {
+                $demande->setStatut('ATTENTE_CHEF');
+            }
         }
 
         // REFERENCE
@@ -131,6 +135,53 @@ final class DemandeController extends AbstractController
 
         return $this->json(['id' => $demande->getId(), 'statut' => $demande->getStatut()], 201);
     }
+
+    #[Route('/{id}/envoyer', name: 'envoyer', methods: ['POST'])]
+        public function envoyer(string $id, DemandeRepository $demandeRepository, EntityManagerInterface $em): JsonResponse
+        {
+            /** @var Utilisateur $user */
+            $user = $this->getUser();
+            $demande = $demandeRepository->find($id);
+
+            // 1. Vérifications de base
+            if (!$demande) {
+                return $this->json(['error' => 'Demande introuvable'], 404);
+            }
+
+            if ($demande->getStatut() !== Demande::STATUT_BROUILLON) {
+                return $this->json(['error' => 'Cette demande n\'est plus un brouillon'], 400);
+            }
+
+            // Sécurité : Seul le demandeur peut envoyer son brouillon
+            if ($demande->getDemandeur() !== $user) {
+                return $this->json(['error' => 'Action non autorisée'], 403);
+            }
+
+            // 2. Calcul du statut cible (Copie de ta logique de validation)
+            $societe = $user->getSociete();
+            $modeValidation = $societe ? $societe->getModeValidation() : Societe::MODE_STANDARD;
+            $roles = $user->getRoles();
+
+            $nouveauStatut = Demande::STATUT_ATTENTE_CHEF; // Par défaut
+
+            if ($modeValidation === Societe::MODE_AUTONOMIE || in_array('ROLE_MANAGER', $roles)) {
+                $nouveauStatut = Demande::STATUT_VALIDEE;
+            } elseif ($modeValidation === Societe::MODE_DELEGATION || in_array('ROLE_CHEF_SERVICE', $roles)) {
+                $nouveauStatut = Demande::STATUT_ATTENTE_MANAGER;
+            }
+
+            // 3. Mise à jour et sauvegarde
+            $demande->setStatut($nouveauStatut);
+            $demande->setCreatedAt(new \DateTimeImmutable()); // On rafraîchit la date à l'envoi réel
+            
+            $em->flush();
+
+            return $this->json([
+                'message' => 'Demande envoyée avec succès',
+                'id' => $demande->getId(),
+                'nouveauStatut' => $nouveauStatut
+            ]);
+        }
 
     #[Route('/{id}/workflow', name: 'workflow_action', methods: ['PATCH'])]
     public function workflowAction(Demande $demande, Request $request, EntityManagerInterface $em): JsonResponse
@@ -257,17 +308,82 @@ final class DemandeController extends AbstractController
         }
     }
 
-    // ... (Les autres méthodes listCurrentUser, search, show restent inchangées comme avant) ...
-    // Je les remets ici pour que le fichier soit complet si tu fais un copier-coller
-
     #[Route('/me', name: 'list_current_user', methods: ['GET'])]
-    public function listCurrentUser(DemandeRepository $repo): JsonResponse
-    {
-        /** @var Utilisateur $user */
-        $user = $this->getUser();
-        $demandes = $repo->findBy(['demandeur' => $user], ['createdAt' => 'DESC']); 
+public function listCurrentUser(DemandeRepository $repo, Request $request): JsonResponse
+{
+    /** @var Utilisateur $user */
+    $user = $this->getUser();
+    
+    $page = max(1, (int) $request->query->get('page', 1));
+    $limit = max(1, min(50, (int) $request->query->get('limit', 6)));
+    
+    $statut = $request->query->get('statut');
+    $periode = $request->query->get('periode');
+    $dateDebut = $request->query->get('date_debut');
+    $dateFin = $request->query->get('date_fin');
+    
+    // 1. Construction de la base de la query (Filtres uniquement)
+    $qb = $repo->createQueryBuilder('d')
+        ->where('d.demandeur = :user')
+        ->setParameter('user', $user);
+        
+    if ($statut && $statut !== 'all') {
+        $qb->andWhere('d.statut = :statut')
+           ->setParameter('statut', $statut);
+    }
+    
+    if ($periode || ($dateDebut && $dateFin)) {
+        $now = new \DateTime();
+        switch ($periode) {
+            case '7jours':
+                $qb->andWhere('d.createdAt >= :dateStart')
+                   ->setParameter('dateStart', (clone $now)->modify('-7 days'));
+                break;
+            case '30jours':
+                $qb->andWhere('d.createdAt >= :dateStart')
+                   ->setParameter('dateStart', (clone $now)->modify('-30 days'));
+                break;
+            case '3mois':
+                $qb->andWhere('d.createdAt >= :dateStart')
+                   ->setParameter('dateStart', (clone $now)->modify('-3 months'));
+                break;
+            case 'custom':
+                if ($dateDebut) {
+                    $qb->andWhere('d.createdAt >= :dateStart')
+                       ->setParameter('dateStart', new \DateTime($dateDebut));
+                }
+                if ($dateFin) {
+                    $dateEnd = new \DateTime($dateFin);
+                    $qb->andWhere('d.createdAt <= :dateEnd')
+                       ->setParameter('dateEnd', $dateEnd->setTime(23, 59, 59));
+                }
+                break;
+        }
+    }
 
-        $data = [];
+    // 2. COMPTAGE DU TOTAL (On clone AVANT d'ajouter le tri et la pagination)
+    $totalQb = clone $qb;
+    $total = (int) $totalQb->select('COUNT(d.id)')
+                           ->getQuery()
+                           ->getSingleScalarResult();
+
+    // 3. TRI ET PAGINATION (Uniquement sur le QB original)
+    $sortBy = $request->query->get('sort', 'createdAt');
+    $sortOrder = strtoupper($request->query->get('order', 'DESC')) === 'ASC' ? 'ASC' : 'DESC';
+    
+    $allowedSortFields = ['createdAt', 'montant', 'titre', 'statut'];
+    if (!in_array($sortBy, $allowedSortFields)) {
+        $sortBy = 'createdAt';
+    }
+    
+    $offset = ($page - 1) * $limit;
+    $qb->orderBy("d.$sortBy", $sortOrder) // Le tri est ajouté ICI
+       ->setFirstResult($offset)
+       ->setMaxResults($limit);
+    
+    $demandes = $qb->getQuery()->getResult();
+    
+    $data = [];
         foreach ($demandes as $d) {
             $montant = method_exists($d, 'getMontantEstime') ? $d->getMontantEstime() : $d->getMontant();
             $dateObj = method_exists($d, 'getCreatedAt') ? $d->getCreatedAt() : $d->getDateCreation();
@@ -289,8 +405,17 @@ final class DemandeController extends AbstractController
                 'date' => $dateObj ? $dateObj->format('Y-m-d H:i') : null,
             ];
         }
-        return $this->json($data);
-    }
+
+    return $this->json([
+        'data' => $data,
+        'pagination' => [
+            'page' => $page,
+            'limit' => $limit,
+            'total' => $total,
+            'pages' => ceil($total / $limit)
+        ]
+    ]);
+}
     
     #[Route('/to-validate', name: 'list_to_validate', methods: ['GET'])]
     public function listToValidate(DemandeRepository $repo): JsonResponse
@@ -401,6 +526,26 @@ final class DemandeController extends AbstractController
         $beneficiaireNom = $d->getBeneficiaire() ? $d->getBeneficiaire()->getNom() : $d->getDemandeur()->getNom();
         if (method_exists($d, 'getBeneficiaireAutre') && $d->getBeneficiaireAutre()) $beneficiaireNom = $d->getBeneficiaireAutre();
 
+        // Informations éventuelles de bon de caisse associé via l'opération
+        $bonData = null;
+        if (method_exists($d, 'getOperation') && $d->getOperation()) {
+            $operation = $d->getOperation();
+            if (method_exists($operation, 'getBonDeCaisse') && $operation->getBonDeCaisse()) {
+                $bon = $operation->getBonDeCaisse();
+                $retour = $bon->getOperationRetourFond();
+                $bonData = [
+                    'id' => $bon->getId(),
+                    'reference' => $bon->getReference(),
+                    'hasRetourFond' => $retour !== null,
+                    'retourFond' => $retour ? [
+                        'id' => $retour->getId(),
+                        'montant' => $retour->getMontant(),
+                        'date' => $retour->getDate() ? $retour->getDate()->format('d/m/Y H:i') : null,
+                    ] : null,
+                ];
+            }
+        }
+
         return $this->json([
             'id' => $d->getId(),
             'numeroReference' => $ref,
@@ -412,7 +557,8 @@ final class DemandeController extends AbstractController
             'demandeur' => $d->getDemandeur()->getNom(),
             'beneficiaire' => $beneficiaireNom,
             'service' => $d->getDemandeur()->getService() ? $d->getDemandeur()->getService()->getNom() : 'N/A',
-            'lignes' => $lignes
+            'lignes' => $lignes,
+            'bonDeCaisse' => $bonData,
         ]);
     }
 }

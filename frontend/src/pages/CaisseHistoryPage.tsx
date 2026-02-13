@@ -11,6 +11,7 @@ export default function CaisseHistoryPage() {
     type: '',
     date_debut: '',
     date_fin: '',
+    ref: '',
   });
 
   const [page, setPage] = useState(1);
@@ -26,7 +27,7 @@ export default function CaisseHistoryPage() {
     
     const params = new URLSearchParams({
         page: page.toString(),
-        limit: '20',
+        limit: '6',
         ...filters
     });
 
@@ -87,6 +88,20 @@ export default function CaisseHistoryPage() {
                     <option value="DECAISSEMENT">{t('pages.caisseHistory.filters.exit')}</option>
                 </select>
             </div>
+            
+            {/* Champ de recherche par référence */}
+            <div>
+                <label className="block text-xs font-semibold text-gray-500 mb-1">Référence</label>
+                <input 
+                    type="text" 
+                    name="ref" 
+                    placeholder="Rechercher par référence..."
+                    className="border-gray-300 rounded text-sm p-2 w-48"
+                    onChange={handleFilterChange}
+                    value={filters.ref}
+                />
+            </div>
+            
             {/* ... dates ... */}
             
         </div>
@@ -96,6 +111,7 @@ export default function CaisseHistoryPage() {
             <thead className="bg-white">
                 <tr>
                     <th className="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase">{t('manager.date')}</th>
+                    <th className="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase">Référence</th>
                     <th className="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase">{t('pages.caisseHistory.table.headers.type')}</th>
                     <th className="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase">{t('pages.caisseHistory.table.headers.reason')}</th>
                     <th className="px-6 py-3 text-right text-xs font-bold text-gray-500 uppercase">{t('pages.caisseHistory.table.headers.amount')}</th>
@@ -129,6 +145,9 @@ export default function CaisseHistoryPage() {
                             }
                             return op.date;
                           })()}
+                        </td>
+                        <td className="px-6 py-4 text-sm text-gray-900 font-mono">
+                            {op.ref || op.id}
                         </td>
                         <td className="px-6 py-4">
                             <span className={`px-2 py-1 text-xs font-bold rounded ${op.type === 'ENCAISSEMENT' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>

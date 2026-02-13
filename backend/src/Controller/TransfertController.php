@@ -8,6 +8,7 @@ use App\Entity\Caisse;
 use App\Entity\SessionCaisse;
 use App\Entity\Utilisateur;
 use App\Entity\ModePaiement;
+use App\Service\BonDeCaisseManager;
 use App\Repository\CaisseRepository;
 use App\Repository\TransfertRepository;
 use App\Repository\SessionCaisseRepository;
@@ -30,7 +31,8 @@ class TransfertController extends AbstractController
         EntityManagerInterface $em,
         SessionCaisseRepository $sessionRepo,
         CaisseRepository $caisseRepo,
-        ModePaiementRepository $modeRepo
+        ModePaiementRepository $modeRepo,
+        BonDeCaisseManager $bonManager
     ): JsonResponse
     {
         /** @var Utilisateur $user */
@@ -82,7 +84,16 @@ class TransfertController extends AbstractController
         $em->persist($caisseSource);
         $em->flush();
 
-        return $this->json(['message' => 'Transfert initié. En attente de validation par le destinataire.', 'id' => $transfert->getId()]);
+        // Bon de caisse sur l'opération de transfert sortant
+        $bon = $bonManager->creerPourOperation($opDebit, null);
+        $em->flush();
+
+        return $this->json([
+            'message' => 'Transfert initié. En attente de validation par le destinataire.',
+            'id' => $transfert->getId(),
+            'bon_de_caisse_id' => (string) $bon->getId(),
+            'bon_de_caisse_ref' => $bon->getReference(),
+        ]);
     }
 
     /**
@@ -132,7 +143,8 @@ class TransfertController extends AbstractController
         Transfert $transfert,
         EntityManagerInterface $em,
         SessionCaisseRepository $sessionRepo,
-        ModePaiementRepository $modeRepo
+        ModePaiementRepository $modeRepo,
+        BonDeCaisseManager $bonManager
     ): JsonResponse
     {
         $user = $this->getUser();
@@ -175,7 +187,15 @@ class TransfertController extends AbstractController
         $em->persist($caisseCible);
         $em->flush();
 
-        return $this->json(['message' => 'Transfert accepté et caisse créditée.']);
+        // Bon de caisse sur l'opération de transfert entrant
+        $bon = $bonManager->creerPourOperation($opCredit, null);
+        $em->flush();
+
+        return $this->json([
+            'message' => 'Transfert accepté et caisse créditée.',
+            'bon_de_caisse_id' => (string) $bon->getId(),
+            'bon_de_caisse_ref' => $bon->getReference(),
+        ]);
     }
 
     /**

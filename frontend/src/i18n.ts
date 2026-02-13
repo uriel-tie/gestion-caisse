@@ -120,7 +120,10 @@ const resources: any = {
           "status": {
             "ATTENTE_CHEF": "Validation Chef",
             "ATTENTE_MANAGER": "Validation Manager",
-            "VALIDEE_A_PAYER": "À Payer (Caisse)"
+            "VALIDEE_A_PAYER": "À Payer (Caisse)",
+            "PAYEE": "Payée",
+            "REFUSEE": "Refusée",
+            "BROUILLON": "Brouillon"
           },
           "table": {
             "reference": "Référence",
@@ -191,7 +194,7 @@ const resources: any = {
           "role_default": "EMPLOYÉ"
         },
         "newRequest": {
-          "title": "Bon de Caisse",
+          "title": "Demander des Fonds",
           "subtitle": "Demande de Fonds",
           "back": "Annuler et Retour",
           "date": "Date",
@@ -217,6 +220,7 @@ const resources: any = {
           "detailed_reason": "Motif Détaillé",
           "financial_details": "Détails financiers",
           "total_to_pay": "Total à Payer",
+          "save_draft": "Enregistrer le brouillon",
           "submit": "Soumettre",
           "submitting": "Envoi...",
           "save_button": "Enregistrer",
@@ -564,7 +568,10 @@ const resources: any = {
           "status": {
             "ATTENTE_CHEF": "Chef validation",
             "ATTENTE_MANAGER": "Manager validation",
-            "VALIDEE_A_PAYER": "To pay (Cash)"
+            "VALIDEE_A_PAYER": "To pay (Cash)",
+            "PAYEE": "Paid",
+            "REFUSEE": "Rejected",
+            "BROUILLON": "Draft"
           },
           "table": {
             "reference": "Reference",
@@ -636,7 +643,7 @@ const resources: any = {
           "role_default": "EMPLOYEE"
         },
         "newRequest": {
-          "title": "Cash Voucher",
+          "title": "Request Funds",
           "subtitle": "Funds Request",
           "back": "Cancel and go back",
           "date": "Date",
@@ -662,6 +669,7 @@ const resources: any = {
           "detailed_reason": "Detailed reason",
           "financial_details": "Financial details",
           "total_to_pay": "Total to pay",
+          "save_draft": "Save draft",
           "submit": "Submit",
           "submitting": "Submitting...",
           "save_button": "Save",

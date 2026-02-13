@@ -128,6 +128,12 @@ class OperationRepository extends ServiceEntityRepository
                ->setParameter('compte', '%' . $filters['compte'] . '%');
         }
 
+        if (!empty($filters['ref'])) {
+            // Recherche par référence (ID de l'opération ou référence du bon de caisse)
+            $qb->andWhere('o.id LIKE :ref OR o.ref LIKE :ref')
+               ->setParameter('ref', '%' . $filters['ref'] . '%');
+        }
+
         // 4. Pagination
         $query = $qb->getQuery();
         

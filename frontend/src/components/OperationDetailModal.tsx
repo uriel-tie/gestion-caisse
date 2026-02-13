@@ -1,6 +1,7 @@
 import React, { useState, useRef } from 'react';
 import { X, FileText, User, Calendar, CreditCard, CheckCircle, Clock, AlertCircle, UploadCloud, RotateCcw, AlertTriangle, Loader, Ban } from 'lucide-react';
 import Swal from 'sweetalert2';
+import { RequestBonViewer } from './RequestBonViewer';
 
 interface Operation {
     id: string;
@@ -15,11 +16,22 @@ interface Operation {
     estDemandeAnnulation?: boolean;
     motif_annulation?: string;
     operationLiee?: boolean;
+    bonDeCaisse?: {
+        id: string;
+        numero: string;
+        retourFond: {
+            montant: number;
+        };
+    };
     justificatif?: {
         type: string;
         url?: string;
         contenu?: any;
         signature?: string;
+    } | null;
+    // Lien éventuel vers une demande d'origine (si fourni par l'API)
+    demande?: {
+        id: string;
     } | null;
 }
 
@@ -35,7 +47,8 @@ export default function OperationDetailModal({ operation, onClose, onRefresh, us
     const [selectedFile, setSelectedFile] = useState<File | null>(null);
     const fileInputRef = useRef<HTMLInputElement>(null);
     const [actionLoading, setActionLoading] = useState(false);
-
+    const [showRequestBonViewer, setShowRequestBonViewer] = useState(false);
+    const [selectedDemande, setSelectedDemande] = useState<any>(null);
     if (!operation) return null;
 
     const convertFileToBase64 = (file: File): Promise<string> => {
@@ -155,6 +168,56 @@ export default function OperationDetailModal({ operation, onClose, onRefresh, us
     const StatusIcon = statusConfig.icon;
 
     const isEncaissement = operation.type === 'ENCAISSEMENT';
+
+    const handleShowDemande = async () => {
+        if (!operation.demande?.id) return;
+
+        try {
+            const token = localStorage.getItem('token');
+            const res = await fetch(`https://127.0.0.1:8000/api/demandes/${operation.demande.id}`, {
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
+            if (!res.ok) {
+                Swal.fire('Erreur', "Impossible de charger la demande liée.", 'error');
+                return;
+            }
+            const data = await res.json();
+            setSelectedDemande(data);
+            setShowRequestBonViewer(true);
+        } catch (e) {
+            Swal.fire('Erreur', "Erreur réseau lors du chargement de la demande.", 'error');
+        }
+    };
+
+    const handleOpenRetourModal = async () => {
+    const { value: montant } = await Swal.fire({
+        title: 'Enregistrer un retour de fond',
+        input: 'number',
+        inputLabel: 'Montant retourné',
+        inputPlaceholder: 'Entrez le montant...',
+        showCancelButton: true,
+        confirmButtonText: 'Valider',
+        confirmButtonColor: '#4f46e5'
+    });
+    const token = localStorage.getItem('token');
+  if (montant) {
+        // Appel API vers la route créée à l'étape 1
+        const res = await fetch(`https://127.0.0.1:8000/api/operations/${operation.id}/retour-fond`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+            body: JSON.stringify({ montant })
+        });
+        
+        if(res.ok) {
+            Swal.fire('Succès', 'Retour de fond enregistré', 'success');
+            onRefresh?.(); // Rafraîchir les données
+        }
+        if (!res.ok) {
+            const err = await res.json();
+            Swal.fire('Erreur', err.error, 'error');
+        }
+    }
+};
 
     return (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50 backdrop-blur-sm p-4">
@@ -282,10 +345,27 @@ export default function OperationDetailModal({ operation, onClose, onRefresh, us
                             </div>
                         )}
                     </div>
+                    {operation.bonDeCaisse?.retourFond && (
+                        <div className="mt-4 p-3 bg-green-50 border border-green-200 rounded-lg">
+                            <p className="text-sm text-green-700 font-bold">
+                                <CheckCircle size={16} className="inline mr-2"/>
+                                Retour de fond effectué : {operation.bonDeCaisse.retourFond.montant} FCFA
+                            </p>
+                        </div>
+                    )}
                 </div>
 
                 {/* FOOTER ACTIONS (Fixe) */}
-                <div className="bg-gray-50 px-6 py-4 flex flex-col sm:flex-row justify-end gap-3 shrink-0 border-t items-center">
+                    <div className="bg-gray-50 px-6 py-4 flex flex-col sm:flex-row justify-end gap-3 shrink-0 border-t items-center">
+
+                        {operation.demande && operation.demande.id && (
+                            <button
+                                onClick={handleShowDemande}
+                                className="px-4 py-2 bg-white border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 font-medium shadow-sm w-full sm:w-auto"
+                            >
+                                Voir la demande
+                            </button>
+                        )}
 
                     {/* MANAGER : Contre-passer */}
                     {userRole === 'MANAGER' && operation.statut !== 'ANNULEE' && (
@@ -298,6 +378,17 @@ export default function OperationDetailModal({ operation, onClose, onRefresh, us
                         >
                             {operation.estDemandeAnnulation ? <CheckCircle size={18}/> : <RotateCcw size={18}/>}
                             {operation.estDemandeAnnulation ? 'Valider Annulation' : 'Contre-passer'}
+                        </button>
+                    )}
+
+                    {/* CAISSIER : RETOUR DE FOND */}
+                    {/* N'afficher que si c'est un DECAISSEMENT, qu'il a un Bon, et pas encore de retour */}
+                    {userRole === 'CAISSIER' && operation.type === 'DECAISSEMENT' && operation.bonDeCaisse && !operation.bonDeCaisse.retourFond && (
+                        <button 
+                            onClick={() => handleOpenRetourModal()} // Ouvre une petite modale de saisie de montant
+                            className="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg font-bold flex items-center gap-2"
+                        >
+                            <RotateCcw size={18}/> Retour de fond
                         </button>
                     )}
 
@@ -316,6 +407,16 @@ export default function OperationDetailModal({ operation, onClose, onRefresh, us
                         Fermer
                     </button>
                 </div>
+
+                {showRequestBonViewer && selectedDemande && (
+                    <RequestBonViewer
+                        demande={selectedDemande}
+                        onClose={() => {
+                            setShowRequestBonViewer(false);
+                            setSelectedDemande(null);
+                        }}
+                    />
+                )}
             </div>
         </div>
     );

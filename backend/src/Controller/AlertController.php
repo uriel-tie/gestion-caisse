@@ -12,7 +12,7 @@ use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\Routing\Annotation\Route;
 
-#[Route('/api/alerts', name: 'api_alerts_')]
+#[Route('/api/alert', name: 'api_alerts_')]
 class AlertController extends AbstractController
 {
 
