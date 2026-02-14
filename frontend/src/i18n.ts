@@ -70,7 +70,15 @@ const resources = {
           "username": "Identifiant",
           "password": "Mot de passe",
           "forgot": "Mot de passe oublié ?",
-          "signin": "Se connecter"
+          "signin": "Se connecter",
+          "two_fa_title": "Double Authentification",
+          "two_fa_instruction": "Code Google Authenticator",
+          "back_to_login": "Revenir à la connexion",
+          "verify_button": "Valider le code",
+          "verify_loading": "Vérification...",
+          "error_2fa": "Veuillez entrer le code de validation.",
+          "error_server": "Impossible de se connecter au serveur.",
+          "footer": "© 2025 ORBIS CAISSE Manager. Sécurisé par Symfony & React."
         },
         "home": {
           "new_request": "Nouvelle Demande",
@@ -270,6 +278,7 @@ const resources = {
           "access_admin": "Veuillez accéder à la route /admin.",
           "logout": "Déconnexion",
           "access_denied": "Accès Refusé",
+          "role_unknown": "Votre rôle actuel ({{role}}) n'est pas reconnu.",
           "supervision": "Supervision Globale",
           "overview": "Vue d'ensemble de la trésorerie et des opérations en cours.",
           "system_status": "État Système",
@@ -282,6 +291,56 @@ const resources = {
         }
       },
       "components": {
+        "solde": {
+          "label": "Solde Actuel Caisse",
+          "disconnected": "Non connecté",
+          "error_load": "Impossible de charger le solde",
+          "synced": "Synchronisé en temps réel",
+          "disconnected_status": "Déconnecté",
+          "auto_update": "Mise à jour auto (15s)"
+        },
+        "payment_terminal": {
+            "title": "Terminal de Paiement (Demandes Validées)",
+            "search_placeholder": "Scanner ou saisir le code de la demande...",
+            "search_button": "Rechercher",
+            "not_found": "Aucune demande trouvée avec ce code.",
+            "search_error": "Erreur recherche.",
+            "pay_confirm": "Confirmer le décaissement de {{amount}} F pour \"{{title}}\" ?",
+            "pay_reason_prefix": "Paiement Demande",
+            "pay_success": "Décaissement effectué avec succès !",
+            "pay_error": "Erreur de paiement",
+            "network_error": "Erreur réseau",
+            "requester": "Demandeur",
+            "status_validated": "À PAYER",
+            "status_paid": "PAYÉE",
+            "confirm_button": "CONFIRMER LE DÉCAISSEMENT",
+            "processing": "Traitement...",
+            "already_paid_title": "Cette demande a déjà été réglée.",
+            "already_paid_sub": "Impossible d'effectuer un nouveau décaissement.",
+            "status_error": "Impossible de payer : Statut"
+        },
+        "bon_de_caisse": {
+            "title": "BON DE CAISSE",
+            "beneficiary": "Bénéficiaire",
+            "date": "Date",
+            "global_reason": "Motif Global",
+            "ref_request": "(Réf. Demande: {{ref}})",
+            "table_designation": "Désignation",
+            "table_qty": "Qté",
+            "table_unit_price": "P.U.",
+            "table_total": "Total",
+            "total_net_pay": "Total Net à Payer",
+            "signature_cashier": "Pour la Caisse",
+            "signature_beneficiary": "Le Bénéficiaire (Signature)",
+            "footer_text": "Arrêté la présente pièce à la somme de {{amount}} Francs CFA.",
+            "close": "Fermer",
+            "company_name": "SOCIÉTÉ"
+        },
+        "mini_journal": {
+            "title": "Dernières transactions",
+            "empty": "Aucune opération récente.",
+            "default_reason": "Opération diverse"
+        },
         "table": {
           "loading": "Chargement...",
           "empty": "Aucun résultat.",
@@ -373,7 +432,15 @@ const resources = {
           "username": "Username",
           "password": "Password",
           "forgot": "Forgot password?",
-          "signin": "Sign in"
+          "signin": "Sign in",
+          "two_fa_title": "Two-Factor Authentication",
+          "two_fa_instruction": "Google Authenticator Code",
+          "back_to_login": "Back to login",
+          "verify_button": "Validate code",
+          "verify_loading": "Verifying...",
+          "error_2fa": "Please enter the validation code.",
+          "error_server": "Unable to connect to the server.",
+          "footer": "© 2025 ORBIS CAISSE Manager. Secured by Symfony & React."
         },
         "home": {
           "new_request": "New Request",
@@ -574,6 +641,7 @@ const resources = {
           "access_admin": "Please access /admin route.",
           "logout": "Logout",
           "access_denied": "Access Denied",
+          "role_unknown": "Your current role ({{role}}) is not recognized.",
           "supervision": "Global Supervision",
           "overview": "Overview of treasury and ongoing operations.",
           "system_status": "System Status",
@@ -586,6 +654,56 @@ const resources = {
         }
       },
       "components": {
+        "solde": {
+          "label": "Current Cash Balance",
+          "disconnected": "Not connected",
+          "error_load": "Unable to load balance",
+          "synced": "Real-time synced",
+          "disconnected_status": "Disconnected",
+          "auto_update": "Auto update (15s)"
+        },
+        "payment_terminal": {
+            "title": "Payment Terminal (Validated Requests)",
+            "search_placeholder": "Scan or enter request code...",
+            "search_button": "Search",
+            "not_found": "No request found with this code.",
+            "search_error": "Search error.",
+            "pay_confirm": "Confirm disbursement of {{amount}} F for \"{{title}}\"?",
+            "pay_reason_prefix": "Payment Request",
+            "pay_success": "Disbursement successful!",
+            "pay_error": "Payment error",
+            "network_error": "Network error",
+            "requester": "Requester",
+            "status_validated": "TO PAY",
+            "status_paid": "PAID",
+            "confirm_button": "CONFIRM DISBURSEMENT",
+            "processing": "Processing...",
+            "already_paid_title": "This request has already been paid.",
+            "already_paid_sub": "Impossible to perform a new disbursement.",
+            "status_error": "Unable to pay: Status"
+        },
+        "bon_de_caisse": {
+            "title": "CASH VOUCHER",
+            "beneficiary": "Beneficiary",
+            "date": "Date",
+            "global_reason": "Global Reason",
+            "ref_request": "(Req. Ref: {{ref}})",
+            "table_designation": "Designation",
+            "table_qty": "Qty",
+            "table_unit_price": "U.P.",
+            "table_total": "Total",
+            "total_net_pay": "Net Total to Pay",
+            "signature_cashier": "For the Cashier",
+            "signature_beneficiary": "The Beneficiary (Signature)",
+            "footer_text": "This document is stopped at the sum of {{amount}} FCFA.",
+            "close": "Close",
+            "company_name": "COMPANY"
+        },
+        "mini_journal": {
+            "title": "Recent Transactions",
+            "empty": "No recent operations.",
+            "default_reason": "Misc operation"
+        },
         "table": {
           "loading": "Loading...",
           "empty": "No results.",

@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Wallet, RefreshCw, AlertTriangle } from 'lucide-react';
 
 interface SoldeResponse {
@@ -8,6 +9,7 @@ interface SoldeResponse {
 }
 
 export default function SoldeCard() {
+    const { t } = useTranslation();
     const [solde, setSolde] = useState<number | null>(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
@@ -20,7 +22,7 @@ export default function SoldeCard() {
             
             const token = localStorage.getItem('token');
             if (!token) {
-                setError("Non connecté");
+                setError(t('components.solde.disconnected'));
                 setLoading(false);
                 return;
             }
@@ -42,7 +44,7 @@ export default function SoldeCard() {
                 console.error(err);
                 // On n'affiche l'erreur que si c'est le premier chargement
                 // Sinon on garde le dernier solde connu pour éviter le clignotement
-                if (loading) setError("Impossible de charger le solde");
+                if (loading) setError(t('components.solde.error_load'));
             } finally {
                 setLoading(false);
                 setIsRefreshing(false);
@@ -76,7 +78,7 @@ export default function SoldeCard() {
                         </div>
                         <div className="ml-5">
                             <p className="text-sm font-medium text-gray-500 truncate uppercase tracking-wider flex items-center gap-2">
-                                Solde Actuel Caisse
+                                {t('components.solde.label')}
                                 {isRefreshing && <RefreshCw className="h-3 w-3 text-gray-400 animate-spin" />}
                             </p>
                             <div className="text-4xl font-bold text-gray-900 mt-1">
@@ -85,7 +87,7 @@ export default function SoldeCard() {
                                         <AlertTriangle className="h-4 w-4 mr-1"/> {error}
                                     </span>
                                 ) : loading ? (
-                                    <span className="text-gray-300 text-2xl animate-pulse">Chargement...</span>
+                                    <span className="text-gray-300 text-2xl animate-pulse">{t('common.loading')}</span>
                                 ) : (
                                     formattedSolde
                                 )}
@@ -100,11 +102,11 @@ export default function SoldeCard() {
                 <div className="text-xs flex items-center">
                     <span className={`h-2 w-2 rounded-full mr-2 ${error ? 'bg-red-500' : 'bg-green-500'} animate-pulse`}></span>
                     <span className="text-gray-500 font-medium">
-                        {error ? 'Déconnecté' : 'Synchronisé en temps réel'}
+                        {error ? t('components.solde.disconnected_status') : t('components.solde.synced')}
                     </span>
                 </div>
                 <span className="text-xs text-gray-400">
-                    Mise à jour auto (15s)
+                    {t('components.solde.auto_update')}
                 </span>
             </div>
         </div>

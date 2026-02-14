@@ -1,4 +1,5 @@
 import React from 'react';
+import { useTranslation } from 'react-i18next';
 import type { UserData } from '../types';
 import DashboardManager from './DashboardManager';
 import DashboardCaissier from './DashboardCaissier';
@@ -13,6 +14,7 @@ interface DashboardPageProps {
 
 // 2. On définit le composant en lui disant d'utiliser ces Props
 const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout }) => {
+  const { t } = useTranslation();
 
   // Fonction utilitaire pour vérifier le rôle
   const hasRole = (roleName: string): boolean => {
@@ -29,9 +31,9 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout }) => {
   if (hasRole('ROLE_ADMIN')) {
       return (
           <div className="p-6">
-              <h1>Compte Administrateur</h1>
-              <p>Veuillez accéder à la route /admin.</p>
-              <button onClick={onLogout} className="btn btn-primary">Déconnexion</button>
+              <h1>{t('pages.dashboard.admin')}</h1>
+              <p>{t('pages.dashboard.access_admin')}</p>
+              <button onClick={onLogout} className="btn btn-primary">{t('pages.dashboard.logout')}</button>
           </div>
       );
   }
@@ -61,15 +63,15 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ user, onLogout }) => {
   return (
     <div className="flex flex-col items-center justify-center h-screen bg-gray-100">
       <div className="p-8 bg-white rounded shadow-md text-center">
-        <h2 className="text-2xl font-bold text-red-600 mb-4">Accès Refusé</h2>
+        <h2 className="text-2xl font-bold text-red-600 mb-4">{t('pages.dashboard.access_denied')}</h2>
         <p className="text-gray-700 mb-6">
-          Votre rôle actuel (<code>{JSON.stringify(user.roles)}</code>) n'est pas reconnu.
+          {t('pages.dashboard.role_unknown', { role: JSON.stringify(user.roles) })}
         </p>
         <button 
           onClick={onLogout}
           className="px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700 transition"
         >
-          Se déconnecter
+          {t('pages.dashboard.logout')}
         </button>
       </div>
     </div>
