@@ -1,6 +1,7 @@
 import { useState, useRef } from 'react';
 import { X, FileText, User, Calendar, CreditCard, CheckCircle, Clock, AlertCircle, UploadCloud, RotateCcw, AlertTriangle, Loader, Ban } from 'lucide-react';
 import Swal from 'sweetalert2';
+import { apiUrl } from '../utils/env';
 import { RequestBonViewer } from './RequestBonViewer';
 
 interface Operation {
@@ -66,7 +67,7 @@ export default function OperationDetailModal({ operation, onClose, onRefresh, us
         try {
             const base64 = await convertFileToBase64(selectedFile);
             const token = localStorage.getItem('token');
-            const res = await fetch(`https://127.0.0.1:8000/api/operations/${operation.id}/attach-justificatif`, {
+            const res = await fetch(apiUrl(`/api/operations/${operation.id}/attach-justificatif`), {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
                 body: JSON.stringify({ fichier_data: base64, fichier_nom: selectedFile.name })
@@ -99,7 +100,7 @@ export default function OperationDetailModal({ operation, onClose, onRefresh, us
         setActionLoading(true);
         try {
             const token = localStorage.getItem('token');
-            const res = await fetch(`https://127.0.0.1:8000/api/operations/${operation.id}/reverse`, {
+            const res = await fetch(apiUrl(`/api/operations/${operation.id}/reverse`), {
                 method: 'POST',
                 headers: { 'Authorization': `Bearer ${token}` }
             });
@@ -135,7 +136,7 @@ export default function OperationDetailModal({ operation, onClose, onRefresh, us
         setActionLoading(true);
         try {
             const token = localStorage.getItem('token');
-            const res = await fetch(`https://127.0.0.1:8000/api/operations/${operation.id}/request-cancellation`, {
+            const res = await fetch(apiUrl(`/api/operations/${operation.id}/request-cancellation`), {
                 method: 'POST',
                 headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
                 body: JSON.stringify({ motif })
@@ -174,7 +175,7 @@ export default function OperationDetailModal({ operation, onClose, onRefresh, us
 
         try {
             const token = localStorage.getItem('token');
-            const res = await fetch(`https://127.0.0.1:8000/api/demandes/${operation.demande.id}`, {
+            const res = await fetch(apiUrl(`/api/demandes/${operation.demande.id}`), {
                 headers: { 'Authorization': `Bearer ${token}` }
             });
             if (!res.ok) {
@@ -202,7 +203,7 @@ export default function OperationDetailModal({ operation, onClose, onRefresh, us
     const token = localStorage.getItem('token');
   if (montant) {
         // Appel API vers la route créée à l'étape 1
-        const res = await fetch(`https://127.0.0.1:8000/api/operations/${operation.id}/retour-fond`, {
+        const res = await fetch(apiUrl(`/api/operations/${operation.id}/retour-fond`), {
             method: 'POST',
             headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
             body: JSON.stringify({ montant })
@@ -310,7 +311,7 @@ export default function OperationDetailModal({ operation, onClose, onRefresh, us
                                     <div className="flex items-center justify-between">
                                         <span className="text-blue-700 text-sm">Document joint disponible</span>
                                         <a 
-                                            href={`https://localhost:8000/${operation.justificatif.url}`} 
+                                            href={apiUrl(`/${operation.justificatif.url}`)} 
                                             target="_blank" 
                                             rel="noopener noreferrer"
                                             className="px-3 py-1.5 bg-blue-600 text-white text-xs font-bold rounded hover:bg-blue-700 transition"

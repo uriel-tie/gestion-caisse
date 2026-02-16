@@ -183,6 +183,39 @@ final class DemandeController extends AbstractController
             ]);
         }
 
+         #[Route('/{id}/annuler', name: 'annuler', methods: ['POST'])]
+    public function annuler(string $id, DemandeRepository $demandeRepository, EntityManagerInterface $em): JsonResponse
+    {
+        /** @var Utilisateur $user */
+        $user = $this->getUser();
+        $demande = $demandeRepository->find($id);
+
+        // 1. Vérifications de base
+        if (!$demande) {
+            return $this->json(['error' => 'Demande introuvable'], 404);
+        }
+
+        // On ne peut pas annuler une demande déjà annulée, payée ou refusée
+        if (in_array($demande->getStatut(), ['ANNULEE', 'PAYEE', 'REFUSEE'])) {
+            return $this->json(['error' => 'Cette demande ne peut pas être annulée'], 400);
+        }
+
+        // Sécurité : Seul le demandeur ou un manager peut annuler
+        if ($demande->getDemandeur() !== $user && !in_array('ROLE_MANAGER', $user->getRoles())) {
+            return $this->json(['error' => 'Action non autorisée'], 403);
+        }
+
+        // 2. Mise à jour du statut
+        $demande->setStatut('ANNULEE');
+        $em->flush();
+
+        return $this->json([
+            'message' => 'Demande annulée avec succès',
+            'id' => $demande->getId(),
+            'statut' => $demande->getStatut()
+        ]);
+    }
+
     #[Route('/{id}/workflow', name: 'workflow_action', methods: ['PATCH'])]
     public function workflowAction(Demande $demande, Request $request, EntityManagerInterface $em): JsonResponse
     {

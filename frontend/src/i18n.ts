@@ -123,7 +123,8 @@ const resources: any = {
             "VALIDEE_A_PAYER": "À Payer (Caisse)",
             "PAYEE": "Payée",
             "REFUSEE": "Refusée",
-            "BROUILLON": "Brouillon"
+            "BROUILLON": "Brouillon",
+            "ANNULEE": "Annulée"
           },
           "table": {
             "reference": "Référence",
@@ -571,7 +572,8 @@ const resources: any = {
             "VALIDEE_A_PAYER": "To pay (Cash)",
             "PAYEE": "Paid",
             "REFUSEE": "Rejected",
-            "BROUILLON": "Draft"
+            "BROUILLON": "Draft",
+            "ANNULEE": "Cancelled"
           },
           "table": {
             "reference": "Reference",

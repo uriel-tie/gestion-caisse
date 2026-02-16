@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next';
 import { Eye, ArrowLeft, ChevronLeft, ChevronRight, Printer } from 'lucide-react'; // Ajout Printer
 import { useNavigate } from 'react-router-dom';
 import OperationDetailModal from '../components/OperationDetailModal';
+import { apiUrl } from '../utils/env';
 
 export default function CaisseHistoryPage() {
   const navigate = useNavigate();
@@ -32,7 +33,7 @@ export default function CaisseHistoryPage() {
     });
 
     try {
-      const res = await fetch(`https://127.0.0.1:8000/api/operations?${params}`, {
+      const res = await fetch(apiUrl(`/api/operations?${params}`), {
         headers: { 'Authorization': `Bearer ${token}` }
       });
       if (res.ok) {
@@ -53,7 +54,7 @@ export default function CaisseHistoryPage() {
 
   // --- FONCTION POUR IMPRIMER ---
   const handlePrint = (opId: string) => {
-      window.open(`/print/bon/${opId}`, '_blank');
+      window.open(apiUrl(`/print/bon/${opId}`), '_blank');
   };
 
   return (
